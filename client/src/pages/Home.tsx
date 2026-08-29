@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { trpc } from "@/lib/trpc";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
+import Seo from "@/components/Seo";
 
 const cities = ["Todas as cidades", "São Paulo", "Rio de Janeiro", "Belo Horizonte", "Brasília", "Curitiba", "Salvador", "Recife"];
 const categories = ["Todas as categorias", "Acompanhante", "Modelo", "Trans", "Casal"];
@@ -19,7 +20,7 @@ export default function Home() {
   const input = useMemo(() => ({ search: search || undefined, city: city.startsWith("Todas") ? undefined : city, category: category.startsWith("Todas") ? undefined : category, attribute: attribute.startsWith("Todos") ? undefined : attribute }), [search, city, category, attribute]);
   const { data: profiles = [], isLoading } = trpc.profiles.list.useQuery(input);
   const { user } = useAuth();
-  return <div className="min-h-screen bg-[#100c12] text-white">
+  return <div className="min-h-screen bg-[#100c12] text-white"><Seo title="Só Models — Perfis por cidade e estilo" description="Descubra perfis por cidade, estilo e atributos em uma vitrine direta e discreta." path="/" />
     <header className="border-b border-white/10 bg-[#100c12]/90 backdrop-blur sticky top-0 z-20"><div className="container flex items-center justify-between py-4"><Link href="/"><span className="brand-mark">Só <i>Models</i></span></Link><nav className="hidden md:flex items-center gap-6 text-sm text-white/70"><a href="#explorar">Explorar</a><a href="#seguranca">Segurança</a><Link href="/titular">Anuncie seu perfil</Link></nav><div className="flex items-center gap-2">{user ? <Link href="/titular"><Button variant="outline" className="border-white/20 bg-transparent text-white">Meu painel</Button></Link> : <Button variant="outline" onClick={() => startLogin()} className="border-white/20 bg-transparent text-white"><LogIn className="mr-2 h-4 w-4"/>Entrar</Button>}</div></div></header>
     <main>
       <section className="hero-section"><div className="container grid gap-10 lg:grid-cols-[1.15fr_.85fr] items-center"><div><Badge className="mb-5 bg-[#f3b3d2]/10 text-[#f3b3d2] border border-[#f3b3d2]/30">Portal Só Models</Badge><h1 className="font-display text-5xl md:text-7xl leading-[.95] tracking-tight">Descubra <span className="text-[#f3b3d2]">novas conexões</span> do seu jeito.</h1><p className="mt-6 max-w-xl text-lg text-white/65">Uma vitrine direta, discreta e organizada para encontrar perfis por cidade, estilo e atributos.</p><div className="mt-8 flex flex-wrap gap-3"><a href="#explorar"><Button className="bg-[#f3b3d2] text-[#24131d] hover:bg-[#f7c6df]">Explorar perfis <Search className="ml-2 h-4 w-4"/></Button></a><Link href="/titular"><Button variant="outline" className="border-white/20 bg-transparent text-white"><UserRoundPlus className="mr-2 h-4 w-4"/>Criar meu perfil</Button></Link></div></div><div className="hero-orbit"><div className="orbit-card"><Sparkles className="h-5 w-5 text-[#f3b3d2]"/><span>Perfis em revisão aparecem somente após aprovação.</span></div><div className="orbit-ring ring-one"/><div className="orbit-ring ring-two"/></div></div></section>

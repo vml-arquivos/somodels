@@ -35,6 +35,7 @@ button, input, textarea { font: inherit; }
 .media-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: .75rem; }
 .media-photo { aspect-ratio: 1; border-radius: .9rem; background: linear-gradient(145deg,#392638,#171019); background-size: cover; background-position: center; }
 .video-tile { aspect-ratio: 16/9; display: grid; place-items: center; border-radius: .75rem; background: radial-gradient(circle, rgba(243,179,210,.25), transparent), #251825; color: #f3b3d2; }
+.video-player { width: 100%; aspect-ratio: 16/9; border-radius: .75rem; background: #09070a; object-fit: cover; }
 .empty-inline { padding: 2rem; border-radius: .9rem; background: rgba(255,255,255,.04); color: rgba(255,255,255,.48); text-align: center; }
 .field-hint { display: block; color: rgba(255,255,255,.4); font-size: .75rem; font-weight: 400; }
 @media (max-width: 900px) { .profile-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .hero-section { min-height: auto; padding: 5rem 0; } }

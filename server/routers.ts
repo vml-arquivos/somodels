@@ -5,7 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { createMedia, getOwnerProfile, getOwnerProfiles, getPublicProfile, listPendingMedia, listPendingProfiles, listPublishedProfiles, moderateMedia, moderateProfile, saveProfile } from "./db";
 
-const profileInput = z.object({
+export const profileInputSchema = z.object({
   stageName: z.string().trim().min(2).max(120),
   slug: z.string().trim().min(2).max(160).regex(/^[a-z0-9-]+$/),
   description: z.string().trim().max(5000).optional(),
@@ -28,7 +28,7 @@ export const appRouter = router({
     bySlug: publicProcedure.input(z.object({ slug: z.string() })).query(({ input }) => getPublicProfile(input.slug)),
     mine: protectedProcedure.query(({ ctx }) => getOwnerProfiles(ctx.user.id)),
     mineById: protectedProcedure.input(z.object({ id: z.number().int().positive() })).query(({ ctx, input }) => getOwnerProfile(ctx.user.id, input.id)),
-    save: protectedProcedure.input(profileInput.extend({ id: z.number().int().positive().optional(), submitForReview: z.boolean().default(false) })).mutation(({ ctx, input }) => { const { id, submitForReview, ...data } = input; return saveProfile(ctx.user.id, data as any, id, submitForReview); }),
+    save: protectedProcedure.input(profileInputSchema.extend({ id: z.number().int().positive().optional(), submitForReview: z.boolean().default(false) })).mutation(({ ctx, input }) => { const { id, submitForReview, ...data } = input; return saveProfile(ctx.user.id, data as any, id, submitForReview); }),
   }),
   media: router({
     add: protectedProcedure.input(z.object({ profileId: z.number().int().positive(), kind: z.enum(["photo", "video"]), title: z.string().max(160).optional(), description: z.string().max(2000).optional(), storageKey: z.string().min(1), url: z.string().min(1), mimeType: z.string().min(1).max(120), isPremium: z.boolean().default(false), sortOrder: z.number().int().default(0) })).mutation(({ ctx, input }) => createMedia(ctx.user.id, input as any)),
