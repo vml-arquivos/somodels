@@ -225,3 +225,32 @@ Após o reset, o login temporário funcionou e a troca de senha retornou a mensa
 
 Nova discrepância no diagnóstico: após o reset confirmado e o login temporário bem-sucedido, uma consulta posterior no terminal do container atual retornou `exists:false` para `admin@somodels.buscarr.com.br`. Isso sugere que o terminal atual está apontando para outro banco/host, ou que houve troca de contexto de conexão; ainda não será feita nenhuma alteração. O próximo probe consulta apenas `DATABASE()`/hostname e a lista sanitizada de usuários para reconciliar o ambiente efetivo.
 
+O redeploy confirmado do commit `a28ef1c` foi iniciado no Coolify. O painel reportou checkout do branch `feat/production-reconciliation-marketplace` e preparação do container auxiliar; o deployment segue em progresso e ainda não deve ser considerado concluído.
+
+O deployment `f5ih3t3vu4dndr4rs8djxi4u` do commit `a28ef1c` segue em andamento no Coolify. O checkout do branch foi confirmado e o build Docker avançou pelas etapas de instalação e `pnpm check && pnpm build`; o container final e o healthcheck ainda aguardam conclusão. URL de acompanhamento: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/f5ih3t3vu4dndr4rs8djxi4u
+
+O deployment `f5ih3t3vu4dndr4rs8djxi4u` do commit `a28ef1c` avançou para a etapa de build de produção no Coolify. Até a última observação, `pnpm check` terminou sem erro e o build Vite/esbuild estava em execução; ainda não há confirmação de container final ou healthcheck concluído.
+
+O deployment `f5ih3t3vu4dndr4rs8djxi4u` do commit `a28ef1c` concluiu o `pnpm check && pnpm build` e a pós-etapa de remoção do atributo `crossorigin` do HTML. O Coolify ainda está avançando para a criação/troca do container e o healthcheck final.
+
+O deployment `f5ih3t3vu4dndr4rs8djxi4u` concluiu a exportação da imagem do commit `a28ef1c` e iniciou o unpack no servidor de produção. O novo container ainda não foi declarado saudável; a próxima etapa é a troca do container e a execução do healthcheck.
+
+O redeploy `f5ih3t3vu4dndr4rs8djxi4u` do commit `a28ef1c` falhou após a exportação da imagem, na extração de uma camada do runtime, com erro do Docker `no space left on device`. A aplicação anterior continua preservada; não foi considerado deploy saudável. Próximo passo: inspeção somente leitura do armazenamento do servidor Coolify e, se necessário, limpeza controlada de artefatos Docker não utilizados.
+
+A inspeção somente leitura do servidor `localhost` confirmou a causa do redeploy falho: `/dev/root` tem 19 GB totais, 18 GB usados, 808 MB disponíveis e 96% de utilização. O espaço reduzido impede a extração da nova camada Docker. Nenhuma limpeza foi executada nesta etapa.
+
+O diagnóstico Docker do servidor Coolify mostrou: 26 imagens, 13 ativas, 12,19 GB no total e 4,903 GB potencialmente recuperáveis; 13 containers ativos, sem espaço recuperável; 6 volumes ativos, 502 MB sem espaço recuperável; cache de build de 1,777 GB, dos quais 1,3 GB recuperáveis. A limpeza controlada poderá liberar espaço sem tocar nos volumes ou containers ativos, mas ainda aguarda confirmação antes da execução.
+
+A limpeza controlada autorizada foi concluída no servidor `localhost`: removeu imagens Docker não utilizadas e cache de build, sem tocar em volumes ou containers ativos, e recuperou 5,827 GB. O servidor agora tem espaço suficiente para repetir a extração da imagem do commit `a28ef1c`. Próximo passo: repetir o redeploy e validar o healthcheck.
+
+Após recuperar 5,827 GB, o redeploy foi repetido sem cache. O Coolify abriu a execução `lmkxm0sxjwhx4ssocwrszpcd` em 2026-08-29 11:19:01 UTC, iniciou a preparação do helper e começou a baixar a imagem necessária. A execução anterior por falta de espaço permanece registrada como falha; a nova execução ainda está em andamento.
+URL: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/lmkxm0sxjwhx4ssocwrszpcd
+
+Atualização do redeploy `lmkxm0sxjwhx4ssocwrszpcd`: após a limpeza do servidor, o Coolify conseguiu baixar o helper, concluir a instalação das dependências e avançar para `pnpm check && pnpm build`. A execução segue em andamento e não apresentou novamente o erro de falta de espaço até este marco.
+
+Último estado observado do redeploy sem cache: o `pnpm check && pnpm build` concluiu sem erro e o Coolify avançou para a fase runtime, iniciando as cópias dos artefatos para a imagem final. A execução `lmkxm0sxjwhx4ssocwrszpcd` ainda está em andamento; não foi iniciado outro deploy e não houve nova falha de espaço até este ponto.
+
+Marco adicional do redeploy `lmkxm0sxjwhx4ssocwrszpcd`: o frontend e o servidor foram compilados, os artefatos runtime foram copiados e a execução avançou para `exporting layers`. O Coolify ainda não confirmou a troca do container ou o healthcheck neste momento; o erro anterior de espaço não reapareceu.
+
+Falha do redeploy `lmkxm0sxjwhx4ssocwrszpcd`: o build e o rolling update avançaram, mas o healthcheck configurado em `http://localhost:3000/healthz` não conseguiu executar no container. O log registrou `/bin/sh: curl: not found` e `Healthcheck failed` com retorno 7; o container não foi promovido. A correção necessária é instalar um cliente HTTP mínimo no runtime ou trocar o método de healthcheck para um comando disponível, sem alterar dados do banco.
+

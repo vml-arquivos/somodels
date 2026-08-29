@@ -14,7 +14,8 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
-RUN npm install --global pnpm@10.4.1
+RUN apk add --no-cache curl \
+  && npm install --global pnpm@10.4.1
 COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
