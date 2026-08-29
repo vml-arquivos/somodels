@@ -108,10 +108,12 @@ export async function createLocalUser(input: {
   const email = input.email.trim().toLowerCase();
   const passwordHash = await hashPassword(input.password);
   const openId = `local:${createHash("sha256").update(email).digest("hex").slice(0, 48)}`;
-  const existing = await getUserByEmail(email);
+  const existing = (await getUserByEmail(email)) ?? (await getUserByOpenId(openId));
   if (existing) {
     const updates: any = {
+      email,
       name: input.name,
+      loginMethod: "password",
       role: input.role,
       accountStatus: "active",
     };

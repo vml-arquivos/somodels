@@ -172,3 +172,32 @@ Nenhuma senha, token, URL de conexão ou valor de variável foi registrado.
 O deployment `xbmutt2bpoxiktf2zec84kk6` do commit `a2928e9` concluiu a build e o Coolify registrou o novo container como saudável. O log observado mostra `Healthcheck URL (inside the container): GET http://localhost:3000/healthz`, `Healthcheck status: healthy`, `New container is healthy` e remoção dos containers antigos. O recurso permanece `Running` no painel. Nenhum segredo foi registrado.
 
 Fonte: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/xbmutt2bpoxiktf2zec84kk6
+
+
+O deployment `9d26wrl1lu08fysfb73qdael` do commit `80a2334` foi iniciado após confirmação explícita para a troca do container. Às 08:50 UTC, o painel registrava `In progress`; a build avançou até o pós-processamento de `/app/dist/public/index.html`, incluindo a remoção de `crossorigin`, sem erro de compilação exibido. Fonte: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/9d26wrl1lu08fysfb73qdael
+
+
+## Atualização de modo de testes — 2026-08-29
+
+O commit `dec2a2a` (`feat: add isolated test mode and synthetic signup`) foi publicado no Coolify no deployment `9xirof217fjvpoheoqpjfnrn`. No momento da observação, a build avançava após a instalação de dependências, com execução de `pnpm check && pnpm build`; o estado final do container ainda aguardava confirmação. As flags de ambiente aplicadas para este ambiente de testes são `PUBLIC_ACCESS_ENABLED=true`, `TEST_MODE=true`, `TEST_ACCESS_ENABLED=true`, `KYC_REQUIRED=false` e `PAYMENTS_ENABLED=false`. Nenhum segredo foi registrado.
+
+Fonte: `https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/9xirof217fjvpoheoqpjfnrn`.
+
+
+Na última verificação, o deployment `9xirof217fjvpoheoqpjfnrn` do commit `dec2a2a` havia concluído a compilação e estava na etapa de exportação da imagem runtime, ainda marcado como `In progress`. O Coolify reportava o recurso como `Running` e mantinha `Changes pending` enquanto a atualização não terminava. O modo de testes permanece limitado a cadastros sintéticos, com pagamentos desligados e sem documentos reais. Nenhum segredo foi registrado.
+
+Fonte: `https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/9xirof217fjvpoheoqpjfnrn`.
+
+
+## Validação pública do modo de testes — 2026-08-29
+
+- `https://somodels.buscarr.com.br/` respondeu 200 e exibiu o ambiente de testes com vitrine acessível sob as flags explicitamente ativadas.
+- `https://somodels.buscarr.com.br/cadastro-teste` exibiu cadastro local de conta comum sem documentos, sem privilégios administrativos e com orientação para usar somente dados fictícios.
+- Um cadastro sintético foi aceito e redirecionado para `/titular`, confirmando a criação de conta de teste.
+- O login em `/login` reconheceu o e-mail do super administrador depois da reconciliação do registro órfão e encaminhou para `/alterar-senha`.
+- A troca obrigatória de senha foi preenchida no primeiro acesso; a confirmação do novo login permanece como etapa final de validação nesta sessão.
+- Nenhuma senha, token, hash, `DATABASE_URL` ou documento real foi gravado neste documento.
+
+Fonte pública: https://somodels.buscarr.com.br/
+Fonte operacional: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz
+
