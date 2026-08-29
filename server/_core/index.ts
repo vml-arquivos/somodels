@@ -63,11 +63,13 @@ async function startServer() {
     }
     next();
   });
-  app.get("/healthz", async (_req, res) => {
+  const healthHandler = async (_req: express.Request, res: express.Response) => {
     const database = await isDatabaseReady();
     const healthy = !ENV.isProduction || (database && Boolean(ENV.cookieSecret));
     res.status(healthy ? 200 : 503).json({ ok: healthy, service: "so-models", release: ENV.release, database });
-  });
+  };
+  app.get("/healthz", healthHandler);
+  app.get("/health", healthHandler);
   app.get("/api/release", (_req, res) => res.json({ service: "so-models", release: ENV.release }));
   app.get("/robots.txt", (_req, res) => {
     const body = ENV.publicAccessEnabled && runtimeConfigStatus().ageVerification ? `User-agent: *\\nAllow: /\\nDisallow: /admin\\nDisallow: /titular\\nDisallow: /api/\\nSitemap: ${ENV.canonicalOrigin || "https://somodels.buscarr.com.br"}/sitemap.xml\\n` : "User-agent: *\\nDisallow: /\\n";
