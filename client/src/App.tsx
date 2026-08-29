@@ -9,10 +9,14 @@ import ProfilePage from "./pages/ProfilePage";
 import CityPage from "./pages/CityPage";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import LoginPage from "./pages/LoginPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
 
 function Router() {
   return <Switch>
     <Route path="/" component={Home} />
+    <Route path="/login" component={LoginPage} />
+    <Route path="/alterar-senha" component={ChangePasswordPage} />
     <Route path="/perfil/:slug" component={ProfilePage} />
     <Route path="/cidade/:city" component={CityPage} />
     <Route path="/titular" component={OwnerDashboard} />

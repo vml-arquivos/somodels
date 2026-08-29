@@ -6,6 +6,7 @@ import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
+import { authenticateLocalSession, LOCAL_SESSION_COOKIE } from "../auth";
 import { ENV } from "./env";
 import type {
   ExchangeTokenRequest,
@@ -259,6 +260,7 @@ class SDKServer {
     // 1. Prefer the session cookie (regular OAuth login).
     const cookies = this.parseCookies(req.headers.cookie);
     let sessionToken = cookies.get(COOKIE_NAME);
+    const localSessionToken = cookies.get(LOCAL_SESSION_COOKIE);
 
     // 2. Fallback to the Authorization header (Preview auto-login via
     //    sessionStorage), used when the browser blocks iframe cookies such as
@@ -269,6 +271,9 @@ class SDKServer {
         sessionToken = authHeader.slice(7);
       }
     }
+
+    const localUser = await authenticateLocalSession(localSessionToken);
+    if (localUser) return localUser;
 
     const session = await this.verifySession(sessionToken);
 
