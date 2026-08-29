@@ -55,12 +55,12 @@ export async function upsertUser(user: any): Promise<void> {
     loginMethod: user.loginMethod ?? null,
     lastSignedIn: user.lastSignedIn ?? new Date(),
   };
-  const updateSet: any = {
-    name: values.name,
-    email: values.email,
-    loginMethod: values.loginMethod,
-    lastSignedIn: values.lastSignedIn,
-  };
+  // Partial OAuth/session refreshes commonly contain only openId and lastSignedIn.
+  // Never turn omitted identity fields into NULL on an existing local account.
+  const updateSet: any = { lastSignedIn: values.lastSignedIn };
+  if (user.name !== undefined && user.name !== null) updateSet.name = user.name;
+  if (user.email !== undefined && user.email !== null) updateSet.email = user.email;
+  if (user.loginMethod !== undefined && user.loginMethod !== null) updateSet.loginMethod = user.loginMethod;
   if (user.role) {
     values.role = user.role;
     updateSet.role = user.role;

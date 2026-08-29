@@ -201,3 +201,27 @@ Fonte: `https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/enviro
 Fonte pública: https://somodels.buscarr.com.br/
 Fonte operacional: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz
 
+O redeploy `frbuflwehat2ozimpdebuqdf` do commit `b7ad11f` segue em andamento no Coolify. A build passou por `pnpm check && pnpm build`, concluiu a exportação da imagem e avançou para o unpack/runtime; ainda aguardava a substituição definitiva do container e o healthcheck no último acompanhamento. Nenhum valor sensível foi registrado.
+
+Fonte: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/frbuflwehat2ozimpdebuqdf
+
+Nenhuma senha, token, hash ou URL de conexão foi registrado.
+
+---
+
+O redeploy `frbuflwehat2ozimpdebuqdf` do commit `b7ad11f` concluiu a troca do container. O Coolify registrou `New container is healthy` após duas tentativas, embora o log do helper também mostre `curl: not found` no primeiro probe; o recurso permanece `Running`. A validação seguinte é pública: confirmar o login persistente do super administrador após reinicialização e verificar o acesso do operador de desenvolvimento. Nenhum segredo ou senha foi registrado.
+
+Fonte: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/frbuflwehat2ozimpdebuqdf
+
+Validação pós-redeploy: o acesso em `https://somodels.buscarr.com.br/login` com o e-mail administrativo reconciliado e a senha temporária atualmente configurada no Coolify retornou `E-mail ou senha inválidos`. A falha permanece restrita à autenticação; nenhuma senha, hash ou token foi registrado. Será feita uma checagem interna não destrutiva do hash/estado da conta e da origem efetiva da variável no container antes de qualquer nova alteração.
+
+Diagnóstico em andamento: a tentativa de login do super administrador após o redeploy retornou credencial inválida. O terminal interno recebeu uma primeira consulta malformada por causa de uma quebra de linha literal; a consulta foi reenviada com o canal correto para retornar somente identificadores, papéis, estado de rotação e comprimento do hash. Nenhum valor de senha ou hash é persistido no relatório.
+
+O diagnóstico interno mostrou que o container está conectado ao MySQL, mas o probe inicial usou `passwordRotated`, enquanto o schema efetivo não possui essa coluna com esse nome. O banco retornou `Unknown column 'passwordRotated' in 'field list'`; não houve alteração de dados. O próximo passo é descrever a tabela `users` e consultar somente colunas realmente existentes para corrigir a compatibilidade do bootstrap.
+
+O `describe users` confirmou o schema efetivo em MySQL: as colunas de identidade são `openId`, `email`, `role`, `passwordHash` e `mustChangePassword`; não existe `passwordRotated`. O probe anterior falhou apenas por usar um nome de coluna incorreto. Nenhum dado foi alterado. A próxima consulta usará exclusivamente essas colunas e devolverá somente metadados sanitizados.
+
+Após o reset, o login temporário funcionou e a troca de senha retornou a mensagem de sucesso; entretanto, a reautenticação com a nova senha ainda retornou `E-mail ou senha inválidos`. O diagnóstico seguinte será uma comparação booleana interna do hash persistido com a senha temporária e a nova senha, sem exibir os valores.
+
+Nova discrepância no diagnóstico: após o reset confirmado e o login temporário bem-sucedido, uma consulta posterior no terminal do container atual retornou `exists:false` para `admin@somodels.buscarr.com.br`. Isso sugere que o terminal atual está apontando para outro banco/host, ou que houve troca de contexto de conexão; ainda não será feita nenhuma alteração. O próximo probe consulta apenas `DATABASE()`/hostname e a lista sanitizada de usuários para reconciliar o ambiente efetivo.
+
