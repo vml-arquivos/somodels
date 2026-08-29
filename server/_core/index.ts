@@ -8,6 +8,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { storagePut } from "../storage";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -36,6 +37,25 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  app.post("/api/upload/media", async (req, res) => {
+    try {
+      const ctx = await createContext({ req, res } as any);
+      if (!ctx.user) return res.status(401).json({ error: "Não autenticado" });
+      const { profileId, kind, filename, contentType, data } = req.body ?? {};
+      if (!profileId || !kind || !filename || !contentType || typeof data !== "string") return res.status(400).json({ error: "Dados de upload incompletos" });
+      if (!["photo", "video"].includes(kind)) return res.status(400).json({ error: "Tipo de mídia inválido" });
+      const base64 = data.replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64, "base64");
+      const maxBytes = kind === "video" ? 100 * 1024 * 1024 : 12 * 1024 * 1024;
+      if (buffer.byteLength > maxBytes) return res.status(413).json({ error: "Arquivo excede o limite permitido" });
+      const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, "-").slice(-120);
+      const uploaded = await storagePut(`profiles/${ctx.user.id}/${profileId}/${kind}/${safeName}`, buffer, contentType);
+      return res.json(uploaded);
+    } catch (error) {
+      console.error("[Upload] failed", error);
+      return res.status(500).json({ error: "Não foi possível armazenar a mídia" });
+    }
+  });
   // tRPC API
   app.use(
     "/api/trpc",

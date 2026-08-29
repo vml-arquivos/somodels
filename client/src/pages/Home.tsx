@@ -1,33 +1,32 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useMemo, useState } from "react";
+import { Link } from "wouter";
+import { Search, MapPin, ShieldCheck, SlidersHorizontal, UserRoundPlus, LogIn, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { Streamdown } from 'streamdown';
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { trpc } from "@/lib/trpc";
+import { startLogin } from "@/const";
+import { useAuth } from "@/_core/hooks/useAuth";
 
-/**
- * All content in this page are only for example, replace with your own feature implementation
- * When building pages, remember your instructions in Frontend Workflow, Frontend Best Practices, Design Guide and Common Pitfalls
- */
+const cities = ["Todas as cidades", "São Paulo", "Rio de Janeiro", "Belo Horizonte", "Brasília", "Curitiba", "Salvador", "Recife"];
+const categories = ["Todas as categorias", "Acompanhante", "Modelo", "Trans", "Casal"];
+const attributes = ["Todos os atributos", "Com local", "Atendimento virtual", "Viagem", "Premium"];
+
 export default function Home() {
-  // The useAuth hook provides authentication state.
-  // To implement login/logout, call logout(), or start login from an event
-  // handler: onClick={() => startLogin()} (imported from "@/const"). Never call
-  // startLogin() during render (no href={startLogin()}) — it mints a one-time
-  // nonce cookie and must run only at the moment of navigation.
-  let { user, loading, error, isAuthenticated, logout } = useAuth();
-
-  // If theme is switchable in App.tsx, we can implement theme toggling like this:
-  // const { theme, toggleTheme } = useTheme();
-
-  return (
-    <div className="min-h-screen flex flex-col">
-      <main>
-        {/* Example: lucide-react for icons */}
-        <Loader2 className="animate-spin" />
-        Example Page
-        {/* Example: Streamdown for markdown rendering */}
-        <Streamdown>Any **markdown** content</Streamdown>
-        <Button variant="default">Example Button</Button>
-      </main>
-    </div>
-  );
+  const [search, setSearch] = useState(""); const [city, setCity] = useState("Todas as cidades"); const [category, setCategory] = useState("Todas as categorias"); const [attribute, setAttribute] = useState("Todos os atributos");
+  const input = useMemo(() => ({ search: search || undefined, city: city.startsWith("Todas") ? undefined : city, category: category.startsWith("Todas") ? undefined : category, attribute: attribute.startsWith("Todos") ? undefined : attribute }), [search, city, category, attribute]);
+  const { data: profiles = [], isLoading } = trpc.profiles.list.useQuery(input);
+  const { user } = useAuth();
+  return <div className="min-h-screen bg-[#100c12] text-white">
+    <header className="border-b border-white/10 bg-[#100c12]/90 backdrop-blur sticky top-0 z-20"><div className="container flex items-center justify-between py-4"><Link href="/"><span className="brand-mark">Só <i>Models</i></span></Link><nav className="hidden md:flex items-center gap-6 text-sm text-white/70"><a href="#explorar">Explorar</a><a href="#seguranca">Segurança</a><Link href="/titular">Anuncie seu perfil</Link></nav><div className="flex items-center gap-2">{user ? <Link href="/titular"><Button variant="outline" className="border-white/20 bg-transparent text-white">Meu painel</Button></Link> : <Button variant="outline" onClick={() => startLogin()} className="border-white/20 bg-transparent text-white"><LogIn className="mr-2 h-4 w-4"/>Entrar</Button>}</div></div></header>
+    <main>
+      <section className="hero-section"><div className="container grid gap-10 lg:grid-cols-[1.15fr_.85fr] items-center"><div><Badge className="mb-5 bg-[#f3b3d2]/10 text-[#f3b3d2] border border-[#f3b3d2]/30">Portal Só Models</Badge><h1 className="font-display text-5xl md:text-7xl leading-[.95] tracking-tight">Descubra <span className="text-[#f3b3d2]">novas conexões</span> do seu jeito.</h1><p className="mt-6 max-w-xl text-lg text-white/65">Uma vitrine direta, discreta e organizada para encontrar perfis por cidade, estilo e atributos.</p><div className="mt-8 flex flex-wrap gap-3"><a href="#explorar"><Button className="bg-[#f3b3d2] text-[#24131d] hover:bg-[#f7c6df]">Explorar perfis <Search className="ml-2 h-4 w-4"/></Button></a><Link href="/titular"><Button variant="outline" className="border-white/20 bg-transparent text-white"><UserRoundPlus className="mr-2 h-4 w-4"/>Criar meu perfil</Button></Link></div></div><div className="hero-orbit"><div className="orbit-card"><Sparkles className="h-5 w-5 text-[#f3b3d2]"/><span>Perfis em revisão aparecem somente após aprovação.</span></div><div className="orbit-ring ring-one"/><div className="orbit-ring ring-two"/></div></div></section>
+      <section id="explorar" className="container pb-20"><div className="section-heading"><div><p className="eyebrow">Explorar</p><h2 className="font-display text-3xl md:text-4xl">Encontre por cidade e estilo</h2></div><span className="text-sm text-white/45">{isLoading ? "Consultando…" : `${profiles.length} perfil(is) publicado(s)`}</span></div><Card className="filter-card"><CardContent className="p-4 md:p-6"><div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_1fr_auto]"><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-white/40"/><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nome ou palavra-chave" className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/35"/></div><Select value={city} onValueChange={setCity}><SelectTrigger className="bg-white/5 border-white/10 text-white"><MapPin className="mr-2 h-4 w-4 text-[#f3b3d2]"/><SelectValue/></SelectTrigger><SelectContent>{cities.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select><Select value={category} onValueChange={setCategory}><SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue/></SelectTrigger><SelectContent>{categories.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select><Select value={attribute} onValueChange={setAttribute}><SelectTrigger className="bg-white/5 border-white/10 text-white"><SelectValue/></SelectTrigger><SelectContent>{attributes.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}</SelectContent></Select><Button variant="outline" className="border-white/10 bg-white/5 text-white"><SlidersHorizontal className="h-4 w-4"/></Button></div></CardContent></Card>
+      {profiles.length === 0 && !isLoading ? <div className="empty-state"><div className="empty-icon"><UserRoundPlus className="h-7 w-7"/></div><h3>Nenhum perfil publicado ainda</h3><p>Os perfis enviados passam por revisão antes de aparecerem publicamente. Seja o primeiro titular a criar um perfil.</p><Link href="/titular"><Button className="mt-5 bg-[#f3b3d2] text-[#24131d]">Criar perfil</Button></Link></div> : <div className="profile-grid">{profiles.map(profile => <Link key={profile.id} href={`/perfil/${profile.slug}`}><Card className="profile-card"><div className="profile-image" style={profile.avatarUrl ? { backgroundImage: `url(${profile.avatarUrl})` } : undefined}><span className="profile-fallback">{profile.stageName.slice(0,1)}</span>{profile.isFeatured && <Badge className="absolute left-3 top-3 bg-[#f3b3d2] text-[#24131d]">Destaque</Badge>}</div><CardContent className="p-4"><div className="flex items-start justify-between gap-3"><div><h3 className="text-lg font-semibold">{profile.stageName}</h3><p className="mt-1 text-sm text-white/50"><MapPin className="mr-1 inline h-3.5 w-3.5"/>{profile.city}{profile.region ? `, ${profile.region}` : ""}</p></div><ShieldCheck className="h-5 w-5 text-[#f3b3d2]"/></div><div className="mt-3 flex flex-wrap gap-1.5">{profile.categories.slice(0,3).map((tag: string) => <Badge key={tag} variant="outline" className="border-white/15 text-white/60">{tag}</Badge>)}</div></CardContent></Card></Link>)}</div>}
+      </section>
+      <section id="seguranca" className="border-t border-white/10 bg-[#171019]"><div className="container grid gap-8 py-16 md:grid-cols-3"><div><ShieldCheck className="h-7 w-7 text-[#f3b3d2]"/><h3 className="mt-4 text-lg font-semibold">Revisão antes de publicar</h3><p className="mt-2 text-sm leading-6 text-white/55">Perfis e mídias têm status de aprovação para que a vitrine pública seja administrada com responsabilidade.</p></div><div><MapPin className="h-7 w-7 text-[#f3b3d2]"/><h3 className="mt-4 text-lg font-semibold">Busca por cidade</h3><p className="mt-2 text-sm leading-6 text-white/55">A navegação foi pensada para descoberta local, com filtros e URLs preparadas para SEO.</p></div><div><UserRoundPlus className="h-7 w-7 text-[#f3b3d2]"/><h3 className="mt-4 text-lg font-semibold">Controle do titular</h3><p className="mt-2 text-sm leading-6 text-white/55">Cada pessoa gerencia seu próprio perfil, contatos e mídias em uma área autenticada.</p></div></div></section>
+    </main><footer className="container flex flex-col gap-3 border-t border-white/10 py-8 text-sm text-white/40 md:flex-row md:justify-between"><span>© 2026 Só Models</span><span>Conteúdo para maiores de 18 anos. Use com responsabilidade.</span></footer>
+  </div>;
 }
