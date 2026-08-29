@@ -9,10 +9,16 @@ import ProfilePage from "./pages/ProfilePage";
 import CityPage from "./pages/CityPage";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import LoginPage from "./pages/LoginPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
+import TestSignupPage from "./pages/TestSignupPage";
 
 function Router() {
   return <Switch>
     <Route path="/" component={Home} />
+    <Route path="/login" component={LoginPage} />
+    <Route path="/alterar-senha" component={ChangePasswordPage} />
+    <Route path="/cadastro-teste" component={TestSignupPage} />
     <Route path="/perfil/:slug" component={ProfilePage} />
     <Route path="/cidade/:city" component={CityPage} />
     <Route path="/titular" component={OwnerDashboard} />
@@ -23,5 +29,5 @@ function Router() {
 }
 
 export default function App() {
-  return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster /><Router /></TooltipProvider></ThemeProvider></ErrorBoundary>;
+  return <ErrorBoundary><ThemeProvider defaultTheme="dark"><TooltipProvider><Toaster /><Router /></TooltipProvider></ThemeProvider></ErrorBoundary>;
 }

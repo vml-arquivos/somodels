@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hydrateProfile } from "./db";
+import { hydrateProfile, hydratePublicProfile } from "./db";
 
 describe("profile data", () => {
   it("hydrates JSON fields without exposing malformed values", () => {
@@ -15,5 +15,14 @@ describe("profile data", () => {
     expect(profile.categories).toEqual([]);
     expect(profile.attributes).toEqual([]);
     expect(profile.contactOptions).toEqual([]);
+  });
+
+  it("fails closed for demo contacts in public hydration", () => {
+    const profile = hydratePublicProfile({ isDemo: true, phone: "000000000", whatsapp: "demo", telegram: "demo", contactOptions: '["WhatsApp"]' });
+    expect(profile.phone).toBeNull();
+    expect(profile.whatsapp).toBeNull();
+    expect(profile.telegram).toBeNull();
+    expect(profile.contactOptions).toEqual(["Contato demonstrativo desativado"]);
+    expect(profile.demoContactDisabled).toBe(true);
   });
 });
