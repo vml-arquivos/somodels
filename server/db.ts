@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertProfile, InsertProfileMedia, profileMedia, profiles, users } from "../drizzle/schema";
+import { InsertProfile, InsertProfileMedia, premiumEntitlements, profileMedia, profiles, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -79,6 +79,18 @@ export async function createMedia(ownerId: number, input: InsertProfileMedia) {
   const owned = await db.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.id, input.profileId), eq(profiles.ownerId, ownerId))).limit(1);
   if (!owned[0]) throw new Error("Profile not owned by user");
   const inserted = await db.insert(profileMedia).values({ ...input, status: "pending" }); return Number(inserted[0].insertId);
+}
+
+export async function hasPremiumAccess(userId: number, mediaId: number) {
+  const db = await getDb(); if (!db) return false;
+  const rows = await db.select({ id: premiumEntitlements.id }).from(premiumEntitlements).where(and(eq(premiumEntitlements.userId, userId), eq(premiumEntitlements.mediaId, mediaId), eq(premiumEntitlements.status, "paid"))).limit(1);
+  return Boolean(rows[0]);
+}
+
+export async function createPremiumIntent(userId: number, mediaId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const inserted = await db.insert(premiumEntitlements).values({ userId, mediaId, status: "pending" }).onDuplicateKeyUpdate({ set: { status: "pending" } });
+  return { entitlementId: Number(inserted[0].insertId), status: "pending" as const };
 }
 
 export async function listPendingProfiles() { const db = await getDb(); if (!db) return []; const rows = await db.select().from(profiles).where(eq(profiles.status, "pending")).orderBy(desc(profiles.updatedAt)); return rows.map(hydrateProfile); }

@@ -3,7 +3,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { createMedia, getOwnerProfile, getOwnerProfiles, getPublicProfile, listPendingMedia, listPendingProfiles, listPublishedProfiles, moderateMedia, moderateProfile, saveProfile } from "./db";
+import { createMedia, createPremiumIntent, getOwnerProfile, hasPremiumAccess, getOwnerProfiles, getPublicProfile, listPendingMedia, listPendingProfiles, listPublishedProfiles, moderateMedia, moderateProfile, saveProfile } from "./db";
 
 export const profileInputSchema = z.object({
   stageName: z.string().trim().min(2).max(120),
@@ -32,6 +32,10 @@ export const appRouter = router({
   }),
   media: router({
     add: protectedProcedure.input(z.object({ profileId: z.number().int().positive(), kind: z.enum(["photo", "video"]), title: z.string().max(160).optional(), description: z.string().max(2000).optional(), storageKey: z.string().min(1), url: z.string().min(1), mimeType: z.string().min(1).max(120), isPremium: z.boolean().default(false), sortOrder: z.number().int().default(0) })).mutation(({ ctx, input }) => createMedia(ctx.user.id, input as any)),
+  }),
+  premium: router({
+    createIntent: protectedProcedure.input(z.object({ mediaId: z.number().int().positive() })).mutation(({ ctx, input }) => createPremiumIntent(ctx.user.id, input.mediaId)),
+    hasAccess: protectedProcedure.input(z.object({ mediaId: z.number().int().positive() })).query(({ ctx, input }) => hasPremiumAccess(ctx.user.id, input.mediaId)),
   }),
   admin: router({
     pendingProfiles: adminProcedure.query(() => listPendingProfiles()),

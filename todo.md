@@ -12,7 +12,7 @@
 - [x] Criar página individual pública de perfil com estados de privacidade e indisponibilidade
 - [ ] Implementar galeria ordenada de fotos com metadados no banco e arquivos no armazenamento seguro
 - [ ] Implementar área de vídeos com estados gratuito, premium, privado e indisponível
-- [ ] Preparar estrutura de checkout e liberação de acesso para vídeos premium sem ativar cobrança real nesta etapa
+- [x] Preparar estrutura de checkout e liberação de acesso para vídeos premium sem ativar cobrança real nesta etapa
 - [x] Criar revisão, aprovação, suspensão e destaque administrativo de perfis
 - [x] Criar revisão e aprovação administrativa de mídias
 - [x] Criar painel do titular para dados, mídia e status de publicação
@@ -26,7 +26,7 @@
 - [ ] Criar testes Vitest para permissões, validações, filtros, publicação e mídia
 - [x] Executar check, build, testes e verificação visual responsiva
 - [x] Documentar análise do repositório, arquitetura, arquivos alterados, migrations, configuração e testes
-- [ ] Criar ZIP final atualizado do projeto
+- [x] Criar ZIP final atualizado do projeto
 
 ## Pendências identificadas na revisão
 
@@ -40,6 +40,6 @@
 
 ## Correções de rastreamento
 
-- [ ] Implementar canonical e metadados dinâmicos por rota/cidade; os metadados atuais são apenas estáticos no HTML base
+- [x] Implementar canonical e metadados dinâmicos por rota/cidade; os metadados atuais são apenas estáticos no HTML base
 - [ ] Gerar e anexar o ZIP final após a conclusão das validações
 - [ ] Ampliar testes para autorização de titular/admin, validação Zod, filtros, moderação e mídia; a cobertura atual é inicial
