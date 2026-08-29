@@ -16,6 +16,9 @@ import {
   getOwnerProfiles,
   getPublicProfile,
   hasPremiumAccess,
+  listAdminProfiles,
+  listAdminUsers,
+  getAdminProfile,
   listPendingMedia,
   listPendingProfiles,
   listPublishedProfiles,
@@ -64,12 +67,12 @@ function publicUser(user: User) {
 }
 
 function ageAccessEnabled() {
-  return ENV.publicAccessEnabled && (runtimeConfigStatus().ageVerification || (ENV.testMode && ENV.testAccessEnabled));
+  return ENV.publicAccessEnabled && (!ENV.requireAgeVerification || runtimeConfigStatus().ageVerification || (ENV.testMode && ENV.testAccessEnabled));
 }
 
 async function hasValidAgeSession(req: { headers: { cookie?: string } }) {
   if (!ageAccessEnabled()) return false;
-  if (ENV.testMode && ENV.testAccessEnabled) return true;
+  if (!ENV.requireAgeVerification || (ENV.testMode && ENV.testAccessEnabled)) return true;
   const cookie = req.headers.cookie?.split(";").map(v => v.trim()).find(v => v.startsWith(`${ageCookie}=`))?.slice(ageCookie.length + 1);
   return Boolean(cookie && (await getApprovedAgeVerification(hashToken(cookie))));
 }
@@ -80,10 +83,19 @@ export const profileInputSchema = z.object({
   description: z.string().trim().max(5000).optional(),
   city: z.string().trim().min(2).max(120),
   region: z.string().trim().max(80).optional(),
+  locationNote: z.string().trim().max(180).optional(),
   categories: z.array(z.string().trim().min(1).max(60)).max(20).default([]),
   attributes: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
   contactOptions: z.array(z.string().trim().min(1).max(60)).max(10).default([]),
+  age: z.number().int().min(18).max(99).optional(),
   avatarUrl: z.string().url().or(z.string().startsWith("/manus-storage/")).optional(),
+  preferences: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+  languages: z.array(z.string().trim().min(1).max(60)).max(12).default([]),
+  availabilityLabel: z.string().trim().max(160).optional(),
+  isAvailableNow: z.boolean().default(false),
+  phone: z.string().trim().max(40).optional(),
+  whatsapp: z.string().trim().max(40).optional(),
+  telegram: z.string().trim().max(80).optional(),
 });
 
 export const appRouter = router({
@@ -92,9 +104,12 @@ export const appRouter = router({
     me: publicProcedure.query(opts => (opts.ctx.user ? publicUser(opts.ctx.user) : null)),
     register: publicProcedure
       .input(z.object({ name: z.string().trim().min(2).max(120), email: z.string().email().max(320), password: z.string().min(16).max(200) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const user = await registerTestUser(input);
-        return { user: publicUser(user) };
+        const session = await createLocalSession(user);
+        ctx.res.cookie(LOCAL_SESSION_COOKIE, session.token, { ...getLocalSessionCookieOptions(ctx.req), maxAge: session.expiresAt.getTime() - Date.now() });
+        await writeAuditLog({ actorUserId: user.id, action: "auth.register_test", entityType: "user", entityId: user.id });
+        return { user: publicUser(user), mustChangePassword: user.mustChangePassword };
       }),
     login: publicProcedure
       .input(z.object({ email: z.string().email().max(320), password: z.string().min(1).max(200) }))
@@ -131,6 +146,7 @@ export const appRouter = router({
     status: publicProcedure.query(async ({ ctx }) => {
       if (!ageAccessEnabled()) return { status: "unavailable" as const };
       if (ENV.testMode && ENV.testAccessEnabled) return { status: "approved" as const };
+      if (!ENV.requireAgeVerification || (ENV.testMode && ENV.testAccessEnabled)) return { status: "approved" as const };
       const cookie = ctx.req.headers.cookie?.split(";").map(v => v.trim()).find(v => v.startsWith(`${ageCookie}=`))?.slice(ageCookie.length + 1);
       return { status: (await getApprovedAgeVerification(cookie ? hashToken(cookie) : "")) ? "approved" as const : "pending" as const };
     }),
@@ -139,7 +155,7 @@ export const appRouter = router({
         throw new Error("A verificação de idade ainda não está configurada por um provedor real");
       }
       const token = createOpaqueToken();
-      const created = await createAgeVerificationSession(hashToken(token), ENV.testMode && ENV.testAccessEnabled ? { status: "approved", provider: "test" } : undefined);
+      const created = await createAgeVerificationSession(hashToken(token), !ENV.requireAgeVerification || (ENV.testMode && ENV.testAccessEnabled) ? { status: "approved", provider: "test" } : undefined);
       ctx.res.cookie(ageCookie, token, { ...getLocalSessionCookieOptions(ctx.req), maxAge: 24 * 60 * 60 * 1000 });
       return created;
     }),
@@ -162,7 +178,10 @@ export const appRouter = router({
   admin: router({
     pendingProfiles: adminProcedure.query(() => listPendingProfiles()),
     pendingMedia: adminProcedure.query(() => listPendingMedia()),
-    moderateProfile: adminProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["approved", "suspended", "pending"]), isFeatured: z.boolean().optional() })).mutation(({ ctx, input }) => moderateProfile(input.id, input.status, input.isFeatured ?? false, ctx.user.id)),
+    users: adminProcedure.query(() => listAdminUsers()),
+    profiles: adminProcedure.query(() => listAdminProfiles()),
+    profileDetail: adminProcedure.input(z.object({ id: z.number().int().positive() })).query(({ input }) => getAdminProfile(input.id)),
+    moderateProfile: adminProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["approved", "rejected", "suspended", "pending"]), isFeatured: z.boolean().optional(), rejectionReason: z.string().trim().max(500).optional() })).mutation(({ ctx, input }) => moderateProfile(input.id, input.status, input.isFeatured ?? false, input.rejectionReason, ctx.user.id)),
     moderateMedia: adminProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["approved", "rejected", "private"]) })).mutation(({ ctx, input }) => moderateMedia(input.id, input.status, ctx.user.id)),
     assertPasswordPolicy: adminProcedure.input(z.object({ password: z.string().min(1).max(200) })).mutation(({ input }) => { assertPasswordPolicy(input.password); return { valid: true as const }; }),
   }),

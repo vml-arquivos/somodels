@@ -72,11 +72,11 @@ async function startServer() {
   app.get("/health", healthHandler);
   app.get("/api/release", (_req, res) => res.json({ service: "so-models", release: ENV.release }));
   app.get("/robots.txt", (_req, res) => {
-    const body = ENV.publicAccessEnabled && runtimeConfigStatus().ageVerification ? `User-agent: *\\nAllow: /\\nDisallow: /admin\\nDisallow: /titular\\nDisallow: /api/\\nSitemap: ${ENV.canonicalOrigin || "https://somodels.buscarr.com.br"}/sitemap.xml\\n` : "User-agent: *\\nDisallow: /\\n";
+    const body = !ENV.robotsNoIndex && ENV.publicAccessEnabled && runtimeConfigStatus().ageVerification ? `User-agent: *\\nAllow: /\\nDisallow: /admin\\nDisallow: /titular\\nDisallow: /api/\\nSitemap: ${ENV.canonicalOrigin || "https://somodels.buscarr.com.br"}/sitemap.xml\\n` : "User-agent: *\\nDisallow: /\\n";
     res.type("text/plain").send(body);
   });
   app.get("/sitemap.xml", async (_req, res) => {
-    if (!ENV.publicAccessEnabled || !runtimeConfigStatus().ageVerification) {
+    if (ENV.robotsNoIndex || !ENV.publicAccessEnabled || !runtimeConfigStatus().ageVerification) {
       res.type("application/xml").send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
       return;
     }

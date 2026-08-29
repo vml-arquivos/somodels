@@ -33,7 +33,7 @@ export async function revokeLocalSession(token: string | undefined) {
 }
 
 export async function registerTestUser(input: { email: string; password: string; name: string }) {
-  if (!(ENV.testMode && ENV.testAccessEnabled)) {
+  if (!(ENV.testMode && ENV.testAccessEnabled && ENV.allowTestSignup)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "O cadastro de teste está desativado" });
   }
   assertPasswordPolicy(input.password);

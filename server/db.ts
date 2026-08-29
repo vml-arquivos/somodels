@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, like, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   ageVerifications,
@@ -270,6 +270,22 @@ export function hydrateProfile(row: any) {
     categories: parseJson(row.categories),
     attributes: parseJson(row.attributes),
     contactOptions: parseJson(row.contactOptions),
+    preferences: parseJson(row.preferences),
+    languages: parseJson(row.languages),
+    demoContactDisabled: !ENV.demoContactsEnabled,
+  };
+}
+
+export function hydratePublicProfile(row: any) {
+  const hydrated = hydrateProfile(row);
+  if (ENV.demoContactsEnabled) return hydrated;
+  return {
+    ...hydrated,
+    phone: null,
+    whatsapp: null,
+    telegram: null,
+    contactOptions: hydrated.isDemo ? ["Contato demonstrativo desativado"] : [],
+    demoContactDisabled: true,
   };
 }
 
@@ -284,6 +300,7 @@ export async function listPublishedProfiles(input: {
   const db = await getDb();
   if (!db || input.publicAllowed === false) return [];
   const conditions: any[] = [eq(profiles.status, "approved"), eq(profiles.isPublished, true)];
+  if (!ENV.allowFakeData) conditions.push(eq(profiles.isDemo, false));
   if (input.city) conditions.push(eq(profiles.city, input.city));
   if (input.search) conditions.push(or(like(profiles.stageName, `%${input.search}%`), like(profiles.description, `%${input.search}%`)));
   if (input.category) conditions.push(like(profiles.categories, `%${input.category}%`));
@@ -294,16 +311,21 @@ export async function listPublishedProfiles(input: {
     .where(and(...conditions))
     .orderBy(desc(profiles.isFeatured), desc(profiles.updatedAt))
     .limit(Math.min(input.limit ?? 60, 60));
-  return rows.map(hydrateProfile);
+  return rows.map(hydratePublicProfile);
 }
 
 export async function getPublicProfile(slug: string, publicAllowed = true) {
   const db = await getDb();
   if (!db || !publicAllowed) return null;
-  const rows = await db.select().from(profiles).where(and(eq(profiles.slug, slug), eq(profiles.status, "approved"), eq(profiles.isPublished, true))).limit(1);
+  const profileConditions: any[] = [eq(profiles.slug, slug), eq(profiles.status, "approved"), eq(profiles.isPublished, true)];
+  if (!ENV.allowFakeData) profileConditions.push(eq(profiles.isDemo, false));
+  const rows = await db.select().from(profiles).where(and(...profileConditions)).limit(1);
   if (!rows[0]) return null;
   const media = await db.select().from(profileMedia).where(and(eq(profileMedia.profileId, rows[0].id), eq(profileMedia.status, "approved"))).orderBy(asc(profileMedia.sortOrder), desc(profileMedia.createdAt));
-  return { profile: hydrateProfile(rows[0]), media };
+  const relatedConditions: any[] = [eq(profiles.status, "approved"), eq(profiles.isPublished, true), ne(profiles.id, rows[0].id), eq(profiles.city, rows[0].city)];
+  if (!ENV.allowFakeData) relatedConditions.push(eq(profiles.isDemo, false));
+  const relatedRows = await db.select().from(profiles).where(and(...relatedConditions)).orderBy(desc(profiles.isFeatured), desc(profiles.updatedAt)).limit(4);
+  return { profile: hydratePublicProfile(rows[0]), media, related: relatedRows.map(hydratePublicProfile) };
 }
 
 export async function getOwnerProfiles(ownerId: number) {
@@ -326,22 +348,28 @@ export async function saveProfile(ownerId: number, input: Omit<InsertProfile, "o
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const identity = await getIdentityVerification(ownerId);
-  if (submitForReview && ENV.kycRequired && identity?.status !== "approved") {
+  if (submitForReview && ENV.requireIdentityVerification && identity?.status !== "approved") {
     throw new Error("A verificação de identidade do anunciante é obrigatória antes do envio para análise");
   }
   const values: any = {
     ...input,
     ownerId,
+    locationNote: input.locationNote ?? null,
     categories: serialize(input.categories),
     attributes: serialize(input.attributes),
     contactOptions: serialize(input.contactOptions),
+    preferences: serialize(input.preferences),
+    languages: serialize(input.languages),
+    phone: ENV.demoContactsEnabled ? input.phone ?? null : null,
+    whatsapp: ENV.demoContactsEnabled ? input.whatsapp ?? null : null,
+    telegram: ENV.demoContactsEnabled ? input.telegram ?? null : null,
   };
   if (id) {
-    await db.update(profiles).set({ ...values, status: submitForReview ? "pending" : "draft", isPublished: false }).where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)));
+    await db.update(profiles).set({ ...values, status: submitForReview ? "pending" : "draft", isPublished: false, rejectionReason: submitForReview ? null : undefined }).where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)));
     await writeAuditLog({ actorUserId: ownerId, action: submitForReview ? "profile.submitted" : "profile.updated", entityType: "profile", entityId: id });
     return id;
   }
-  const inserted = await db.insert(profiles).values({ ...values, status: submitForReview ? "pending" : "draft", isPublished: false });
+  const inserted = await db.insert(profiles).values({ ...values, status: submitForReview ? "pending" : "draft", isPublished: false, isTest: ENV.allowFakeData, isDemo: ENV.allowFakeData, rejectionReason: null });
   const profileId = Number(inserted[0].insertId);
   await writeAuditLog({ actorUserId: ownerId, action: submitForReview ? "profile.submitted" : "profile.created", entityType: "profile", entityId: profileId });
   return profileId;
@@ -351,7 +379,7 @@ export async function createMedia(ownerId: number, input: Omit<InsertProfileMedi
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const identity = await getIdentityVerification(ownerId);
-  if (ENV.kycRequired && identity?.status !== "approved") {
+  if (ENV.requireIdentityVerification && identity?.status !== "approved") {
     throw new Error("A verificação de identidade do anunciante é obrigatória antes do upload");
   }
   const owned = await db.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.id, input.profileId), eq(profiles.ownerId, ownerId))).limit(1);
@@ -387,23 +415,46 @@ export async function listPendingProfiles() {
   return rows.map(hydrateProfile);
 }
 
+export async function listAdminProfiles() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(profiles).orderBy(desc(profiles.updatedAt)).limit(200);
+  return rows.map(hydrateProfile);
+}
+
+export async function listAdminUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ id: users.id, name: users.name, email: users.email, role: users.role, accountStatus: users.accountStatus, createdAt: users.createdAt, lastSignedIn: users.lastSignedIn }).from(users).orderBy(desc(users.createdAt)).limit(200);
+}
+
+export async function getAdminProfile(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(profiles).where(eq(profiles.id, id)).limit(1);
+  if (!rows[0]) return null;
+  const media = await db.select().from(profileMedia).where(eq(profileMedia.profileId, id)).orderBy(asc(profileMedia.sortOrder), desc(profileMedia.createdAt));
+  return { profile: hydrateProfile(rows[0]), media };
+}
+
 export async function listPendingMedia() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(profileMedia).where(eq(profileMedia.status, "pending")).orderBy(desc(profileMedia.createdAt));
 }
 
-export async function moderateProfile(id: number, status: "approved" | "suspended" | "pending", isFeatured = false, actorUserId?: number) {
+export async function moderateProfile(id: number, status: "approved" | "rejected" | "suspended" | "pending", isFeatured = false, rejectionReason?: string, actorUserId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const profileRows = await db.select({ ownerId: profiles.ownerId }).from(profiles).where(eq(profiles.id, id)).limit(1);
   if (!profileRows[0]) throw new Error("Profile not found");
-  if (status === "approved" && ENV.kycRequired) {
+  if (status === "approved" && ENV.requireIdentityVerification) {
     const identity = await getIdentityVerification(profileRows[0].ownerId);
     if (identity?.status !== "approved") throw new Error("O anunciante precisa de verificação de identidade aprovada");
   }
-  await db.update(profiles).set({ status, isPublished: status === "approved", isFeatured: status === "approved" && isFeatured }).where(eq(profiles.id, id));
-  await writeAuditLog({ actorUserId, action: `profile.moderated.${status}`, entityType: "profile", entityId: id, metadata: { isFeatured } });
+  const canPublish = status === "approved" && (ENV.testMode || ENV.publicLaunchEnabled);
+  await db.update(profiles).set({ status, isPublished: canPublish, isFeatured: canPublish && isFeatured, rejectionReason: status === "rejected" ? (rejectionReason?.trim() || "Ajustes necessários antes da publicação") : null }).where(eq(profiles.id, id));
+  await writeAuditLog({ actorUserId, action: `profile.moderated.${status}`, entityType: "profile", entityId: id, metadata: { isFeatured, rejectionReason: rejectionReason ?? null } });
 }
 
 export async function moderateMedia(id: number, status: "approved" | "rejected" | "private", actorUserId?: number) {

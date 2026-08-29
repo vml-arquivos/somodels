@@ -9,6 +9,11 @@ const readInteger = (value: string | undefined, fallback: number) => {
 };
 
 const canonicalOrigin = (process.env.CANONICAL_ORIGIN ?? "").replace(/\/+$/, "");
+const configuredTestMode = readBoolean(process.env.TEST_MODE, false);
+const configuredTestAccess = readBoolean(process.env.TEST_ACCESS_ENABLED, false);
+const appMode = (process.env.APP_MODE ?? (configuredTestMode && configuredTestAccess ? "test" : "production")).toLowerCase();
+const isTestMode = appMode === "test";
+const adminEmails = (process.env.ADMIN_EMAILS ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
 
 export const ENV = {
   appId: process.env.VITE_APP_ID ?? "",
@@ -28,13 +33,23 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   sessionDurationHours: readInteger(process.env.SESSION_DURATION_HOURS, 12),
   publicAccessEnabled: readBoolean(process.env.PUBLIC_ACCESS_ENABLED, false),
-  testMode: readBoolean(process.env.TEST_MODE, false),
-  testAccessEnabled: readBoolean(process.env.TEST_ACCESS_ENABLED, false),
+  publicLaunchEnabled: readBoolean(process.env.PUBLIC_LAUNCH_ENABLED, false),
+  appMode,
+  testMode: isTestMode,
+  testAccessEnabled: configuredTestAccess,
+  allowTestSignup: readBoolean(process.env.ALLOW_TEST_SIGNUP, isTestMode && configuredTestAccess),
+  allowFakeData: readBoolean(process.env.ALLOW_FAKE_DATA, isTestMode),
+  allowDemoSeed: readBoolean(process.env.ALLOW_DEMO_SEED, isTestMode),
+  demoContactsEnabled: readBoolean(process.env.DEMO_CONTACTS_ENABLED, false),
+  robotsNoIndex: readBoolean(process.env.ROBOTS_NOINDEX, isTestMode),
+  adminEmails,
   ageVerificationProvider: process.env.AGE_VERIFICATION_PROVIDER ?? "",
   ageVerificationApiKey: process.env.AGE_VERIFICATION_API_KEY ?? "",
   ageVerificationWebhookSecret: process.env.AGE_VERIFICATION_WEBHOOK_SECRET ?? "",
   ageVerificationTtlHours: readInteger(process.env.AGE_VERIFICATION_TTL_HOURS, 24),
-  kycRequired: readBoolean(process.env.KYC_REQUIRED, true),
+  requireAgeVerification: readBoolean(process.env.REQUIRE_AGE_VERIFICATION, !isTestMode),
+  requireIdentityVerification: readBoolean(process.env.REQUIRE_IDENTITY_VERIFICATION, readBoolean(process.env.KYC_REQUIRED, true)),
+  kycRequired: readBoolean(process.env.REQUIRE_IDENTITY_VERIFICATION, readBoolean(process.env.KYC_REQUIRED, true)),
   kycProvider: process.env.KYC_PROVIDER ?? "",
   kycApiKey: process.env.KYC_API_KEY ?? "",
   kycWebhookSecret: process.env.KYC_WEBHOOK_SECRET ?? "",
