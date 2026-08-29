@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { storagePut } from "../storage";
+import { getOwnerProfile } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -32,6 +33,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  app.disable("x-powered-by");
+  app.use((_req, res, next) => { res.setHeader("X-Content-Type-Options", "nosniff"); res.setHeader("X-Frame-Options", "SAMEORIGIN"); res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin"); next(); });
+  app.get("/healthz", (_req, res) => res.status(200).json({ ok: true, service: "so-models" }));
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -44,6 +48,11 @@ async function startServer() {
       const { profileId, kind, filename, contentType, data } = req.body ?? {};
       if (!profileId || !kind || !filename || !contentType || typeof data !== "string") return res.status(400).json({ error: "Dados de upload incompletos" });
       if (!["photo", "video"].includes(kind)) return res.status(400).json({ error: "Tipo de mídia inválido" });
+      const ownedProfile = await getOwnerProfile(ctx.user.id, Number(profileId));
+      if (!ownedProfile) return res.status(403).json({ error: "Perfil não pertence à conta autenticada" });
+      const allowedPhoto = ["image/jpeg", "image/png", "image/webp", "image/avif"].includes(contentType);
+      const allowedVideo = ["video/mp4", "video/webm", "video/quicktime"].includes(contentType);
+      if ((kind === "photo" && !allowedPhoto) || (kind === "video" && !allowedVideo)) return res.status(415).json({ error: "Formato de mídia não permitido" });
       const base64 = data.replace(/^data:[^;]+;base64,/, "");
       const buffer = Buffer.from(base64, "base64");
       const maxBytes = kind === "video" ? 100 * 1024 * 1024 : 12 * 1024 * 1024;

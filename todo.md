@@ -43,3 +43,32 @@
 - [x] Implementar canonical e metadados dinâmicos por rota/cidade; os metadados atuais são apenas estáticos no HTML base
 - [ ] Gerar e anexar o ZIP final após a conclusão das validações
 - [ ] Ampliar testes para autorização de titular/admin, validação Zod, filtros, moderação e mídia; a cobertura atual é inicial
+
+## Etapa de preparação para produção
+
+- [ ] Auditar o pacote atual contra critérios de deploy real e corrigir inconsistências de rastreamento
+- [ ] Completar proteção de mídia premium e fluxo técnico de acesso
+- [ ] Completar catálogo administrativo de cidades, categorias e atributos
+- [ ] Completar ordenação e edição de metadados de galeria
+- [ ] Implementar SSR ou estratégia equivalente para SEO público indexável
+- [ ] Ampliar testes de permissões, moderação, filtros, mídia e upload
+- [ ] Revisar variáveis de ambiente, scripts, health check e instruções de produção
+- [ ] Gerar e validar novo pacote ZIP pronto para deploy
+
+## Auditoria de produção concluída
+
+- [x] Adicionar health check `/healthz`
+- [x] Adicionar headers básicos de segurança e desabilitar `x-powered-by`
+- [x] Validar propriedade do perfil e MIME type antes do upload
+- [x] Criar documentação de implantação e variáveis necessárias sem incluir segredos
+- [x] Validar testes, TypeScript, build e health check local
+
+## GitHub e ambiente Qualify
+
+- [ ] Verificar o repositório GitHub conectado e a branch de destino
+- [ ] Revisar `.gitignore` e impedir envio de segredos, builds e dependências
+- [ ] Documentar variáveis obrigatórias e opcionais para produção
+- [ ] Adaptar a configuração de banco para credenciais manuais da Qualify
+- [ ] Validar testes, build e migration contra a configuração de produção
+- [ ] Criar commit de produção no repositório conectado
+- [ ] Enviar o commit para o GitHub e confirmar o SHA remoto
