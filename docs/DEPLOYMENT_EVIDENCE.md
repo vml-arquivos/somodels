@@ -104,3 +104,53 @@ A variável `DATABASE_URL` da aplicação foi atualizada para apontar ao hostnam
 O terminal autenticado do recurso `somodels-mysql` confirmou, por consulta somente leitura, MySQL `8.4.11`, a existência do schema `somodels` e do usuário `somodels` com host `%`. O terminal exibiu apenas o aviso padrão do cliente sobre senha na linha de comando; nenhum segredo foi registrado. O banco está, portanto, inicializado, e a falha remanescente está restrita à conectividade da aplicação com o serviço/URL em runtime ou à rede compartilhada.
 
 ---
+
+## Redeploy da correção de migrations — 2026-08-29
+
+Após a correção local e a publicação do commit `6c97e43` no branch `feat/production-reconciliation-marketplace`, foi iniciado no Coolify o deployment `xksybfofgewuqauelfgcjlfi`. O painel confirmou a leitura do commit `6c97e43` e o início do build Docker, com o `pnpm install` avançando no container de build. O deployment permanece em acompanhamento até a execução do pre-deployment e a resposta HTTP 200 do healthcheck.
+
+Fonte: `https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/xksybfofgewuqauelfgcjlfi`
+
+---
+
+O deployment `xksybfofgewuqauelfgcjlfi` avançou no Coolify para a instalação das dependências do build do commit `6c97e43`; o painel ainda o marca como `In progress`. O container anterior permanece disponível durante a transição. Fonte: `https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/xksybfofgewuqauelfgcjlfi`.
+
+Na atualização de 08:17 UTC, o deployment `xksybfofgewuqauelfgcjlfi` do commit `6c97e43` estava na etapa final `RUN pnpm check && pnpm build`, com o painel ainda indicando `In progress`. Não houve erro de compilação exibido até esse ponto; a próxima verificação deve confirmar a exportação da imagem, o pre-deployment `pnpm db:push` e o healthcheck.
+
+O deployment `xksybfofgewuqauelfgcjlfi` avançou: o build local do container concluiu o frontend/servidor e o Coolify entrou na etapa runtime, copiando o `node_modules` para a imagem final. Às 08:18 UTC o deployment seguia `In progress`, sem erro de build apresentado; ainda aguardava o término da imagem e o pre-deployment.
+
+A build do commit `6c97e43` terminou sem erro visível. O Coolify concluiu as etapas runtime, incluindo a cópia de `dist`, `drizzle` e `drizzle.config.ts`, e entrou na exportação da imagem final. O próximo marco esperado é a execução do pre-deployment configurado.
+
+A imagem do commit `6c97e43` foi exportada e nomeada no registro local do servidor Coolify; o deployment `xksybfofgewuqauelfgcjlfi` avançou para o unpack da imagem. Ainda falta observar a criação do container final, o pre-deployment de migrations e o healthcheck.
+
+O Coolify criou o novo container do commit `6c97e43` e iniciou o healthcheck interno. O teste configurado aparece como `GET http://localhost:3000/health`; o container respondeu `503 Service Unavailable`, enquanto o fallback de `wget` foi usado porque `curl` não está instalado. O deployment ainda não foi considerado saudável. A ausência de uma linha de execução de `pnpm db:push` nos logs indica que o campo de pre-deployment provavelmente não foi persistido/aplicado, devendo ser verificado antes de novo redeploy.
+
+## Lifecycle persistido e DNS — 2026-08-29
+
+O painel do Coolify confirmou `Application settings updated!` e agora exibe o pre-deployment `pnpm db:push` no formulário persistido. A validação do domínio, entretanto, retornou `Validating DNS failed`, exigindo um registro DNS do tipo A apontando para `136.116.153.235`. Essa exigência é do provedor DNS e não foi alterada por esta execução.
+
+Fonte: `https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz`
+
+---
+
+O campo de pre-deployment foi alterado para `pnpm exec drizzle-kit migrate --config=drizzle.config.ts`, com o Coolify exibindo `You have changes that haven't been saved yet`. A alteração está pronta para gravação; não será iniciado novo deployment até confirmar a persistência.
+
+Para permitir a inicialização do schema sem promover um container que ainda retornava 503, o healthcheck HTTP foi desativado temporariamente pelo controle nativo do Coolify, com confirmação visual `Healthcheck disabled.`. Ele será reativado somente após a migration e a validação do endpoint.
+
+O Coolify confirmou o estado operacional para o próximo ciclo: `preDeploymentCommand` vazio e `postDeploymentCommand` configurado como `pnpm exec drizzle-kit migrate --config=drizzle.config.ts`. O healthcheck permanece temporariamente desativado, conforme confirmação anterior, para que o container novo possa iniciar e executar o post-deployment no ambiente que contém `drizzle.config.ts`. O painel ainda exibe `Changes pending` como indicador geral, mas a configuração foi submetida pelo controle nativo e deve ser reconfirmada no próximo deployment.
+
+Novo deployment Coolify `7terqarnuqhvit66homa1ode` iniciado às 08:26:34 UTC para o branch `feat/production-reconciliation-marketplace` no commit `6c97e43`. O log confirma preparação do helper, checkout do repositório e ausência de pre-deployment; o healthcheck estava temporariamente desativado para permitir o start do container e o post-deployment da migration.
+
+Às 08:27:12 UTC, o deployment `7terqarnuqhvit66homa1ode` seguia como `In progress`, com `Running (no healthcheck)` no recurso. O log visível confirma criação, start e troca para o container novo, mas ainda não mostra as linhas finais do post-deployment; a próxima verificação será feita no HTML/log bruto para distinguir atraso de execução de falha silenciosa.
+
+O deployment `7terqarnuqhvit66homa1ode` concluiu com status `Success` em 00m46s no Coolify. O container novo foi criado e iniciado a partir do commit `6c97e43`, e o lifecycle registrou o post-deployment de migration. O recurso está `Running (no healthcheck)` porque a verificação foi desativada temporariamente; a etapa seguinte é validar o schema/endpoint e reativar o healthcheck com os parâmetros corretos.
+
+Os logs do container `jmbtzrudav5fyjidtbdrcmcz-082632670754` confirmam que o processo Node escuta na porta 3000, porém reporta `release=c13d5f7` apesar do deploy estar no commit `6c97e43`. O log também informa que `OAUTH_SERVER_URL` não está configurado, esperado para o modo local, e que o bootstrap da conta administrativa falhou durante a inserção na tabela `users`; os parâmetros sensíveis do log foram deliberadamente omitidos deste registro. Antes de considerar o deploy funcional, será feita uma checagem interna de `/healthz`, do schema e do motivo do erro de bootstrap.
+
+Validação interna concluída no container `jmbtzrudav5fyjidtbdrcmcz-082632670754`: `/healthz` respondeu `{"ok":true,"service":"so-models","release":"c13d5f7","database":true}`, `/app/drizzle.config.ts` está presente e `pnpm exec drizzle-kit migrate --config=drizzle.config.ts` retornou `migrations applied successfully` com `migration_rc=0`. A aplicação está funcional internamente; o próximo passo é reativar o healthcheck com `/healthz` e investigar o roteamento externo que ainda retorna `no available server`.
+
+O healthcheck foi reativado no Coolify com host `localhost`, porta `3000`, caminho `/healthz`, código esperado `200` e sem texto obrigatório. O Coolify iniciou o restart sem rebuild para aplicar a configuração; o deployment de restart aparece em andamento e será validado antes de qualquer conclusão.
+
+O restart `hrezcafsxe1ozr3ojszjpwk7` concluiu o ciclo de healthcheck. Os logs mostram `Healthcheck URL (inside the container): GET http://localhost:3000/healthz`, espera do start period e registro de `Attempt 1 of 10: Healthcheck status: healthy`, seguido de `New container is healthy` e remoção dos containers antigos. O painel ainda exibia o rótulo transitório `Running (no healthcheck)` durante a atualização; será feita nova leitura do recurso e teste externo.
+
+Validação pública após o restart: `https://somodels.buscarr.com.br/healthz` respondeu HTTP 200 com `database:true`; a home respondeu HTTP 200 e exibe a abertura pública bloqueada até provedor real de idade, conforme postura fail-closed. O host temporário SSLIP continuou retornando `503 no available server`, mas o domínio principal, que está atrás do Cloudflare, encaminhou corretamente. A rota `/login` também está publicada e informa a troca obrigatória da senha no primeiro acesso.

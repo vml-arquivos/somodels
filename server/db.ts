@@ -108,26 +108,35 @@ export async function createLocalUser(input: {
   const email = input.email.trim().toLowerCase();
   const passwordHash = await hashPassword(input.password);
   const openId = `local:${createHash("sha256").update(email).digest("hex").slice(0, 48)}`;
-  await db
-    .insert(users)
-    .values({
-      openId,
-      email,
+  const existing = await getUserByEmail(email);
+  if (existing) {
+    const updates: any = {
       name: input.name,
-      loginMethod: "password",
-      passwordHash,
-      emailVerifiedAt: new Date(),
-      mustChangePassword: input.mustChangePassword ?? true,
       role: input.role,
       accountStatus: "active",
-    })
-    .onDuplicateKeyUpdate({
-      set: {
-        name: input.name,
-        role: input.role,
-        accountStatus: "active",
-      },
-    });
+    };
+    // Bootstrap credentials are only refreshed while the account is still pending
+    // its first password rotation. A rotated account must never be reset on restart.
+    if (!existing.passwordHash || existing.mustChangePassword) {
+      updates.loginMethod = "password";
+      updates.passwordHash = passwordHash;
+      updates.emailVerifiedAt = new Date();
+      updates.mustChangePassword = input.mustChangePassword ?? true;
+    }
+    await db.update(users).set(updates).where(eq(users.id, existing.id));
+    return getUserByEmail(email);
+  }
+  await db.insert(users).values({
+    openId,
+    email,
+    name: input.name,
+    loginMethod: "password",
+    passwordHash,
+    emailVerifiedAt: new Date(),
+    mustChangePassword: input.mustChangePassword ?? true,
+    role: input.role,
+    accountStatus: "active",
+  });
   return getUserByEmail(email);
 }
 
