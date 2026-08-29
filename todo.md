@@ -52,8 +52,8 @@
 - [ ] Completar ordenação e edição de metadados de galeria
 - [ ] Implementar SSR ou estratégia equivalente para SEO público indexável
 - [ ] Ampliar testes de permissões, moderação, filtros, mídia e upload
-- [ ] Revisar variáveis de ambiente, scripts, health check e instruções de produção
-- [ ] Gerar e validar novo pacote ZIP pronto para deploy
+- [x] Revisar variáveis de ambiente, scripts, health check e instruções de produção
+- [x] Gerar e validar novo pacote ZIP pronto para deploy
 
 ## Auditoria de produção concluída
 
@@ -65,10 +65,10 @@
 
 ## GitHub e ambiente Qualify
 
-- [ ] Verificar o repositório GitHub conectado e a branch de destino
-- [ ] Revisar `.gitignore` e impedir envio de segredos, builds e dependências
-- [ ] Documentar variáveis obrigatórias e opcionais para produção
+- [x] Verificar o repositório GitHub conectado e a branch de destino
+- [x] Revisar `.gitignore` e impedir envio de segredos, builds e dependências
+- [x] Documentar variáveis obrigatórias e opcionais para produção
 - [ ] Adaptar a configuração de banco para credenciais manuais da Qualify
 - [ ] Validar testes, build e migration contra a configuração de produção
-- [ ] Criar commit de produção no repositório conectado
-- [ ] Enviar o commit para o GitHub e confirmar o SHA remoto
+- [x] Criar commit de produção no repositório conectado
+- [x] Enviar o commit para o GitHub e confirmar o SHA remoto
