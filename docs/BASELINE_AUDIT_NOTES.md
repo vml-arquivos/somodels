@@ -118,3 +118,18 @@ Fonte: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environ
 Após remover a opção incompatível e salvar `--cap-drop=SYS_ADMIN`, o MySQL iniciou com sucesso: o painel registrou `Container Created`, `Starting`, `Started` e `Database started`. O único aviso foi sobre memory swappiness/cgroup e não impediu o startup. O recurso aparece como `Running (healthcheck starting)` no momento da captura; falta aguardar o healthcheck e validar a conexão pelo terminal.
 
 A verificação seguinte manteve o MySQL como `Running (healthcheck starting)` e os logs continuam sem erro fatal após `Database started.`. O healthcheck final ainda não foi observado como `healthy`; a aplicação não deve ser conectada nem migrada até essa validação.
+
+Coolify criou a aplicação `somodels-app` a partir do repositório público `https://github.com/vml-arquivos/somodels`, branch `feat/production-reconciliation-marketplace`, build pack `Dockerfile`, base `/`, Dockerfile `/Dockerfile`, porta exposta `3000` e mapping `3000:3000`. O recurso foi criado como `Exited` e ainda não foi iniciado.
+
+Na seção Domains, foi adicionado `https://somodels.buscarr.com.br` com redirecionamento HTTP→HTTPS habilitado e alias automático `https://www.somodels.buscarr.com.br`; o Coolify confirmou `Domain added. DNS check started.`. O domínio temporário `sslip.io` permanece cadastrado e deverá ser removido depois que o domínio principal for validado.
+
+A página de Environment Variables da aplicação mostra `No environment variables` e oferece Developer view com textarea para produção e preview deployments. A aplicação permanece `Exited`; nenhuma variável foi salva ainda.
+
+No Coolify, foram salvas 29 variáveis de produção, incluindo `DATABASE_URL` apontando ao MySQL privado, `JWT_SECRET`, flags de acesso público/KYC/pagamentos fechadas e os e-mails/senhas temporárias de bootstrap para `super_admin` e `dev`. Os valores secretos não foram registrados neste relatório.
+
+O lifecycle da aplicação foi configurado com pre-deployment `pnpm db:push`, que executa `drizzle-kit generate && drizzle-kit migrate` conforme o script do projeto. O nome da aplicação e sua descrição operacional também foram persistidos.
+
+A configuração da aplicação foi salva com sucesso no Coolify. A validação DNS falhou porque o painel exige um registro A de `somodels.buscarr.com.br` apontando para `136.116.153.235`; o domínio ainda não está resolvendo para o IPv4 esperado no momento da validação.
+
+O deployment `aa1zc34jp8mhguyoegc1n6wc` do Coolify está em progresso usando o commit `c13d5f761dcb34fe6099d1e6d5eafdb2626d7c2f` (`feat: harden marketplace for production`) do branch `feat/production-reconciliation-marketplace`. O clone do repositório e a instalação de dependências concluíram; `pnpm check` passou e o Vite/esbuild geraram `dist`. O runtime image está sendo montado. O Coolify emitiu aviso de que `NODE_ENV=production` está disponível em build time, mas a build continuou porque o Dockerfile instala dependências no estágio de build.
+Fonte: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/aa1zc34jp8mhguyoegc1n6wc
