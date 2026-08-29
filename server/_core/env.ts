@@ -28,6 +28,8 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   sessionDurationHours: readInteger(process.env.SESSION_DURATION_HOURS, 12),
   publicAccessEnabled: readBoolean(process.env.PUBLIC_ACCESS_ENABLED, false),
+  testMode: readBoolean(process.env.TEST_MODE, false),
+  testAccessEnabled: readBoolean(process.env.TEST_ACCESS_ENABLED, false),
   ageVerificationProvider: process.env.AGE_VERIFICATION_PROVIDER ?? "",
   ageVerificationApiKey: process.env.AGE_VERIFICATION_API_KEY ?? "",
   ageVerificationWebhookSecret: process.env.AGE_VERIFICATION_WEBHOOK_SECRET ?? "",

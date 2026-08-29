@@ -189,7 +189,7 @@ export async function revokeAllAuthSessions(userId: number) {
   await db.update(authSessions).set({ revokedAt: new Date() }).where(and(eq(authSessions.userId, userId), sql`${authSessions.revokedAt} IS NULL`));
 }
 
-export async function createAgeVerificationSession(sessionTokenHash: string) {
+export async function createAgeVerificationSession(sessionTokenHash: string, options?: { status?: "pending" | "approved"; provider?: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const expiresAt = new Date(Date.now() + ENV.ageVerificationTtlHours * 60 * 60 * 1000);
@@ -197,13 +197,13 @@ export async function createAgeVerificationSession(sessionTokenHash: string) {
     .insert(ageVerifications)
     .values({
       sessionTokenHash,
-      provider: ENV.ageVerificationProvider || null,
-      status: "pending",
+      provider: options?.provider ?? (ENV.ageVerificationProvider || null),
+      status: options?.status ?? "pending",
       expiresAt,
       jurisdiction: "BR",
     })
-    .onDuplicateKeyUpdate({ set: { status: "pending", expiresAt, updatedAt: new Date() } });
-  return { status: "pending" as const, expiresAt };
+    .onDuplicateKeyUpdate({ set: { status: options?.status ?? "pending", provider: options?.provider ?? (ENV.ageVerificationProvider || null), expiresAt, updatedAt: new Date() } });
+  return { status: (options?.status ?? "pending") as "pending" | "approved", expiresAt };
 }
 
 export async function getApprovedAgeVerification(sessionTokenHash: string) {

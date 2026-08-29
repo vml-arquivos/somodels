@@ -12,6 +12,7 @@ export const systemRouter = router({
     siteName: ENV.siteName,
     release: ENV.release,
     publicAccessEnabled: ENV.publicAccessEnabled,
+    testMode: ENV.testMode && ENV.testAccessEnabled,
     ageVerificationRequired: true,
     ageVerificationConfigured: runtimeConfigStatus().ageVerification,
     kycRequired: ENV.kycRequired,

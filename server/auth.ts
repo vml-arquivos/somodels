@@ -32,6 +32,27 @@ export async function revokeLocalSession(token: string | undefined) {
   await db.revokeAuthSession(hashToken(token));
 }
 
+export async function registerTestUser(input: { email: string; password: string; name: string }) {
+  if (!(ENV.testMode && ENV.testAccessEnabled)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "O cadastro de teste está desativado" });
+  }
+  assertPasswordPolicy(input.password);
+  const email = input.email.trim().toLowerCase();
+  const existing = await db.getUserByEmail(email);
+  if (existing) {
+    throw new TRPCError({ code: "CONFLICT", message: "Este e-mail já possui uma conta de teste" });
+  }
+  const user = await db.createLocalUser({
+    email,
+    password: input.password,
+    name: input.name.trim(),
+    role: "user",
+    mustChangePassword: false,
+  });
+  if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível criar a conta de teste" });
+  return user;
+}
+
 export async function bootstrapLocalAccounts() {
   const entries = [
     {

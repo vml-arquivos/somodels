@@ -11,12 +11,14 @@ import OwnerDashboard from "./pages/OwnerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import LoginPage from "./pages/LoginPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
+import TestSignupPage from "./pages/TestSignupPage";
 
 function Router() {
   return <Switch>
     <Route path="/" component={Home} />
     <Route path="/login" component={LoginPage} />
     <Route path="/alterar-senha" component={ChangePasswordPage} />
+    <Route path="/cadastro-teste" component={TestSignupPage} />
     <Route path="/perfil/:slug" component={ProfilePage} />
     <Route path="/cidade/:city" component={CityPage} />
     <Route path="/titular" component={OwnerDashboard} />

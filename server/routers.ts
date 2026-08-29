@@ -5,7 +5,7 @@ import { getLocalSessionCookieOptions, getSessionCookieOptions } from "./_core/c
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV, runtimeConfigStatus } from "./_core/env";
-import { LOCAL_SESSION_COOKIE, assertPasswordPolicy, authenticateLocalUser, changePassword, createLocalSession, revokeLocalSession } from "./auth";
+import { LOCAL_SESSION_COOKIE, assertPasswordPolicy, authenticateLocalUser, changePassword, createLocalSession, registerTestUser, revokeLocalSession } from "./auth";
 import {
   createAgeVerificationSession,
   createMedia,
@@ -63,8 +63,13 @@ function publicUser(user: User) {
   };
 }
 
+function ageAccessEnabled() {
+  return ENV.publicAccessEnabled && (runtimeConfigStatus().ageVerification || (ENV.testMode && ENV.testAccessEnabled));
+}
+
 async function hasValidAgeSession(req: { headers: { cookie?: string } }) {
-  if (!ENV.publicAccessEnabled || !runtimeConfigStatus().ageVerification) return false;
+  if (!ageAccessEnabled()) return false;
+  if (ENV.testMode && ENV.testAccessEnabled) return true;
   const cookie = req.headers.cookie?.split(";").map(v => v.trim()).find(v => v.startsWith(`${ageCookie}=`))?.slice(ageCookie.length + 1);
   return Boolean(cookie && (await getApprovedAgeVerification(hashToken(cookie))));
 }
@@ -85,6 +90,12 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => (opts.ctx.user ? publicUser(opts.ctx.user) : null)),
+    register: publicProcedure
+      .input(z.object({ name: z.string().trim().min(2).max(120), email: z.string().email().max(320), password: z.string().min(16).max(200) }))
+      .mutation(async ({ input }) => {
+        const user = await registerTestUser(input);
+        return { user: publicUser(user) };
+      }),
     login: publicProcedure
       .input(z.object({ email: z.string().email().max(320), password: z.string().min(1).max(200) }))
       .mutation(async ({ ctx, input }) => {
@@ -118,16 +129,17 @@ export const appRouter = router({
   }),
   age: router({
     status: publicProcedure.query(async ({ ctx }) => {
-      if (!ENV.publicAccessEnabled || !runtimeConfigStatus().ageVerification) return { status: "unavailable" as const };
+      if (!ageAccessEnabled()) return { status: "unavailable" as const };
+      if (ENV.testMode && ENV.testAccessEnabled) return { status: "approved" as const };
       const cookie = ctx.req.headers.cookie?.split(";").map(v => v.trim()).find(v => v.startsWith(`${ageCookie}=`))?.slice(ageCookie.length + 1);
       return { status: (await getApprovedAgeVerification(cookie ? hashToken(cookie) : "")) ? "approved" as const : "pending" as const };
     }),
     start: publicProcedure.mutation(async ({ ctx }) => {
-      if (!ENV.publicAccessEnabled || !runtimeConfigStatus().ageVerification) {
+      if (!ageAccessEnabled()) {
         throw new Error("A verificação de idade ainda não está configurada por um provedor real");
       }
       const token = createOpaqueToken();
-      const created = await createAgeVerificationSession(hashToken(token));
+      const created = await createAgeVerificationSession(hashToken(token), ENV.testMode && ENV.testAccessEnabled ? { status: "approved", provider: "test" } : undefined);
       ctx.res.cookie(ageCookie, token, { ...getLocalSessionCookieOptions(ctx.req), maxAge: 24 * 60 * 60 * 1000 });
       return created;
     }),
