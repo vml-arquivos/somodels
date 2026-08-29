@@ -1,6 +1,15 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, ArrowRight, CheckCircle2, ImagePlus, LogIn, Save, Send, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  ImagePlus,
+  LogIn,
+  Save,
+  Send,
+  UserRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,51 +39,718 @@ type ProfileForm = {
   telegram: string;
 };
 
-const emptyForm: ProfileForm = { stageName: "", slug: "", age: "", city: "", region: "", locationNote: "", description: "", categories: "Acompanhante", attributes: "", preferences: "", languages: "Português", availabilityLabel: "Consulte disponibilidade", isAvailableNow: false, contactOptions: "WhatsApp demonstrativo desativado", phone: "", whatsapp: "", telegram: "" };
-const listValue = (value: string) => value.split(",").map(item => item.trim()).filter(Boolean);
-const slugify = (value: string) => value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+const emptyForm: ProfileForm = {
+  stageName: "",
+  slug: "",
+  age: "",
+  city: "",
+  region: "",
+  locationNote: "",
+  description: "",
+  categories: "Acompanhante",
+  attributes: "",
+  preferences: "",
+  languages: "Português",
+  availabilityLabel: "Consulte disponibilidade",
+  isAvailableNow: false,
+  contactOptions: "WhatsApp",
+  phone: "",
+  whatsapp: "",
+  telegram: "",
+};
+const listValue = (value: string) =>
+  value
+    .split(",")
+    .map(item => item.trim())
+    .filter(Boolean);
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 
 export default function OwnerDashboard() {
   const [, navigate] = useLocation();
   const { user, loading } = useAuth();
-  const { data: mine = [], refetch } = trpc.profiles.mine.useQuery(undefined, { enabled: Boolean(user) });
-  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
+  const { data: mine = [], refetch } = trpc.profiles.mine.useQuery(undefined, {
+    enabled: Boolean(user),
+  });
+  const [selectedProfileId, setSelectedProfileId] = useState<number | null>(
+    null
+  );
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<ProfileForm>(emptyForm);
-  const selected = trpc.profiles.mineById.useQuery({ id: selectedProfileId ?? 0 }, { enabled: Boolean(selectedProfileId) });
-  const save = trpc.profiles.save.useMutation({ onSuccess: id => { setSelectedProfileId(Number(id)); refetch(); selected.refetch(); toast.success("Perfil salvo. Você pode continuar depois sem perder o rascunho."); }, onError: error => toast.error(error.message) });
-  const addMedia = trpc.media.add.useMutation({ onSuccess: () => { selected.refetch(); toast.success("Mídia enviada para revisão."); }, onError: error => toast.error(error.message) });
+  const selected = trpc.profiles.mineById.useQuery(
+    { id: selectedProfileId ?? 0 },
+    { enabled: Boolean(selectedProfileId) }
+  );
+  const save = trpc.profiles.save.useMutation({
+    onSuccess: id => {
+      setSelectedProfileId(Number(id));
+      refetch();
+      selected.refetch();
+      toast.success(
+        "Perfil salvo. Você pode continuar depois sem perder o rascunho."
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
+  const addMedia = trpc.media.add.useMutation({
+    onSuccess: () => {
+      selected.refetch();
+      toast.success("Mídia enviada para revisão.");
+    },
+    onError: error => toast.error(error.message),
+  });
 
   const fillFromProfile = (profile: any) => {
     setSelectedProfileId(profile.id);
-    setForm({ stageName: profile.stageName || "", slug: profile.slug || "", age: profile.age ? String(profile.age) : "", city: profile.city || "", region: profile.region || "", locationNote: profile.locationNote || "", description: profile.description || "", categories: (profile.categories || []).join(", "), attributes: (profile.attributes || []).join(", "), preferences: (profile.preferences || []).join(", "), languages: (profile.languages || []).join(", "), availabilityLabel: profile.availabilityLabel || "Consulte disponibilidade", isAvailableNow: Boolean(profile.isAvailableNow), contactOptions: (profile.contactOptions || []).join(", "), phone: profile.phone || "", whatsapp: profile.whatsapp || "", telegram: profile.telegram || "" });
+    setForm({
+      stageName: profile.stageName || "",
+      slug: profile.slug || "",
+      age: profile.age ? String(profile.age) : "",
+      city: profile.city || "",
+      region: profile.region || "",
+      locationNote: profile.locationNote || "",
+      description: profile.description || "",
+      categories: (profile.categories || []).join(", "),
+      attributes: (profile.attributes || []).join(", "),
+      preferences: (profile.preferences || []).join(", "),
+      languages: (profile.languages || []).join(", "),
+      availabilityLabel:
+        profile.availabilityLabel || "Consulte disponibilidade",
+      isAvailableNow: Boolean(profile.isAvailableNow),
+      contactOptions: (profile.contactOptions || []).join(", "),
+      phone: profile.phone || "",
+      whatsapp: profile.whatsapp || "",
+      telegram: profile.telegram || "",
+    });
     setStep(1);
   };
 
-  useEffect(() => { if (!selectedProfileId && mine[0]) fillFromProfile(mine[0]); }, [mine, selectedProfileId]);
+  useEffect(() => {
+    if (!selectedProfileId && mine[0]) fillFromProfile(mine[0]);
+  }, [mine, selectedProfileId]);
 
-  const payload = useMemo(() => ({ stageName: form.stageName.trim(), slug: form.slug.trim() || slugify(form.stageName), age: form.age ? Number(form.age) : undefined, city: form.city.trim(), region: form.region.trim() || undefined, locationNote: form.locationNote.trim() || undefined, description: form.description.trim() || undefined, categories: listValue(form.categories), attributes: listValue(form.attributes), preferences: listValue(form.preferences), languages: listValue(form.languages), availabilityLabel: form.availabilityLabel.trim() || undefined, isAvailableNow: form.isAvailableNow, contactOptions: listValue(form.contactOptions), phone: form.phone.trim() || undefined, whatsapp: form.whatsapp.trim() || undefined, telegram: form.telegram.trim() || undefined, id: selectedProfileId ?? undefined }), [form, selectedProfileId]);
-  const update = <K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) => setForm(previous => ({ ...previous, [key]: value }));
-  const submit = (submitForReview: boolean) => save.mutate({ ...payload, submitForReview } as any);
-  const uploadMedia = async (event: ChangeEvent<HTMLInputElement>, kind: "photo" | "video") => {
+  const payload = useMemo(
+    () => ({
+      stageName: form.stageName.trim(),
+      slug: form.slug.trim() || slugify(form.stageName),
+      age: form.age ? Number(form.age) : undefined,
+      city: form.city.trim(),
+      region: form.region.trim() || undefined,
+      locationNote: form.locationNote.trim() || undefined,
+      description: form.description.trim() || undefined,
+      categories: listValue(form.categories),
+      attributes: listValue(form.attributes),
+      preferences: listValue(form.preferences),
+      languages: listValue(form.languages),
+      availabilityLabel: form.availabilityLabel.trim() || undefined,
+      isAvailableNow: form.isAvailableNow,
+      contactOptions: listValue(form.contactOptions),
+      phone: form.phone.trim() || undefined,
+      whatsapp: form.whatsapp.trim() || undefined,
+      telegram: form.telegram.trim() || undefined,
+      id: selectedProfileId ?? undefined,
+    }),
+    [form, selectedProfileId]
+  );
+  const update = <K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) =>
+    setForm(previous => ({ ...previous, [key]: value }));
+  const submit = (submitForReview: boolean) =>
+    save.mutate({ ...payload, submitForReview } as any);
+  const uploadMedia = async (
+    event: ChangeEvent<HTMLInputElement>,
+    kind: "photo" | "video"
+  ) => {
     const file = event.target.files?.[0];
     if (!file || !selectedProfileId) return;
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        const response = await fetch("/api/upload/media", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ profileId: selectedProfileId, kind, filename: file.name, contentType: file.type, data: String(reader.result) }) });
-        if (!response.ok) throw new Error("Não foi possível enviar o arquivo demonstrativo");
+        const response = await fetch("/api/upload/media", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            profileId: selectedProfileId,
+            kind,
+            filename: file.name,
+            contentType: file.type,
+            data: String(reader.result),
+          }),
+        });
+        if (!response.ok) throw new Error("Não foi possível enviar o arquivo");
         const uploaded = await response.json();
-        await addMedia.mutateAsync({ profileId: selectedProfileId, kind, storageKey: uploaded.key, url: uploaded.url, mimeType: file.type, isPremium: false, sortOrder: 0 });
-      } catch (error) { toast.error(error instanceof Error ? error.message : "Falha no upload"); }
+        await addMedia.mutateAsync({
+          profileId: selectedProfileId,
+          kind,
+          storageKey: uploaded.key,
+          url: uploaded.url,
+          mimeType: file.type,
+          isPremium: false,
+          sortOrder: 0,
+        });
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Falha no upload");
+      }
     };
     reader.readAsDataURL(file);
   };
 
-  if (loading) return <div className="min-h-screen bg-[#222222] p-8 text-white/60">Verificando acesso…</div>;
-  if (!user) return <div className="min-h-screen bg-[#222222] p-8 text-white"><Link href="/"><span className="brand-mark">Só <i>Models</i></span></Link><div className="mx-auto mt-24 max-w-md text-center"><LogIn className="mx-auto h-10 w-10 text-[#ff4764]"/><h1 className="mt-5 font-display text-4xl">Área do anunciante</h1><p className="mt-3 text-white/55">Entre para criar, salvar e gerenciar seu perfil.</p><Link href="/login?returnTo=/titular"><Button className="mt-6 bg-[#ff4764] text-[#222222]">Entrar como anunciante</Button></Link></div></div>;
+  if (loading)
+    return (
+      <div className="min-h-screen bg-[#222222] p-8 text-white/60">
+        Verificando acesso…
+      </div>
+    );
+  if (!user)
+    return (
+      <div className="min-h-screen bg-[#222222] p-8 text-white">
+        <Link href="/">
+          <span className="brand-mark">
+            Só <i>Models</i>
+          </span>
+        </Link>
+        <div className="mx-auto mt-24 max-w-md text-center">
+          <LogIn className="mx-auto h-10 w-10 text-[#ff4764]" />
+          <h1 className="mt-5 font-display text-4xl">Área do anunciante</h1>
+          <p className="mt-3 text-white/55">
+            Entre para criar, salvar e gerenciar seu perfil.
+          </p>
+          <Link href="/login?returnTo=/titular">
+            <Button className="mt-6 bg-[#ff4764] text-[#222222]">
+              Entrar como anunciante
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
 
-  const profileStatus = selected.data?.profile?.status || mine.find(profile => profile.id === selectedProfileId)?.status || "draft";
+  const profileStatus =
+    selected.data?.profile?.status ||
+    mine.find(profile => profile.id === selectedProfileId)?.status ||
+    "draft";
   const media = selected.data?.media || [];
-  return <div className="min-h-screen bg-[#222222] text-white"><header className="border-b border-white/10"><div className="container flex items-center justify-between py-4"><Link href="/"><span className="brand-mark">Só <i>Models</i></span></Link><div className="flex items-center gap-3 text-sm text-white/55"><UserRound className="h-4 w-4"/>{user.name || user.email}<Link href="/"><Button variant="outline" className="border-white/15 bg-transparent text-white">Ver vitrine</Button></Link></div></div></header><main className="container py-10"><div className="flex flex-wrap items-end justify-between gap-5"><div><p className="eyebrow">Área do anunciante</p><h1 className="font-display text-5xl">Monte seu perfil com calma.</h1><p className="mt-4 max-w-2xl text-white/55">Salve um rascunho, revise o preview e envie quando estiver pronto. Nesta homologação, use apenas dados fictícios e imagens demonstrativas não explícitas.</p></div><Badge variant="outline" className="border-[#ff4764]/40 text-[#ff9a8e]">Status: {profileStatus}</Badge></div><div className="mt-8 grid gap-3 md:grid-cols-3">{["Informações", "Estilo e contato", "Preview e mídia"].map((label, index) => <button type="button" key={label} onClick={() => setStep(index + 1)} className={`rounded-xl border p-4 text-left ${step === index + 1 ? "border-[#ff4764] bg-[#ff4764]/10" : "border-white/10 bg-white/[.03]"}`}><span className="text-xs uppercase tracking-[.18em] text-white/40">0{index + 1}</span><p className="mt-2 font-medium">{label}</p>{step > index + 1 ? <CheckCircle2 className="mt-3 h-4 w-4 text-[#ff4764]"/> : null}</button>)}</div><div className="mt-8 grid gap-8 lg:grid-cols-[1fr_.65fr]"><section><Card className="border-white/10 bg-white/5"><CardHeader><CardTitle className="text-white">{step === 1 ? "Informações básicas" : step === 2 ? "Estilo, disponibilidade e contato" : "Preview e envio"}</CardTitle><p className="text-sm text-white/45">Etapa {step} de 3 · o rascunho permanece associado à sua conta.</p></CardHeader><CardContent>{step === 1 ? <div className="grid gap-4 md:grid-cols-2"><label>Nome artístico<Input required value={form.stageName} onChange={event => update("stageName", event.target.value)} placeholder="Nome demonstrativo" className="mt-2 border-white/10 bg-white/5 text-white"/></label><label>Slug público<Input required value={form.slug} onChange={event => update("slug", event.target.value)} placeholder="nome-demonstrativo" className="mt-2 border-white/10 bg-white/5 text-white"/></label><label>Idade fictícia adulta<Input required type="number" min={18} max={99} value={form.age} onChange={event => update("age", event.target.value)} placeholder="25" className="mt-2 border-white/10 bg-white/5 text-white"/></label><label>Cidade<Input required value={form.city} onChange={event => update("city", event.target.value)} placeholder="São Paulo" className="mt-2 border-white/10 bg-white/5 text-white"/></label><label>Estado/região<Input value={form.region} onChange={event => update("region", event.target.value)} placeholder="SP" className="mt-2 border-white/10 bg-white/5 text-white"/></label><label>Localização aproximada<Input value={form.locationNote} onChange={event => update("locationNote", event.target.value)} placeholder="Região central — sem endereço" className="mt-2 border-white/10 bg-white/5 text-white"/></label></div> : step === 2 ? <div className="grid gap-4"><label>Bio pública<Textarea value={form.description} onChange={event => update("description", event.target.value)} placeholder="Escreva uma apresentação demonstrativa, sem dados reais." className="mt-2 min-h-32 border-white/10 bg-white/5 text-white"/></label><div className="grid gap-4 md:grid-cols-2"><label>Categorias<span className="field-hint">separadas por vírgula</span><Input value={form.categories} onChange={event => update("categories", event.target.value)} className="mt-2 border-white/10 bg-white/5 text-white"/></label><label>Atributos<span className="field-hint">separados por vírgula</span><Input value={form.attributes} onChange={event => update("attributes", event.target.value)} className="mt-2 border-white/10 bg-white/5 text-white"/></label><label>Preferências<span className="field-hint">separadas por vírgula</span><Input value={form.preferences} onChange={event => update("preferences", event.target.value)} className="mt-2 border-white/10 bg-white/5 text-white"/></label><label>Idiomas<span className="field-hint">separados por vírgula</span><Input value={form.languages} onChange={event => update("languages", event.target.value)} className="mt-2 border-white/10 bg-white/5 text-white"/></label></div><div className="rounded-xl border border-white/10 bg-black/10 p-4"><label className="flex items-center gap-3 text-sm"><input type="checkbox" checked={form.isAvailableNow} onChange={event => update("isAvailableNow", event.target.checked)} className="accent-[#ff4764]"/> Disponível agora</label><Input value={form.availabilityLabel} onChange={event => update("availabilityLabel", event.target.value)} placeholder="Ex.: Agenda aberta esta semana" className="mt-3 border-white/10 bg-white/5 text-white"/></div><label>Formas de contato<span className="field-hint">use apenas canais demonstrativos</span><Input value={form.contactOptions} onChange={event => update("contactOptions", event.target.value)} className="mt-2 border-white/10 bg-white/5 text-white"/></label><div className="grid gap-4 md:grid-cols-3"><label>Telefone fictício<Input value={form.phone} onChange={event => update("phone", event.target.value)} placeholder="Desativado no teste" className="mt-2 border-white/10 bg-white/5 text-white"/></label><label>WhatsApp fictício<Input value={form.whatsapp} onChange={event => update("whatsapp", event.target.value)} placeholder="Desativado no teste" className="mt-2 border-white/10 bg-white/5 text-white"/></label><label>Telegram fictício<Input value={form.telegram} onChange={event => update("telegram", event.target.value)} placeholder="Desativado no teste" className="mt-2 border-white/10 bg-white/5 text-white"/></label></div><p className="text-xs leading-5 text-[#ffb0a7]">Os campos de telefone, WhatsApp e Telegram ficam desativados no ambiente de teste para não contatar terceiros.</p></div> : <div className="space-y-6"><div className="rounded-2xl border border-[#ff4764]/30 bg-[#ff4764]/10 p-5"><p className="eyebrow">Preview público</p><div className="mt-4 flex items-start gap-4"><div className="profile-fallback preview-avatar">{(form.stageName || "?").slice(0, 1)}</div><div><h2 className="font-display text-3xl">{form.stageName || "Seu nome artístico"}{form.age ? <span className="ml-2 text-base font-normal text-white/50">{form.age}</span> : null}</h2><p className="mt-1 text-sm text-white/55">{form.city || "Sua cidade"}{form.region ? `, ${form.region}` : ""}</p><div className="mt-3 flex flex-wrap gap-2">{listValue(form.categories).map(item => <Badge key={item} variant="outline" className="border-white/20 text-white/70">{item}</Badge>)}</div></div></div><p className="mt-5 text-sm leading-6 text-white/65">{form.description || "Sua bio demonstrativa aparecerá aqui."}</p><div className="mt-4 grid gap-3 sm:grid-cols-2"><div><p className="text-xs uppercase tracking-[.16em] text-white/40">Preferências</p><p className="mt-2 text-sm text-white/65">{listValue(form.preferences).join(" · ") || "Não informado"}</p></div><div><p className="text-xs uppercase tracking-[.16em] text-white/40">Disponibilidade</p><p className="mt-2 text-sm text-[#ffb0a7]">{form.isAvailableNow ? "Disponível agora" : form.availabilityLabel || "Consulte disponibilidade"}</p></div></div></div><div><p className="eyebrow">Galeria demonstrativa</p><p className="mt-2 text-sm text-white/50">Envie imagens não explícitas e fictícias. Cada arquivo entra na fila de moderação antes de aparecer na vitrine.</p>{selectedProfileId ? <div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="cursor-pointer rounded-xl border border-dashed border-white/15 p-4 text-sm text-white/60 hover:border-[#ff4764]/50"><ImagePlus className="mb-2 h-5 w-5 text-[#ff4764]"/>Adicionar foto<input type="file" accept="image/*" className="hidden" onChange={event => uploadMedia(event, "photo")}/></label><label className="cursor-pointer rounded-xl border border-dashed border-white/15 p-4 text-sm text-white/60 hover:border-[#ff4764]/50"><ImagePlus className="mb-2 h-5 w-5 text-[#ff4764]"/>Adicionar vídeo<input type="file" accept="video/*" className="hidden" onChange={event => uploadMedia(event, "video")}/></label></div> : <p className="mt-4 rounded-xl border border-white/10 p-4 text-sm text-white/45">Salve o rascunho para liberar a galeria.</p>}{media.length ? <div className="mt-5 grid grid-cols-2 gap-3">{media.map(item => <div key={item.id} className="rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs text-white/55">{item.kind === "photo" ? <img src={item.url} alt={item.title || "Mídia demonstrativa"} className="h-28 w-full rounded-lg object-cover"/> : <video src={item.url} controls className="h-28 w-full rounded-lg object-cover"/>}<p className="mt-2">{item.status === "approved" ? "Aprovada" : "Aguardando moderação"}</p></div>)}</div> : null}</div></div>}</CardContent></Card><div className="mt-5 flex flex-wrap justify-between gap-3"><div className="flex gap-2">{step > 1 ? <Button type="button" variant="outline" onClick={() => setStep(step - 1)} className="border-white/15 bg-transparent text-white"><ArrowLeft className="mr-2 h-4 w-4"/>Voltar</Button> : null}{step < 3 ? <Button type="button" onClick={() => setStep(step + 1)} className="bg-[#ff4764] text-[#222222]">Continuar<ArrowRight className="ml-2 h-4 w-4"/></Button> : null}</div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => submit(false)} disabled={save.isPending} className="border-white/15 bg-transparent text-white"><Save className="mr-2 h-4 w-4"/>Salvar rascunho</Button>{step === 3 ? <Button type="button" onClick={() => submit(true)} disabled={save.isPending} className="bg-[#ff4764] text-[#222222]"><Send className="mr-2 h-4 w-4"/>Enviar para moderação</Button> : null}</div></div></section><aside><Card className="border-[#ff4764]/30 bg-[#ff4764]/10"><CardContent className="p-6"><p className="eyebrow">Antes de publicar</p><h2 className="mt-3 font-display text-3xl">Dados fictícios, sempre.</h2><p className="mt-3 text-sm leading-6 text-white/65">Esta homologação não pede documento, selfie, biometria, pagamento ou verificação real. Não envie informações pessoais ou fotos reais.</p></CardContent></Card><Card className="mt-5 border-white/10 bg-white/5"><CardHeader><CardTitle className="text-white">Meus perfis</CardTitle></CardHeader><CardContent>{mine.length ? <div className="space-y-1">{mine.map(profile => <button type="button" key={profile.id} onClick={() => fillFromProfile(profile)} className={`flex w-full items-center justify-between rounded-lg border-b border-white/10 px-2 py-3 text-left last:border-0 ${selectedProfileId === profile.id ? "bg-white/10" : ""}`}><div><p className="font-medium">{profile.stageName}</p><p className="text-xs text-white/45">{profile.city}</p></div><Badge variant="outline" className="border-white/15 text-white/65">{profile.status}</Badge></button>)}</div> : <p className="text-sm text-white/45">Nenhum perfil criado. Salve o primeiro rascunho.</p>}</CardContent></Card></aside></div></main></div>;
+  return (
+    <div className="min-h-screen bg-[#222222] text-white">
+      <header className="border-b border-white/10">
+        <div className="container flex items-center justify-between py-4">
+          <Link href="/">
+            <span className="brand-mark">
+              Só <i>Models</i>
+            </span>
+          </Link>
+          <div className="flex items-center gap-3 text-sm text-white/55">
+            <UserRound className="h-4 w-4" />
+            {user.name || user.email}
+            <Link href="/">
+              <Button
+                variant="outline"
+                className="border-white/15 bg-transparent text-white"
+              >
+                Ver vitrine
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+      <main className="container py-10">
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <p className="eyebrow">Área do anunciante</p>
+            <h1 className="font-display text-5xl">
+              Monte seu perfil com calma.
+            </h1>
+            <p className="mt-4 max-w-2xl text-white/55">
+              Salve um rascunho, revise o preview e envie quando estiver pronto.
+              Mantenha as informações claras, atualizadas e adequadas para
+              publicação.
+            </p>
+          </div>
+          <Badge
+            variant="outline"
+            className="border-[#ff4764]/40 text-[#ff9a8e]"
+          >
+            Status: {profileStatus}
+          </Badge>
+        </div>
+        <div className="mt-8 grid gap-3 md:grid-cols-3">
+          {["Informações", "Estilo e contato", "Preview e mídia"].map(
+            (label, index) => (
+              <button
+                type="button"
+                key={label}
+                onClick={() => setStep(index + 1)}
+                className={`rounded-xl border p-4 text-left ${step === index + 1 ? "border-[#ff4764] bg-[#ff4764]/10" : "border-white/10 bg-white/[.03]"}`}
+              >
+                <span className="text-xs uppercase tracking-[.18em] text-white/40">
+                  0{index + 1}
+                </span>
+                <p className="mt-2 font-medium">{label}</p>
+                {step > index + 1 ? (
+                  <CheckCircle2 className="mt-3 h-4 w-4 text-[#ff4764]" />
+                ) : null}
+              </button>
+            )
+          )}
+        </div>
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_.65fr]">
+          <section>
+            <Card className="border-white/10 bg-white/5">
+              <CardHeader>
+                <CardTitle className="text-white">
+                  {step === 1
+                    ? "Informações básicas"
+                    : step === 2
+                      ? "Estilo, disponibilidade e contato"
+                      : "Preview e envio"}
+                </CardTitle>
+                <p className="text-sm text-white/45">
+                  Etapa {step} de 3 · o rascunho permanece associado à sua
+                  conta.
+                </p>
+              </CardHeader>
+              <CardContent>
+                {step === 1 ? (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label>
+                      Nome artístico
+                      <Input
+                        required
+                        value={form.stageName}
+                        onChange={event =>
+                          update("stageName", event.target.value)
+                        }
+                        placeholder="Ex.: Marina"
+                        className="mt-2 border-white/10 bg-white/5 text-white"
+                      />
+                    </label>
+                    <label>
+                      Slug público
+                      <Input
+                        required
+                        value={form.slug}
+                        onChange={event => update("slug", event.target.value)}
+                        placeholder="marina-sp"
+                        className="mt-2 border-white/10 bg-white/5 text-white"
+                      />
+                    </label>
+                    <label>
+                      Idade
+                      <Input
+                        required
+                        type="number"
+                        min={18}
+                        max={99}
+                        value={form.age}
+                        onChange={event => update("age", event.target.value)}
+                        placeholder="25"
+                        className="mt-2 border-white/10 bg-white/5 text-white"
+                      />
+                    </label>
+                    <label>
+                      Cidade
+                      <Input
+                        required
+                        value={form.city}
+                        onChange={event => update("city", event.target.value)}
+                        placeholder="São Paulo"
+                        className="mt-2 border-white/10 bg-white/5 text-white"
+                      />
+                    </label>
+                    <label>
+                      Estado/região
+                      <Input
+                        value={form.region}
+                        onChange={event => update("region", event.target.value)}
+                        placeholder="SP"
+                        className="mt-2 border-white/10 bg-white/5 text-white"
+                      />
+                    </label>
+                    <label>
+                      Localização aproximada
+                      <Input
+                        value={form.locationNote}
+                        onChange={event =>
+                          update("locationNote", event.target.value)
+                        }
+                        placeholder="Região central — sem endereço"
+                        className="mt-2 border-white/10 bg-white/5 text-white"
+                      />
+                    </label>
+                  </div>
+                ) : step === 2 ? (
+                  <div className="grid gap-4">
+                    <label>
+                      Bio pública
+                      <Textarea
+                        value={form.description}
+                        onChange={event =>
+                          update("description", event.target.value)
+                        }
+                        placeholder="Escreva uma apresentação clara sobre você e o seu atendimento."
+                        className="mt-2 min-h-32 border-white/10 bg-white/5 text-white"
+                      />
+                    </label>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <label>
+                        Categorias
+                        <span className="field-hint">
+                          separadas por vírgula
+                        </span>
+                        <Input
+                          value={form.categories}
+                          onChange={event =>
+                            update("categories", event.target.value)
+                          }
+                          className="mt-2 border-white/10 bg-white/5 text-white"
+                        />
+                      </label>
+                      <label>
+                        Atributos
+                        <span className="field-hint">
+                          separados por vírgula
+                        </span>
+                        <Input
+                          value={form.attributes}
+                          onChange={event =>
+                            update("attributes", event.target.value)
+                          }
+                          className="mt-2 border-white/10 bg-white/5 text-white"
+                        />
+                      </label>
+                      <label>
+                        Preferências
+                        <span className="field-hint">
+                          separadas por vírgula
+                        </span>
+                        <Input
+                          value={form.preferences}
+                          onChange={event =>
+                            update("preferences", event.target.value)
+                          }
+                          className="mt-2 border-white/10 bg-white/5 text-white"
+                        />
+                      </label>
+                      <label>
+                        Idiomas
+                        <span className="field-hint">
+                          separados por vírgula
+                        </span>
+                        <Input
+                          value={form.languages}
+                          onChange={event =>
+                            update("languages", event.target.value)
+                          }
+                          className="mt-2 border-white/10 bg-white/5 text-white"
+                        />
+                      </label>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-black/10 p-4">
+                      <label className="flex items-center gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={form.isAvailableNow}
+                          onChange={event =>
+                            update("isAvailableNow", event.target.checked)
+                          }
+                          className="accent-[#ff4764]"
+                        />{" "}
+                        Disponível agora
+                      </label>
+                      <Input
+                        value={form.availabilityLabel}
+                        onChange={event =>
+                          update("availabilityLabel", event.target.value)
+                        }
+                        placeholder="Ex.: Agenda aberta esta semana"
+                        className="mt-3 border-white/10 bg-white/5 text-white"
+                      />
+                    </div>
+                    <label>
+                      Formas de contato
+                      <span className="field-hint">
+                        informe os canais que deseja publicar
+                      </span>
+                      <Input
+                        value={form.contactOptions}
+                        onChange={event =>
+                          update("contactOptions", event.target.value)
+                        }
+                        className="mt-2 border-white/10 bg-white/5 text-white"
+                      />
+                    </label>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <label>
+                        Telefone
+                        <Input
+                          value={form.phone}
+                          onChange={event =>
+                            update("phone", event.target.value)
+                          }
+                          placeholder="(00) 00000-0000"
+                          className="mt-2 border-white/10 bg-white/5 text-white"
+                        />
+                      </label>
+                      <label>
+                        WhatsApp
+                        <Input
+                          value={form.whatsapp}
+                          onChange={event =>
+                            update("whatsapp", event.target.value)
+                          }
+                          placeholder="(00) 00000-0000"
+                          className="mt-2 border-white/10 bg-white/5 text-white"
+                        />
+                      </label>
+                      <label>
+                        Telegram
+                        <Input
+                          value={form.telegram}
+                          onChange={event =>
+                            update("telegram", event.target.value)
+                          }
+                          placeholder="@seuusuario"
+                          className="mt-2 border-white/10 bg-white/5 text-white"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-xs leading-5 text-[#ffb0a7]">
+                      Publique somente canais sob seu controle e revise os dados
+                      antes de enviar o perfil para moderação.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="rounded-2xl border border-[#ff4764]/30 bg-[#ff4764]/10 p-5">
+                      <p className="eyebrow">Preview público</p>
+                      <div className="mt-4 flex items-start gap-4">
+                        <div className="profile-fallback preview-avatar">
+                          {(form.stageName || "?").slice(0, 1)}
+                        </div>
+                        <div>
+                          <h2 className="font-display text-3xl">
+                            {form.stageName || "Seu nome artístico"}
+                            {form.age ? (
+                              <span className="ml-2 text-base font-normal text-white/50">
+                                {form.age}
+                              </span>
+                            ) : null}
+                          </h2>
+                          <p className="mt-1 text-sm text-white/55">
+                            {form.city || "Sua cidade"}
+                            {form.region ? `, ${form.region}` : ""}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {listValue(form.categories).map(item => (
+                              <Badge
+                                key={item}
+                                variant="outline"
+                                className="border-white/20 text-white/70"
+                              >
+                                {item}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="mt-5 text-sm leading-6 text-white/65">
+                        {form.description || "Sua bio aparecerá aqui."}
+                      </p>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs uppercase tracking-[.16em] text-white/40">
+                            Preferências
+                          </p>
+                          <p className="mt-2 text-sm text-white/65">
+                            {listValue(form.preferences).join(" · ") ||
+                              "Não informado"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-[.16em] text-white/40">
+                            Disponibilidade
+                          </p>
+                          <p className="mt-2 text-sm text-[#ffb0a7]">
+                            {form.isAvailableNow
+                              ? "Disponível agora"
+                              : form.availabilityLabel ||
+                                "Consulte disponibilidade"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="eyebrow">Galeria</p>
+                      <p className="mt-2 text-sm text-white/50">
+                        Envie imagens adequadas para publicação. Cada arquivo
+                        entra na fila de moderação antes de aparecer na vitrine.
+                      </p>
+                      {selectedProfileId ? (
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <label className="cursor-pointer rounded-xl border border-dashed border-white/15 p-4 text-sm text-white/60 hover:border-[#ff4764]/50">
+                            <ImagePlus className="mb-2 h-5 w-5 text-[#ff4764]" />
+                            Adicionar foto
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={event => uploadMedia(event, "photo")}
+                            />
+                          </label>
+                          <label className="cursor-pointer rounded-xl border border-dashed border-white/15 p-4 text-sm text-white/60 hover:border-[#ff4764]/50">
+                            <ImagePlus className="mb-2 h-5 w-5 text-[#ff4764]" />
+                            Adicionar vídeo
+                            <input
+                              type="file"
+                              accept="video/*"
+                              className="hidden"
+                              onChange={event => uploadMedia(event, "video")}
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        <p className="mt-4 rounded-xl border border-white/10 p-4 text-sm text-white/45">
+                          Salve o rascunho para liberar a galeria.
+                        </p>
+                      )}
+                      {media.length ? (
+                        <div className="mt-5 grid grid-cols-2 gap-3">
+                          {media.map(item => (
+                            <div
+                              key={item.id}
+                              className="rounded-xl border border-white/10 bg-white/[.03] p-3 text-xs text-white/55"
+                            >
+                              {item.kind === "photo" ? (
+                                <img
+                                  src={item.url}
+                                  alt={item.title || "Mídia do perfil"}
+                                  className="h-28 w-full rounded-lg object-cover"
+                                />
+                              ) : (
+                                <video
+                                  src={item.url}
+                                  controls
+                                  className="h-28 w-full rounded-lg object-cover"
+                                />
+                              )}
+                              <p className="mt-2">
+                                {item.status === "approved"
+                                  ? "Aprovada"
+                                  : "Aguardando moderação"}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            <div className="mt-5 flex flex-wrap justify-between gap-3">
+              <div className="flex gap-2">
+                {step > 1 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setStep(step - 1)}
+                    className="border-white/15 bg-transparent text-white"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Voltar
+                  </Button>
+                ) : null}
+                {step < 3 ? (
+                  <Button
+                    type="button"
+                    onClick={() => setStep(step + 1)}
+                    className="bg-[#ff4764] text-[#222222]"
+                  >
+                    Continuar
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => submit(false)}
+                  disabled={save.isPending}
+                  className="border-white/15 bg-transparent text-white"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar rascunho
+                </Button>
+                {step === 3 ? (
+                  <Button
+                    type="button"
+                    onClick={() => submit(true)}
+                    disabled={save.isPending}
+                    className="bg-[#ff4764] text-[#222222]"
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    Enviar para moderação
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </section>
+          <aside>
+            <Card className="border-[#ff4764]/30 bg-[#ff4764]/10">
+              <CardContent className="p-6">
+                <p className="eyebrow">Antes de publicar</p>
+                <h2 className="mt-3 font-display text-3xl">
+                  Revise antes de publicar.
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-white/65">
+                  Confira sua descrição, localização, contatos e galeria. Evite
+                  incluir dados sensíveis em campos públicos.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="mt-5 border-white/10 bg-white/5">
+              <CardHeader>
+                <CardTitle className="text-white">Meus perfis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {mine.length ? (
+                  <div className="space-y-1">
+                    {mine.map(profile => (
+                      <button
+                        type="button"
+                        key={profile.id}
+                        onClick={() => fillFromProfile(profile)}
+                        className={`flex w-full items-center justify-between rounded-lg border-b border-white/10 px-2 py-3 text-left last:border-0 ${selectedProfileId === profile.id ? "bg-white/10" : ""}`}
+                      >
+                        <div>
+                          <p className="font-medium">{profile.stageName}</p>
+                          <p className="text-xs text-white/45">
+                            {profile.city}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className="border-white/15 text-white/65"
+                        >
+                          {profile.status}
+                        </Badge>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/45">
+                    Nenhum perfil criado. Salve o primeiro rascunho.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
+      </main>
+    </div>
+  );
 }
