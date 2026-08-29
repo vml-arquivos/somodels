@@ -156,3 +156,19 @@ O restart `hrezcafsxe1ozr3ojszjpwk7` concluiu o ciclo de healthcheck. Os logs mo
 Validação pública após o restart: `https://somodels.buscarr.com.br/healthz` respondeu HTTP 200 com `database:true`; a home respondeu HTTP 200 e exibe a abertura pública bloqueada até provedor real de idade, conforme postura fail-closed. O host temporário SSLIP continuou retornando `503 no available server`, mas o domínio principal, que está atrás do Cloudflare, encaminhou corretamente. A rota `/login` também está publicada e informa a troca obrigatória da senha no primeiro acesso.
 
 Redeploy do commit `d14e2e7`: o Coolify identificou o branch `feat/production-reconciliation-marketplace`, iniciou a build Dockerfile e concluiu localmente `pnpm check && pnpm build`; o deployment ainda estava em andamento na etapa de exportação/troca do container durante a última observação. Nenhum valor de ambiente ou credencial foi registrado.
+
+
+## Atualização de acompanhamento visual — 2026-08-29
+
+O deployment `xbmutt2bpoxiktf2zec84kk6` do commit `a2928e9` (`feat: apply editorial okc-inspired visual system`) foi iniciado no Coolify para o branch `feat/production-reconciliation-marketplace`. Na verificação do painel, a aplicação permanecia marcada como `Running`; o build havia concluído as etapas de compilação e a imagem estava em exportação/unpack, sem erro de build exibido. O deployment ainda estava marcado como `In progress` naquele instante.
+
+Fonte: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/xbmutt2bpoxiktf2zec84kk6
+
+Nenhuma senha, token, URL de conexão ou valor de variável foi registrado.
+
+
+## Conclusão do deploy visual — 2026-08-29
+
+O deployment `xbmutt2bpoxiktf2zec84kk6` do commit `a2928e9` concluiu a build e o Coolify registrou o novo container como saudável. O log observado mostra `Healthcheck URL (inside the container): GET http://localhost:3000/healthz`, `Healthcheck status: healthy`, `New container is healthy` e remoção dos containers antigos. O recurso permanece `Running` no painel. Nenhum segredo foi registrado.
+
+Fonte: https://coolifycar.casadf.com.br/project/yrld0mp30fxxj5qnuz0wb70n/environment/wbfn3zzcbzbjwwrccucuz5xm/application/jmbtzrudav5fyjidtbdrcmcz/deployment/xbmutt2bpoxiktf2zec84kk6

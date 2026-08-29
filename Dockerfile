@@ -6,6 +6,9 @@ COPY patches ./patches
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
 RUN pnpm check && pnpm build
+# Coolify/Cloudflare must serve the same-origin CSS without a CORS mode that
+# can leave the stylesheet unloaded when the proxy omits ACAO on cached assets.
+RUN sed -i 's/ crossorigin=""//g; s/ crossorigin//g' /app/dist/public/index.html
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
