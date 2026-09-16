@@ -11,7 +11,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { storagePut } from "../storage";
-import { getOwnerProfile, isDatabaseReady, listPublishedProfiles } from "../db";
+import { getIdentityVerification, getOwnerProfile, isDatabaseReady, listPublishedProfiles } from "../db";
 import { assertProductionConfig, ENV, runtimeConfigStatus } from "./env";
 import { bootstrapLocalAccounts } from "../auth";
 
@@ -92,7 +92,12 @@ async function startServer() {
   app.post("/api/upload/media", async (req, res) => {
     try {
       const ctx = await createContext({ req, res } as any);
-      if (!ctx.user) return res.status(401).json({ error: "Não autenticado" });
+      if (!ctx.user || ctx.user.accountStatus !== "active") return res.status(401).json({ error: "Não autenticado" });
+      if (ctx.user.mustChangePassword) return res.status(403).json({ error: "Altere sua senha antes de continuar" });
+      if (ENV.requireIdentityVerification) {
+        const identity = await getIdentityVerification(ctx.user.id);
+        if (identity?.status !== "approved") return res.status(403).json({ error: "Verificação de identidade obrigatória" });
+      }
       const { profileId, kind, filename, contentType, data } = req.body ?? {};
       if (!profileId || !kind || !filename || !contentType || typeof data !== "string") return res.status(400).json({ error: "Dados de upload incompletos" });
       if (!["photo", "video"].includes(kind)) return res.status(400).json({ error: "Tipo de mídia inválido" });

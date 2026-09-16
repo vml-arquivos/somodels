@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createContext } from "./context";
 import { ENV, runtimeConfigStatus } from "./env";
 import { hashToken } from "../auth-crypto";
-import { getApprovedAgeVerification, getMediaByStorageKey, hasPremiumAccess } from "../db";
+import { getApprovedAgeVerification, getMediaByStorageKey, hasPremiumAccess, isMediaProfilePublic } from "../db";
 
 const AGE_COOKIE = "so_age_session";
 
@@ -24,7 +24,7 @@ export function registerStorageProxy(app: Express) {
     }
 
     const media = await getMediaByStorageKey(key);
-    if (!media || media.status !== "approved") {
+    if (!media || media.status !== "approved" || !(await isMediaProfilePublic(media.profileId))) {
       res.status(404).send("Media not found");
       return;
     }

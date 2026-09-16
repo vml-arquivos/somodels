@@ -21,3 +21,7 @@ O bootstrap opcional usa `BOOTSTRAP_SUPER_ADMIN_EMAIL`, `BOOTSTRAP_SUPER_ADMIN_P
 ## Documentação operacional
 
 A estratégia de reconciliação está em [`docs/RECONCILIATION_REPORT.md`](docs/RECONCILIATION_REPORT.md), as variáveis em [`docs/COOLIFY_ENV.md`](docs/COOLIFY_ENV.md), o runbook de segurança em [`docs/SECURITY_COMPLIANCE.md`](docs/SECURITY_COMPLIANCE.md), o deploy em [`docs/DEPLOYMENT_EVIDENCE.md`](docs/DEPLOYMENT_EVIDENCE.md) e o rollback/backup em [`docs/OPERATIONS.md`](docs/OPERATIONS.md). Nenhum desses arquivos contém segredos, documentos pessoais ou URLs assinadas.
+
+## Atualização de segurança de 16/09/2026
+
+Este pacote inclui correções de autorização e proteção de dados. Não constitui liberação para cadastros reais ou produção. Consulte `docs/SECURITY-HARDENING-2026-09-16.md` e os resultados de validação associados antes de implantar. Contas existentes não são reativadas ou promovidas pelo bootstrap, e a troca obrigatória de senha passa a ser exigida pela API.

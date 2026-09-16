@@ -3,7 +3,7 @@ import type { User } from "../drizzle/schema";
 import { COOKIE_NAME } from "@shared/const";
 import { getLocalSessionCookieOptions, getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, authenticatedProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { ENV, runtimeConfigStatus } from "./_core/env";
 import { LOCAL_SESSION_COOKIE, assertPasswordPolicy, authenticateLocalUser, changePassword, createLocalSession, registerTestUser, revokeLocalSession } from "./auth";
 import {
@@ -33,8 +33,8 @@ const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 const ageCookie = "so_age_session";
 
 function getClientKey(req: { ip?: string; headers: Record<string, unknown> }) {
-  const forwarded = req.headers["x-forwarded-for"];
-  return typeof forwarded === "string" ? forwarded.split(",")[0].trim() : req.ip ?? "unknown";
+  // Express applies the configured trusted proxy policy before exposing req.ip.
+  return req.ip ?? "unknown";
 }
 
 function assertLoginRateLimit(req: { ip?: string; headers: Record<string, unknown> }) {
@@ -125,7 +125,7 @@ export const appRouter = router({
         await writeAuditLog({ actorUserId: user.id, action: "auth.login", entityType: "user", entityId: user.id });
         return { user: publicUser(user), mustChangePassword: user.mustChangePassword };
       }),
-    changePassword: protectedProcedure
+    changePassword: authenticatedProcedure
       .input(z.object({ currentPassword: z.string().min(1).max(200), nextPassword: z.string().min(16).max(200) }))
       .mutation(async ({ ctx, input }) => {
         await changePassword(ctx.user.id, input.currentPassword, input.nextPassword);

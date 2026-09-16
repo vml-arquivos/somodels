@@ -102,6 +102,7 @@ export async function createLocalUser(input: {
   password: string;
   role: "user" | "admin" | "super_admin" | "dev";
   mustChangePassword?: boolean;
+  rejectExisting?: boolean;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -110,23 +111,9 @@ export async function createLocalUser(input: {
   const openId = `local:${createHash("sha256").update(email).digest("hex").slice(0, 48)}`;
   const existing = (await getUserByEmail(email)) ?? (await getUserByOpenId(openId));
   if (existing) {
-    const updates: any = {
-      email,
-      name: input.name,
-      loginMethod: "password",
-      role: input.role,
-      accountStatus: "active",
-    };
-    // Bootstrap credentials are only refreshed while the account is still pending
-    // its first password rotation. A rotated account must never be reset on restart.
-    if (!existing.passwordHash || existing.mustChangePassword) {
-      updates.loginMethod = "password";
-      updates.passwordHash = passwordHash;
-      updates.emailVerifiedAt = new Date();
-      updates.mustChangePassword = input.mustChangePassword ?? true;
-    }
-    await db.update(users).set(updates).where(eq(users.id, existing.id));
-    return getUserByEmail(email);
+    if (input.rejectExisting) throw new Error("Conta já existente");
+    // Bootstrap must never reactivate, promote, rename or reset an existing account.
+    return existing;
   }
   await db.insert(users).values({
     openId,
@@ -134,7 +121,7 @@ export async function createLocalUser(input: {
     name: input.name,
     loginMethod: "password",
     passwordHash,
-    emailVerifiedAt: new Date(),
+    emailVerifiedAt: null,
     mustChangePassword: input.mustChangePassword ?? true,
     role: input.role,
     accountStatus: "active",
@@ -289,6 +276,10 @@ export function hydratePublicProfile(row: any) {
   };
 }
 
+function activeProfileOwner() {
+  return sql`EXISTS (SELECT 1 FROM ${users} WHERE ${users.id} = ${profiles.ownerId} AND ${users.accountStatus} = 'active')`;
+}
+
 export async function listPublishedProfiles(input: {
   search?: string;
   city?: string;
@@ -299,8 +290,8 @@ export async function listPublishedProfiles(input: {
 }) {
   const db = await getDb();
   if (!db || input.publicAllowed === false) return [];
-  const conditions: any[] = [eq(profiles.status, "approved"), eq(profiles.isPublished, true)];
-  if (!ENV.allowFakeData) conditions.push(eq(profiles.isDemo, false));
+  const conditions: any[] = [eq(profiles.status, "approved"), eq(profiles.isPublished, true), activeProfileOwner()];
+  if (!ENV.allowFakeData) conditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
   if (input.city) conditions.push(eq(profiles.city, input.city));
   if (input.search) conditions.push(or(like(profiles.stageName, `%${input.search}%`), like(profiles.description, `%${input.search}%`)));
   if (input.category) conditions.push(like(profiles.categories, `%${input.category}%`));
@@ -317,13 +308,13 @@ export async function listPublishedProfiles(input: {
 export async function getPublicProfile(slug: string, publicAllowed = true) {
   const db = await getDb();
   if (!db || !publicAllowed) return null;
-  const profileConditions: any[] = [eq(profiles.slug, slug), eq(profiles.status, "approved"), eq(profiles.isPublished, true)];
-  if (!ENV.allowFakeData) profileConditions.push(eq(profiles.isDemo, false));
+  const profileConditions: any[] = [activeProfileOwner(), eq(profiles.slug, slug), eq(profiles.status, "approved"), eq(profiles.isPublished, true)];
+  if (!ENV.allowFakeData) profileConditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
   const rows = await db.select().from(profiles).where(and(...profileConditions)).limit(1);
   if (!rows[0]) return null;
   const media = await db.select().from(profileMedia).where(and(eq(profileMedia.profileId, rows[0].id), eq(profileMedia.status, "approved"))).orderBy(asc(profileMedia.sortOrder), desc(profileMedia.createdAt));
-  const relatedConditions: any[] = [eq(profiles.status, "approved"), eq(profiles.isPublished, true), ne(profiles.id, rows[0].id), eq(profiles.city, rows[0].city)];
-  if (!ENV.allowFakeData) relatedConditions.push(eq(profiles.isDemo, false));
+  const relatedConditions: any[] = [activeProfileOwner(), eq(profiles.status, "approved"), eq(profiles.isPublished, true), ne(profiles.id, rows[0].id), eq(profiles.city, rows[0].city)];
+  if (!ENV.allowFakeData) relatedConditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
   const relatedRows = await db.select().from(profiles).where(and(...relatedConditions)).orderBy(desc(profiles.isFeatured), desc(profiles.updatedAt)).limit(4);
   return { profile: hydratePublicProfile(rows[0]), media, related: relatedRows.map(hydratePublicProfile) };
 }
@@ -469,6 +460,18 @@ export async function getMediaByStorageHash(storageHash: string) {
   if (!db) return undefined;
   const rows = await db.select().from(profileMedia).where(eq(profileMedia.storageHash, storageHash)).limit(1);
   return rows[0];
+}
+
+export async function isMediaProfilePublic(profileId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await db.select({ id: profiles.id }).from(profiles)
+    .innerJoin(users, eq(users.id, profiles.ownerId))
+    .where(and(eq(profiles.id, profileId), eq(profiles.status, "approved"),
+      eq(profiles.isPublished, true), eq(users.accountStatus, "active"),
+      ...(!ENV.allowFakeData ? [eq(profiles.isDemo, false), eq(profiles.isTest, false)] : [])))
+    .limit(1);
+  return Boolean(rows[0]);
 }
 
 export async function getMediaByStorageKey(storageKey: string) {

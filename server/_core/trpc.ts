@@ -14,7 +14,7 @@ export const publicProcedure = t.procedure;
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
 
-  if (!ctx.user) {
+  if (!ctx.user || ctx.user.accountStatus !== "active") {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   }
 
@@ -26,13 +26,20 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser);
+// Password rotation itself must remain accessible to an active account.
+export const authenticatedProcedure = t.procedure.use(requireUser);
+export const protectedProcedure = authenticatedProcedure.use(async ({ ctx, next }) => {
+  if (ctx.user.mustChangePassword) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Altere sua senha antes de continuar" });
+  }
+  return next({ ctx });
+});
 
-export const adminProcedure = t.procedure.use(
+export const adminProcedure = protectedProcedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;
 
-    const configuredAdmin = ctx.user?.email ? ENV.adminEmails.includes(ctx.user.email.toLowerCase()) : false;
+    const configuredAdmin = ctx.user?.email && ctx.user.emailVerifiedAt ? ENV.adminEmails.includes(ctx.user.email.toLowerCase()) : false;
     if (!ctx.user || (!['admin', 'super_admin', 'dev'].includes(ctx.user.role) && !configuredAdmin)) {
       throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
     }

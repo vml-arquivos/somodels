@@ -312,8 +312,8 @@ class SDKServer {
       }
     }
 
-    if (!user) {
-      throw ForbiddenError("User not found");
+    if (!user || user.accountStatus !== "active") {
+      throw ForbiddenError("Account unavailable");
     }
 
     await db.upsertUser({

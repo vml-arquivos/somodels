@@ -48,6 +48,7 @@ export async function registerTestUser(input: { email: string; password: string;
     name: input.name.trim(),
     role: "user",
     mustChangePassword: false,
+    rejectExisting: true,
   });
   if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível criar a conta de teste" });
   return user;
