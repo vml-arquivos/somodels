@@ -1,34 +1,80 @@
-import { FormEvent, useState } from "react";
-import { Link, useLocation } from "wouter";
-import { ArrowLeft, KeyRound, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
-
+import StudioHeader from "@/components/StudioHeader";
 export default function ChangePasswordPage() {
   const [, navigate] = useLocation();
-  const returnTo = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("returnTo") || "/admin" : "/admin";
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [nextPassword, setNextPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
-  const changePassword = trpc.auth.changePassword.useMutation({
-    onSuccess: () => {
-      toast.success("Senha alterada. Faça login novamente.");
-      navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`);
-    },
-    onError: error => toast.error(error.message),
+  const [currentPassword, setCurrentPassword] = useState(""),
+    [nextPassword, setNextPassword] = useState(""),
+    [confirmation, setConfirmation] = useState(""),
+    [error, setError] = useState("");
+  const change = trpc.auth.changePassword.useMutation({
+    onSuccess: () => navigate("/login"),
+    onError: e => setError(e.message),
   });
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    if (nextPassword !== confirmation) {
-      toast.error("A confirmação não coincide com a nova senha.");
-      return;
-    }
-    changePassword.mutate({ currentPassword, nextPassword });
-  };
-
-  return <div className="min-h-screen bg-[#222222] px-4 py-8 text-white"><header className="mx-auto flex max-w-6xl items-center justify-between"><Link href="/"><span className="brand-mark">Só <i>Models</i></span></Link><Link href={returnTo}><Button variant="outline" className="border-white/15 bg-transparent text-white"><ArrowLeft className="mr-2 h-4 w-4"/>Painel</Button></Link></header><main className="mx-auto max-w-xl py-16"><Card className="border-white/10 bg-white/5"><CardHeader><CardTitle className="flex items-center gap-2 text-white"><KeyRound className="h-5 w-5 text-[#ff4764]"/>Trocar senha temporária</CardTitle></CardHeader><CardContent><p className="mb-6 text-sm leading-6 text-white/55">Defina uma senha exclusiva com pelo menos 16 caracteres, incluindo letras maiúsculas, minúsculas e números.</p><form onSubmit={submit} className="space-y-5"><label className="block text-sm text-white/70">Senha atual<Input type="password" autoComplete="current-password" required value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} className="mt-2 border-white/10 bg-white/5 text-white"/></label><label className="block text-sm text-white/70">Nova senha<Input type="password" autoComplete="new-password" required minLength={16} value={nextPassword} onChange={event => setNextPassword(event.target.value)} className="mt-2 border-white/10 bg-white/5 text-white"/></label><label className="block text-sm text-white/70">Confirmar nova senha<Input type="password" autoComplete="new-password" required minLength={16} value={confirmation} onChange={event => setConfirmation(event.target.value)} className="mt-2 border-white/10 bg-white/5 text-white"/></label><Button type="submit" disabled={changePassword.isPending} className="w-full bg-[#ff4764] text-[#222222]">{changePassword.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Salvando…</> : "Salvar nova senha"}</Button></form></CardContent></Card></main></div>;
+  return (
+    <div className="studio">
+      <StudioHeader />
+      <main className="studio-main studio-narrow">
+        <section className="studio-panel">
+          <h1>Alterar senha</h1>
+          <p>
+            Use pelo menos 16 caracteres, com letras maiúsculas, minúsculas e
+            números.
+          </p>
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              if (nextPassword !== confirmation)
+                return setError("As senhas não coincidem");
+              setError("");
+              change.mutate({ currentPassword, nextPassword });
+            }}
+          >
+            <label>
+              Senha atual
+              <input
+                type="password"
+                autoComplete="current-password"
+                required
+                maxLength={200}
+                value={currentPassword}
+                onChange={e => setCurrentPassword(e.target.value)}
+              />
+            </label>
+            <label>
+              Nova senha
+              <input
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={16}
+                maxLength={200}
+                value={nextPassword}
+                onChange={e => setNextPassword(e.target.value)}
+              />
+            </label>
+            <label>
+              Confirmar nova senha
+              <input
+                type="password"
+                autoComplete="new-password"
+                required
+                value={confirmation}
+                onChange={e => setConfirmation(e.target.value)}
+              />
+            </label>
+            {error && (
+              <p className="studio-error" role="alert">
+                {error}
+              </p>
+            )}
+            <button className="primary" disabled={change.isPending}>
+              Salvar e entrar novamente
+            </button>
+          </form>
+        </section>
+      </main>
+    </div>
+  );
 }

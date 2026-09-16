@@ -1,3 +1,4 @@
+vi.mock("./site-config", () => ({ readSiteSettings: async () => ({ showGallery: true }) }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const db = vi.hoisted(() => ({ getApprovedAgeVerification: vi.fn(), getMediaByStorageKey: vi.fn(), hasPremiumAccess: vi.fn(), isMediaProfilePublic: vi.fn() }));
 vi.mock("./db", () => db);

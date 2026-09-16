@@ -36,6 +36,13 @@
       "when": 1788009785548,
       "tag": "0004_add-profile-location-note",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1789599834223,
+      "tag": "0005_portfolio_management",
+      "breakpoints": true
     }
   ]
 }

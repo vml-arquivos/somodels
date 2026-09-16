@@ -160,6 +160,7 @@ export const profiles = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     ownerId: int("ownerId").notNull(),
     slug: varchar("slug", { length: 160 }).notNull().unique(),
+    portfolioReviewed: boolean("portfolioReviewed").default(false).notNull(),
     stageName: varchar("stageName", { length: 120 }).notNull(),
     age: int("age"),
     description: text("description"),
@@ -516,3 +517,20 @@ export type ProfileMedia = typeof profileMedia.$inferSelect;
 export type InsertProfileMedia = typeof profileMedia.$inferInsert;
 export type AgeVerification = typeof ageVerifications.$inferSelect;
 export type IdentityVerification = typeof identityVerifications.$inferSelect;
+
+export const siteSettings = mysqlTable("site_settings", {
+  id: int("id").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export const financeEntries = mysqlTable("finance_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  requestId: varchar("requestId", { length: 64 }).notNull().unique(),
+  kind: mysqlEnum("kind", ["income", "expense"]).notNull(),
+  description: varchar("description", { length: 250 }).notNull(),
+  amountCents: int("amountCents").notNull(),
+  occurredOn: varchar("occurredOn", { length: 10 }).notNull(),
+  createdBy: int("createdBy").notNull(),
+  voidedAt: timestamp("voidedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});

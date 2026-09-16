@@ -1,0 +1,64 @@
+Validação local da adaptação para portfólios profissionais.
+Nenhum banco real, conta ou perfil criado.
+Browser: prévia local bloqueada com ERR_BLOCKED_BY_CLIENT; QA visual e E2E não concluídos.
+
+COMMAND: corepack pnpm check
+EXIT: 0
+
+> so-models@1.0.0 check /workspace/scratch/3154b702a3d7/inspection/somodels-main
+> tsc --noEmit
+
+
+COMMAND: corepack pnpm test
+EXIT: 0
+
+> so-models@1.0.0 test /workspace/scratch/3154b702a3d7/inspection/somodels-main
+> vitest run
+
+
+ RUN  v2.1.9 /workspace/scratch/3154b702a3d7/inspection/somodels-main
+
+ ✓ server/storage-access.test.ts (3 tests) 7ms
+ ✓ server/security-access.test.ts (4 tests) 12ms
+ ✓ server/auth-crypto.test.ts (2 tests) 174ms
+ ✓ server/profiles.test.ts (3 tests) 4ms
+ ✓ server/password-reset.test.ts (4 tests) 16ms
+ ✓ server/account-creation-security.test.ts (3 tests) 31ms
+ ✓ server/auth.logout.test.ts (1 test) 5ms
+ ✓ server/portfolio-management.test.ts (7 tests) 16ms
+ ✓ server/profile.validation.test.ts (2 tests) 7ms
+
+ Test Files  9 passed (9)
+      Tests  29 passed (29)
+   Start at  18:19:20
+   Duration  2.17s (transform 1.01s, setup 0ms, collect 8.93s, tests 273ms, environment 2ms, prepare 778ms)
+
+
+COMMAND: corepack pnpm build
+EXIT: 0
+
+> so-models@1.0.0 build /workspace/scratch/3154b702a3d7/inspection/somodels-main
+> vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && esbuild scripts/seed-demo.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/seed-demo.mjs
+
+vite v7.1.9 building for production...
+transforming...
+✓ 1791 modules transformed.
+rendering chunks...
+computing gzip size...
+../dist/public/index.html                 367.76 kB │ gzip: 105.55 kB
+../dist/public/assets/index-CSb138fU.css  106.72 kB │ gzip:  19.10 kB
+../dist/public/assets/index-BK37z4NP.js   525.62 kB │ gzip: 154.63 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.08s
+
+  dist/index.js  115.2kb
+
+⚡ Done in 10ms
+
+  dist/seed-demo.mjs  161b 
+
+⚡ Done in 2ms

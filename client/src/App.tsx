@@ -1,3 +1,5 @@
+import "./studio.css";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
@@ -16,6 +18,7 @@ import TestSignupPage from "./pages/TestSignupPage";
 function Router() {
   return <Switch>
     <Route path="/" component={Home} />
+    <Route path="/redefinir-senha" component={ResetPasswordPage} />
     <Route path="/login" component={LoginPage} />
     <Route path="/alterar-senha" component={ChangePasswordPage} />
     <Route path="/cadastro-teste" component={TestSignupPage} />
@@ -29,5 +32,5 @@ function Router() {
 }
 
 export default function App() {
-  return <ErrorBoundary><ThemeProvider defaultTheme="dark"><TooltipProvider><Toaster /><Router /></TooltipProvider></ThemeProvider></ErrorBoundary>;
+  return <ErrorBoundary><ThemeProvider defaultTheme="dark" switchable><TooltipProvider><Toaster /><Router /></TooltipProvider></ThemeProvider></ErrorBoundary>;
 }

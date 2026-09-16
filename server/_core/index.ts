@@ -1,3 +1,6 @@
+import { getMediaById, getAdminProfile } from "../db";
+import { storageGetSignedUrl } from "../storage";
+import { readSiteSettings } from "../site-config";
 import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
@@ -76,7 +79,7 @@ async function startServer() {
     res.type("text/plain").send(body);
   });
   app.get("/sitemap.xml", async (_req, res) => {
-    if (ENV.robotsNoIndex || !ENV.publicAccessEnabled || !runtimeConfigStatus().ageVerification) {
+    if (ENV.robotsNoIndex || !ENV.publicAccessEnabled || !runtimeConfigStatus().ageVerification || !(await readSiteSettings()).showGallery) {
       res.type("application/xml").send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
       return;
     }
@@ -89,6 +92,19 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "140mb", extended: false }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  app.get("/api/media-preview/:id", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "private, no-store");
+      const ctx = await createContext({req,res} as any);
+      if (!ctx.user || ctx.user.accountStatus !== "active" || ctx.user.mustChangePassword) return res.status(403).send("Acesso negado");
+      const id = Number(req.params.id); if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).send("Arquivo inválido");
+      const media = await getMediaById(id);
+      if (!media) return res.status(404).send("Arquivo indisponível");
+      const profile = await getAdminProfile(media.profileId);
+      if (!profile || (profile.profile.ownerId !== ctx.user.id && !["admin","super_admin","dev"].includes(ctx.user.role))) return res.status(403).send("Acesso negado");
+      res.redirect(307, await storageGetSignedUrl(media.storageKey));
+    } catch { res.status(503).send("Não foi possível visualizar o arquivo"); }
+  });
   app.post("/api/upload/media", async (req, res) => {
     try {
       const ctx = await createContext({ req, res } as any);

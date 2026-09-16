@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "drizzle-kit generate --config=drizzle.config.ts && drizzle-kit migrate --config=drizzle.config.ts",
-    "db:seed-demo": "if [ -f dist/seed-demo.mjs ]; then node dist/seed-demo.mjs; else tsx scripts/seed-demo.ts; fi"
+    "db:seed-demo": "if [ -f dist/seed-demo.mjs ]; then node dist/seed-demo.mjs; else tsx scripts/seed-demo.ts; fi",
+    "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

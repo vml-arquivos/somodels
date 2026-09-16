@@ -23,7 +23,7 @@ export const systemRouter = router({
     ageVerificationRequired: ENV.requireAgeVerification,
     ageVerificationConfigured: runtimeConfigStatus().ageVerification,
     kycRequired: ENV.requireIdentityVerification,
-    paymentsEnabled: runtimeConfigStatus().payments,
+    paymentsEnabled: false,
   })),
 
   notifyOwner: adminProcedure

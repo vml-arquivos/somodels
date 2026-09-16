@@ -1,3 +1,4 @@
+import { portfolioCategories } from "../shared/portfolio";
 import { createHash } from "node:crypto";
 import { and, asc, desc, eq, like, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -36,7 +37,10 @@ export async function isDatabaseReady() {
   const db = await getDb();
   if (!db) return false;
   try {
-    await db.select({ value: sql<number>`1` }).from(users).limit(1);
+    await db
+      .select({ value: sql<number>`1` })
+      .from(users)
+      .limit(1);
     return true;
   } catch (error) {
     console.warn("[Database] Health check failed:", error);
@@ -59,8 +63,10 @@ export async function upsertUser(user: any): Promise<void> {
   // Never turn omitted identity fields into NULL on an existing local account.
   const updateSet: any = { lastSignedIn: values.lastSignedIn };
   if (user.name !== undefined && user.name !== null) updateSet.name = user.name;
-  if (user.email !== undefined && user.email !== null) updateSet.email = user.email;
-  if (user.loginMethod !== undefined && user.loginMethod !== null) updateSet.loginMethod = user.loginMethod;
+  if (user.email !== undefined && user.email !== null)
+    updateSet.email = user.email;
+  if (user.loginMethod !== undefined && user.loginMethod !== null)
+    updateSet.loginMethod = user.loginMethod;
   if (user.role) {
     values.role = user.role;
     updateSet.role = user.role;
@@ -72,20 +78,31 @@ export async function upsertUser(user: any): Promise<void> {
     values.emailVerifiedAt = user.emailVerifiedAt;
     updateSet.emailVerifiedAt = user.emailVerifiedAt;
   }
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  await db
+    .insert(users)
+    .values(values)
+    .onDuplicateKeyUpdate({ set: updateSet });
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const rows = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const rows = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
   return rows[0];
 }
 
 export async function getUserByEmail(email: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const rows = await db.select().from(users).where(eq(users.email, email.toLowerCase())).limit(1);
+  const rows = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email.toLowerCase()))
+    .limit(1);
   return rows[0];
 }
 
@@ -109,7 +126,8 @@ export async function createLocalUser(input: {
   const email = input.email.trim().toLowerCase();
   const passwordHash = await hashPassword(input.password);
   const openId = `local:${createHash("sha256").update(email).digest("hex").slice(0, 48)}`;
-  const existing = (await getUserByEmail(email)) ?? (await getUserByOpenId(openId));
+  const existing =
+    (await getUserByEmail(email)) ?? (await getUserByOpenId(openId));
   if (existing) {
     if (input.rejectExisting) throw new Error("Conta já existente");
     // Bootstrap must never reactivate, promote, rename or reset an existing account.
@@ -134,14 +152,23 @@ export async function updateUserPassword(userId: number, password: string) {
   if (!db) throw new Error("Database unavailable");
   await db
     .update(users)
-    .set({ passwordHash: await hashPassword(password), mustChangePassword: false })
+    .set({
+      passwordHash: await hashPassword(password),
+      mustChangePassword: false,
+    })
     .where(eq(users.id, userId));
 }
 
-export async function createAuthSession(userId: number, tokenHash: string, expiresAt: Date) {
+export async function createAuthSession(
+  userId: number,
+  tokenHash: string,
+  expiresAt: Date
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const inserted = await db.insert(authSessions).values({ userId, tokenHash, expiresAt });
+  const inserted = await db
+    .insert(authSessions)
+    .values({ userId, tokenHash, expiresAt });
   return Number(inserted[0].insertId);
 }
 
@@ -157,31 +184,50 @@ export async function getUserBySessionTokenHash(tokenHash: string) {
         eq(authSessions.tokenHash, tokenHash),
         sql`${authSessions.revokedAt} IS NULL`,
         sql`${authSessions.expiresAt} > UTC_TIMESTAMP()`,
-        eq(users.accountStatus, "active"),
-      ),
+        eq(users.accountStatus, "active")
+      )
     )
     .limit(1);
   if (!rows[0]) return undefined;
-  await db.update(authSessions).set({ lastSeenAt: new Date() }).where(eq(authSessions.id, rows[0].session.id));
+  await db
+    .update(authSessions)
+    .set({ lastSeenAt: new Date() })
+    .where(eq(authSessions.id, rows[0].session.id));
   return rows[0].user;
 }
 
 export async function revokeAuthSession(tokenHash: string) {
   const db = await getDb();
   if (!db) return;
-  await db.update(authSessions).set({ revokedAt: new Date() }).where(eq(authSessions.tokenHash, tokenHash));
+  await db
+    .update(authSessions)
+    .set({ revokedAt: new Date() })
+    .where(eq(authSessions.tokenHash, tokenHash));
 }
 
 export async function revokeAllAuthSessions(userId: number) {
   const db = await getDb();
   if (!db) return;
-  await db.update(authSessions).set({ revokedAt: new Date() }).where(and(eq(authSessions.userId, userId), sql`${authSessions.revokedAt} IS NULL`));
+  await db
+    .update(authSessions)
+    .set({ revokedAt: new Date() })
+    .where(
+      and(
+        eq(authSessions.userId, userId),
+        sql`${authSessions.revokedAt} IS NULL`
+      )
+    );
 }
 
-export async function createAgeVerificationSession(sessionTokenHash: string, options?: { status?: "pending" | "approved"; provider?: string }) {
+export async function createAgeVerificationSession(
+  sessionTokenHash: string,
+  options?: { status?: "pending" | "approved"; provider?: string }
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const expiresAt = new Date(Date.now() + ENV.ageVerificationTtlHours * 60 * 60 * 1000);
+  const expiresAt = new Date(
+    Date.now() + ENV.ageVerificationTtlHours * 60 * 60 * 1000
+  );
   await db
     .insert(ageVerifications)
     .values({
@@ -191,8 +237,18 @@ export async function createAgeVerificationSession(sessionTokenHash: string, opt
       expiresAt,
       jurisdiction: "BR",
     })
-    .onDuplicateKeyUpdate({ set: { status: options?.status ?? "pending", provider: options?.provider ?? (ENV.ageVerificationProvider || null), expiresAt, updatedAt: new Date() } });
-  return { status: (options?.status ?? "pending") as "pending" | "approved", expiresAt };
+    .onDuplicateKeyUpdate({
+      set: {
+        status: options?.status ?? "pending",
+        provider: options?.provider ?? (ENV.ageVerificationProvider || null),
+        expiresAt,
+        updatedAt: new Date(),
+      },
+    });
+  return {
+    status: (options?.status ?? "pending") as "pending" | "approved",
+    expiresAt,
+  };
 }
 
 export async function getApprovedAgeVerification(sessionTokenHash: string) {
@@ -205,8 +261,8 @@ export async function getApprovedAgeVerification(sessionTokenHash: string) {
       and(
         eq(ageVerifications.sessionTokenHash, sessionTokenHash),
         eq(ageVerifications.status, "approved"),
-        sql`${ageVerifications.expiresAt} > UTC_TIMESTAMP()`,
-      ),
+        sql`${ageVerifications.expiresAt} > UTC_TIMESTAMP()`
+      )
     )
     .limit(1);
   return Boolean(rows[0]);
@@ -265,7 +321,8 @@ export function hydrateProfile(row: any) {
 
 export function hydratePublicProfile(row: any) {
   const hydrated = hydrateProfile(row);
-  if (ENV.demoContactsEnabled) return hydrated;
+  if (!hydrated.isDemo && !hydrated.isTest && hydrated.portfolioReviewed)
+    return { ...hydrated, demoContactDisabled: false };
   return {
     ...hydrated,
     phone: null,
@@ -290,12 +347,26 @@ export async function listPublishedProfiles(input: {
 }) {
   const db = await getDb();
   if (!db || input.publicAllowed === false) return [];
-  const conditions: any[] = [eq(profiles.status, "approved"), eq(profiles.isPublished, true), activeProfileOwner()];
-  if (!ENV.allowFakeData) conditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
+  const conditions: any[] = [
+    eq(profiles.status, "approved"),
+    eq(profiles.isPublished, true),
+    eq(profiles.portfolioReviewed, true),
+    activeProfileOwner(),
+  ];
+  if (!ENV.allowFakeData)
+    conditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
   if (input.city) conditions.push(eq(profiles.city, input.city));
-  if (input.search) conditions.push(or(like(profiles.stageName, `%${input.search}%`), like(profiles.description, `%${input.search}%`)));
-  if (input.category) conditions.push(like(profiles.categories, `%${input.category}%`));
-  if (input.attribute) conditions.push(like(profiles.attributes, `%${input.attribute}%`));
+  if (input.search)
+    conditions.push(
+      or(
+        like(profiles.stageName, `%${input.search}%`),
+        like(profiles.description, `%${input.search}%`)
+      )
+    );
+  if (input.category)
+    conditions.push(like(profiles.categories, `%${input.category}%`));
+  if (input.attribute)
+    conditions.push(like(profiles.attributes, `%${input.attribute}%`));
   const rows = await db
     .select()
     .from(profiles)
@@ -308,42 +379,109 @@ export async function listPublishedProfiles(input: {
 export async function getPublicProfile(slug: string, publicAllowed = true) {
   const db = await getDb();
   if (!db || !publicAllowed) return null;
-  const profileConditions: any[] = [activeProfileOwner(), eq(profiles.slug, slug), eq(profiles.status, "approved"), eq(profiles.isPublished, true)];
-  if (!ENV.allowFakeData) profileConditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
-  const rows = await db.select().from(profiles).where(and(...profileConditions)).limit(1);
+  const profileConditions: any[] = [
+    activeProfileOwner(),
+    eq(profiles.slug, slug),
+    eq(profiles.status, "approved"),
+    eq(profiles.isPublished, true),
+    eq(profiles.portfolioReviewed, true),
+  ];
+  if (!ENV.allowFakeData)
+    profileConditions.push(
+      eq(profiles.isDemo, false),
+      eq(profiles.isTest, false)
+    );
+  const rows = await db
+    .select()
+    .from(profiles)
+    .where(and(...profileConditions))
+    .limit(1);
   if (!rows[0]) return null;
-  const media = await db.select().from(profileMedia).where(and(eq(profileMedia.profileId, rows[0].id), eq(profileMedia.status, "approved"))).orderBy(asc(profileMedia.sortOrder), desc(profileMedia.createdAt));
-  const relatedConditions: any[] = [activeProfileOwner(), eq(profiles.status, "approved"), eq(profiles.isPublished, true), ne(profiles.id, rows[0].id), eq(profiles.city, rows[0].city)];
-  if (!ENV.allowFakeData) relatedConditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
-  const relatedRows = await db.select().from(profiles).where(and(...relatedConditions)).orderBy(desc(profiles.isFeatured), desc(profiles.updatedAt)).limit(4);
-  return { profile: hydratePublicProfile(rows[0]), media, related: relatedRows.map(hydratePublicProfile) };
+  const media = await db
+    .select()
+    .from(profileMedia)
+    .where(
+      and(
+        eq(profileMedia.profileId, rows[0].id),
+        eq(profileMedia.status, "approved")
+      )
+    )
+    .orderBy(asc(profileMedia.sortOrder), desc(profileMedia.createdAt));
+  const relatedConditions: any[] = [
+    activeProfileOwner(),
+    eq(profiles.status, "approved"),
+    eq(profiles.isPublished, true),
+    eq(profiles.portfolioReviewed, true),
+    ne(profiles.id, rows[0].id),
+    eq(profiles.city, rows[0].city),
+  ];
+  if (!ENV.allowFakeData)
+    relatedConditions.push(
+      eq(profiles.isDemo, false),
+      eq(profiles.isTest, false)
+    );
+  const relatedRows = await db
+    .select()
+    .from(profiles)
+    .where(and(...relatedConditions))
+    .orderBy(desc(profiles.isFeatured), desc(profiles.updatedAt))
+    .limit(4);
+  return {
+    profile: hydratePublicProfile(rows[0]),
+    media,
+    related: relatedRows.map(hydratePublicProfile),
+  };
 }
 
 export async function getOwnerProfiles(ownerId: number) {
   const db = await getDb();
   if (!db) return [];
-  const rows = await db.select().from(profiles).where(eq(profiles.ownerId, ownerId)).orderBy(desc(profiles.updatedAt));
+  const rows = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.ownerId, ownerId))
+    .orderBy(desc(profiles.updatedAt));
   return rows.map(hydrateProfile);
 }
 
 export async function getOwnerProfile(ownerId: number, id: number) {
   const db = await getDb();
   if (!db) return null;
-  const rows = await db.select().from(profiles).where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId))).limit(1);
+  const rows = await db
+    .select()
+    .from(profiles)
+    .where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)))
+    .limit(1);
   if (!rows[0]) return null;
-  const media = await db.select().from(profileMedia).where(eq(profileMedia.profileId, id)).orderBy(asc(profileMedia.sortOrder), desc(profileMedia.createdAt));
+  const media = await db
+    .select()
+    .from(profileMedia)
+    .where(eq(profileMedia.profileId, id))
+    .orderBy(asc(profileMedia.sortOrder), desc(profileMedia.createdAt));
   return { profile: hydrateProfile(rows[0]), media };
 }
 
-export async function saveProfile(ownerId: number, input: Omit<InsertProfile, "ownerId">, id?: number, submitForReview = false) {
+export async function saveProfile(
+  ownerId: number,
+  input: Omit<InsertProfile, "ownerId">,
+  id?: number,
+  submitForReview = false
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const identity = await getIdentityVerification(ownerId);
-  if (submitForReview && ENV.requireIdentityVerification && identity?.status !== "approved") {
-    throw new Error("A verificação de identidade do anunciante é obrigatória antes do envio para análise");
+  if (
+    submitForReview &&
+    ENV.requireIdentityVerification &&
+    identity?.status !== "approved"
+  ) {
+    throw new Error(
+      "A verificação de identidade do anunciante é obrigatória antes do envio para análise"
+    );
   }
   const values: any = {
     ...input,
+    portfolioReviewed: false,
     ownerId,
     locationNote: input.locationNote ?? null,
     categories: serialize(input.categories),
@@ -351,125 +489,321 @@ export async function saveProfile(ownerId: number, input: Omit<InsertProfile, "o
     contactOptions: serialize(input.contactOptions),
     preferences: serialize(input.preferences),
     languages: serialize(input.languages),
-    phone: ENV.demoContactsEnabled ? input.phone ?? null : null,
-    whatsapp: ENV.demoContactsEnabled ? input.whatsapp ?? null : null,
-    telegram: ENV.demoContactsEnabled ? input.telegram ?? null : null,
+    phone: input.phone ?? null,
+    whatsapp: input.whatsapp ?? null,
+    telegram: input.telegram ?? null,
   };
   if (id) {
-    await db.update(profiles).set({ ...values, status: submitForReview ? "pending" : "draft", isPublished: false, rejectionReason: submitForReview ? null : undefined }).where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)));
-    await writeAuditLog({ actorUserId: ownerId, action: submitForReview ? "profile.submitted" : "profile.updated", entityType: "profile", entityId: id });
+    const [owned] = await db
+      .select({ id: profiles.id })
+      .from(profiles)
+      .where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)))
+      .limit(1);
+    if (!owned) throw new Error("Perfil não pertence à conta");
+    await db
+      .update(profiles)
+      .set({
+        ...values,
+        status: submitForReview ? "pending" : "draft",
+        isPublished: false,
+        rejectionReason: submitForReview ? null : undefined,
+      })
+      .where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)));
+    await writeAuditLog({
+      actorUserId: ownerId,
+      action: submitForReview ? "profile.submitted" : "profile.updated",
+      entityType: "profile",
+      entityId: id,
+    });
     return id;
   }
-  const inserted = await db.insert(profiles).values({ ...values, status: submitForReview ? "pending" : "draft", isPublished: false, isTest: ENV.allowFakeData, isDemo: ENV.allowFakeData, rejectionReason: null });
+  const inserted = await db
+    .insert(profiles)
+    .values({
+      ...values,
+      status: submitForReview ? "pending" : "draft",
+      isPublished: false,
+      isTest: ENV.allowFakeData,
+      isDemo: ENV.allowFakeData,
+      rejectionReason: null,
+    });
   const profileId = Number(inserted[0].insertId);
-  await writeAuditLog({ actorUserId: ownerId, action: submitForReview ? "profile.submitted" : "profile.created", entityType: "profile", entityId: profileId });
+  await writeAuditLog({
+    actorUserId: ownerId,
+    action: submitForReview ? "profile.submitted" : "profile.created",
+    entityType: "profile",
+    entityId: profileId,
+  });
   return profileId;
 }
 
-export async function createMedia(ownerId: number, input: Omit<InsertProfileMedia, "storageHash"> & { storageHash?: string }) {
+export async function createMedia(
+  ownerId: number,
+  input: Omit<InsertProfileMedia, "storageHash"> & { storageHash?: string }
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const identity = await getIdentityVerification(ownerId);
   if (ENV.requireIdentityVerification && identity?.status !== "approved") {
-    throw new Error("A verificação de identidade do anunciante é obrigatória antes do upload");
+    throw new Error(
+      "A verificação de identidade do anunciante é obrigatória antes do upload"
+    );
   }
-  const owned = await db.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.id, input.profileId), eq(profiles.ownerId, ownerId))).limit(1);
+  const owned = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(and(eq(profiles.id, input.profileId), eq(profiles.ownerId, ownerId)))
+    .limit(1);
   if (!owned[0]) throw new Error("Profile not owned by user");
-  const storageHash = input.storageHash ?? createHash("sha256").update(input.storageKey).digest("hex");
-  const inserted = await db.insert(profileMedia).values({ ...input, storageHash, status: "pending" });
+  if (
+    !input.storageKey.startsWith(`profiles/${ownerId}/${input.profileId}/`) ||
+    input.url !== `/manus-storage/${input.storageKey}`
+  )
+    throw new Error("Arquivo não pertence ao perfil");
+  if (input.isPremium)
+    throw new Error(
+      "Conteúdo pago não está disponível nesta plataforma de portfólios"
+    );
+  const storageHash =
+    input.storageHash ??
+    createHash("sha256").update(input.storageKey).digest("hex");
+  const inserted = await db
+    .insert(profileMedia)
+    .values({ ...input, storageHash, status: "pending" });
   const mediaId = Number(inserted[0].insertId);
-  await writeAuditLog({ actorUserId: ownerId, action: "media.created", entityType: "media", entityId: mediaId });
+  await writeAuditLog({
+    actorUserId: ownerId,
+    action: "media.created",
+    entityType: "media",
+    entityId: mediaId,
+  });
   return mediaId;
 }
 
 export async function hasPremiumAccess(userId: number, mediaId: number) {
   const db = await getDb();
   if (!db) return false;
-  const rows = await db.select({ id: premiumEntitlements.id }).from(premiumEntitlements).where(and(eq(premiumEntitlements.userId, userId), eq(premiumEntitlements.mediaId, mediaId), eq(premiumEntitlements.status, "paid"))).limit(1);
+  const rows = await db
+    .select({ id: premiumEntitlements.id })
+    .from(premiumEntitlements)
+    .where(
+      and(
+        eq(premiumEntitlements.userId, userId),
+        eq(premiumEntitlements.mediaId, mediaId),
+        eq(premiumEntitlements.status, "paid")
+      )
+    )
+    .limit(1);
   return Boolean(rows[0]);
 }
 
-export async function createPremiumIntent(userId: number, mediaId: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
-  if (!ENV.paymentsEnabled || !ENV.paymentProvider || !ENV.paymentApiKey || !ENV.paymentWebhookSecret) {
-    throw new Error("Pagamentos estão desativados até a aprovação e configuração de um provedor compatível");
-  }
-  const inserted = await db.insert(premiumEntitlements).values({ userId, mediaId, status: "pending", provider: ENV.paymentProvider }).onDuplicateKeyUpdate({ set: { status: "pending" } });
-  return { entitlementId: Number(inserted[0].insertId), status: "pending" as const };
+export async function createPremiumIntent(
+  _userId: number,
+  _mediaId: number
+): Promise<never> {
+  throw new Error(
+    "Pagamentos por conteúdo não fazem parte da plataforma de portfólios"
+  );
 }
 
 export async function listPendingProfiles() {
   const db = await getDb();
   if (!db) return [];
-  const rows = await db.select().from(profiles).where(eq(profiles.status, "pending")).orderBy(desc(profiles.updatedAt));
+  const rows = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.status, "pending"))
+    .orderBy(desc(profiles.updatedAt));
   return rows.map(hydrateProfile);
 }
 
 export async function listAdminProfiles() {
   const db = await getDb();
   if (!db) return [];
-  const rows = await db.select().from(profiles).orderBy(desc(profiles.updatedAt)).limit(200);
+  const rows = await db
+    .select()
+    .from(profiles)
+    .orderBy(desc(profiles.updatedAt))
+    .limit(200);
   return rows.map(hydrateProfile);
 }
 
-export async function listAdminUsers() {
+export async function listAdminUsers(actorRole = "admin") {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ id: users.id, name: users.name, email: users.email, role: users.role, accountStatus: users.accountStatus, createdAt: users.createdAt, lastSignedIn: users.lastSignedIn }).from(users).orderBy(desc(users.createdAt)).limit(200);
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      accountStatus: users.accountStatus,
+      createdAt: users.createdAt,
+      lastSignedIn: users.lastSignedIn,
+    })
+    .from(users)
+    .where(actorRole === "dev" ? undefined : ne(users.role, "dev"))
+    .orderBy(desc(users.createdAt))
+    .limit(200);
 }
 
 export async function getAdminProfile(id: number) {
   const db = await getDb();
   if (!db) return null;
-  const rows = await db.select().from(profiles).where(eq(profiles.id, id)).limit(1);
+  const rows = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.id, id))
+    .limit(1);
   if (!rows[0]) return null;
-  const media = await db.select().from(profileMedia).where(eq(profileMedia.profileId, id)).orderBy(asc(profileMedia.sortOrder), desc(profileMedia.createdAt));
+  const media = await db
+    .select()
+    .from(profileMedia)
+    .where(eq(profileMedia.profileId, id))
+    .orderBy(asc(profileMedia.sortOrder), desc(profileMedia.createdAt));
   return { profile: hydrateProfile(rows[0]), media };
 }
 
 export async function listPendingMedia() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(profileMedia).where(eq(profileMedia.status, "pending")).orderBy(desc(profileMedia.createdAt));
+  return db
+    .select()
+    .from(profileMedia)
+    .where(eq(profileMedia.status, "pending"))
+    .orderBy(desc(profileMedia.createdAt));
 }
 
-export async function moderateProfile(id: number, status: "approved" | "rejected" | "suspended" | "pending", isFeatured = false, rejectionReason?: string, actorUserId?: number) {
+export async function moderateProfile(
+  id: number,
+  status: "approved" | "rejected" | "suspended" | "pending",
+  isFeatured = false,
+  rejectionReason?: string,
+  actorUserId?: number,
+  portfolioConfirmed = false
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const profileRows = await db.select({ ownerId: profiles.ownerId }).from(profiles).where(eq(profiles.id, id)).limit(1);
-  if (!profileRows[0]) throw new Error("Profile not found");
-  if (status === "approved" && ENV.requireIdentityVerification) {
-    const identity = await getIdentityVerification(profileRows[0].ownerId);
-    if (identity?.status !== "approved") throw new Error("O anunciante precisa de verificação de identidade aprovada");
-  }
-  const canPublish = status === "approved" && (ENV.testMode || ENV.publicLaunchEnabled);
-  await db.update(profiles).set({ status, isPublished: canPublish, isFeatured: canPublish && isFeatured, rejectionReason: status === "rejected" ? (rejectionReason?.trim() || "Ajustes necessários antes da publicação") : null }).where(eq(profiles.id, id));
-  await writeAuditLog({ actorUserId, action: `profile.moderated.${status}`, entityType: "profile", entityId: id, metadata: { isFeatured, rejectionReason: rejectionReason ?? null } });
+  await db.transaction(async tx => {
+    const [profile] = await tx
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, id))
+      .for("update");
+    if (!profile) throw new Error("Perfil não encontrado");
+    if (status === "approved") {
+      const categories = parseJson(profile.categories);
+      if (
+        !portfolioConfirmed ||
+        !Array.isArray(categories) ||
+        !categories.length ||
+        categories.some(
+          (c: string) => !(portfolioCategories as readonly string[]).includes(c)
+        )
+      )
+        throw new Error(
+          "Revise as categorias e confirme que este é um portfólio profissional autorizado"
+        );
+      const [owner] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.id, profile.ownerId));
+      if (!owner || owner.accountStatus !== "active")
+        throw new Error("Titular inativo");
+      if (ENV.requireIdentityVerification) {
+        const [identity] = await tx
+          .select()
+          .from(identityVerifications)
+          .where(eq(identityVerifications.userId, profile.ownerId))
+          .orderBy(desc(identityVerifications.updatedAt))
+          .limit(1);
+        if (
+          identity?.status !== "approved" ||
+          (identity.expiresAt && identity.expiresAt <= new Date())
+        )
+          throw new Error(
+            "O titular precisa de verificação de identidade válida"
+          );
+      }
+    }
+    const canPublish =
+      status === "approved" && (ENV.testMode || ENV.publicLaunchEnabled);
+    await tx
+      .update(profiles)
+      .set({
+        status,
+        portfolioReviewed: status === "approved",
+        isPublished: canPublish,
+        isFeatured: canPublish && isFeatured,
+        rejectionReason:
+          status === "rejected"
+            ? rejectionReason?.trim() ||
+              "Ajustes necessários antes da publicação"
+            : null,
+      })
+      .where(eq(profiles.id, id));
+    await tx
+      .insert(auditLogs)
+      .values({
+        actorUserId: actorUserId ?? null,
+        action: `profile.moderated.${status}`,
+        entityType: "profile",
+        entityId: id,
+        metadata: JSON.stringify({
+          isFeatured,
+          portfolioConfirmed,
+          rejectionReason: rejectionReason ?? null,
+        }),
+      });
+  });
 }
 
-export async function moderateMedia(id: number, status: "approved" | "rejected" | "private", actorUserId?: number) {
+export async function moderateMedia(
+  id: number,
+  status: "approved" | "rejected" | "private",
+  actorUserId?: number
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.update(profileMedia).set({ status }).where(eq(profileMedia.id, id));
-  await writeAuditLog({ actorUserId, action: `media.moderated.${status}`, entityType: "media", entityId: id });
+  await writeAuditLog({
+    actorUserId,
+    action: `media.moderated.${status}`,
+    entityType: "media",
+    entityId: id,
+  });
 }
 
 export async function getMediaByStorageHash(storageHash: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const rows = await db.select().from(profileMedia).where(eq(profileMedia.storageHash, storageHash)).limit(1);
+  const rows = await db
+    .select()
+    .from(profileMedia)
+    .where(eq(profileMedia.storageHash, storageHash))
+    .limit(1);
   return rows[0];
 }
 
 export async function isMediaProfilePublic(profileId: number) {
   const db = await getDb();
   if (!db) return false;
-  const rows = await db.select({ id: profiles.id }).from(profiles)
+  const rows = await db
+    .select({ id: profiles.id })
+    .from(profiles)
     .innerJoin(users, eq(users.id, profiles.ownerId))
-    .where(and(eq(profiles.id, profileId), eq(profiles.status, "approved"),
-      eq(profiles.isPublished, true), eq(users.accountStatus, "active"),
-      ...(!ENV.allowFakeData ? [eq(profiles.isDemo, false), eq(profiles.isTest, false)] : [])))
+    .where(
+      and(
+        eq(profiles.id, profileId),
+        eq(profiles.status, "approved"),
+        eq(profiles.isPublished, true),
+        eq(profiles.portfolioReviewed, true),
+        eq(users.accountStatus, "active"),
+        ...(!ENV.allowFakeData
+          ? [eq(profiles.isDemo, false), eq(profiles.isTest, false)]
+          : [])
+      )
+    )
     .limit(1);
   return Boolean(rows[0]);
 }
@@ -477,20 +811,95 @@ export async function isMediaProfilePublic(profileId: number) {
 export async function getMediaByStorageKey(storageKey: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const rows = await db.select().from(profileMedia).where(eq(profileMedia.storageKey, storageKey)).limit(1);
+  const rows = await db
+    .select()
+    .from(profileMedia)
+    .where(eq(profileMedia.storageKey, storageKey))
+    .limit(1);
   return rows[0];
 }
 
 export async function ensureCreditWallet(userId: number) {
   const db = await getDb();
   if (!db) return;
-  await db.insert(creditWallets).values({ userId, balance: 0 }).onDuplicateKeyUpdate({ set: { userId } });
+  await db
+    .insert(creditWallets)
+    .values({ userId, balance: 0 })
+    .onDuplicateKeyUpdate({ set: { userId } });
 }
 
 export async function cleanupExpiredAuthData() {
   const db = await getDb();
   if (!db) return;
-  await db.delete(authSessions).where(sql`${authSessions.expiresAt} < UTC_TIMESTAMP()`);
-  await db.delete(emailVerifications).where(sql`${emailVerifications.expiresAt} < UTC_TIMESTAMP()`);
-  await db.delete(passwordResetTokens).where(sql`${passwordResetTokens.expiresAt} < UTC_TIMESTAMP()`);
+  await db
+    .delete(authSessions)
+    .where(sql`${authSessions.expiresAt} < UTC_TIMESTAMP()`);
+  await db
+    .delete(emailVerifications)
+    .where(sql`${emailVerifications.expiresAt} < UTC_TIMESTAMP()`);
+  await db
+    .delete(passwordResetTokens)
+    .where(sql`${passwordResetTokens.expiresAt} < UTC_TIMESTAMP()`);
+}
+
+export async function getMediaById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco indisponível");
+  const [media] = await db
+    .select()
+    .from(profileMedia)
+    .where(eq(profileMedia.id, id));
+  return media;
+}
+export async function updateOwnedMedia(
+  ownerId: number,
+  mediaId: number,
+  action: "cover" | "hide"
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco indisponível");
+  await db.transaction(async tx => {
+    const [media] = await tx
+      .select()
+      .from(profileMedia)
+      .where(eq(profileMedia.id, mediaId))
+      .for("update");
+    if (!media) throw new Error("Arquivo indisponível");
+    const [profile] = await tx
+      .select()
+      .from(profiles)
+      .where(
+        and(eq(profiles.id, media.profileId), eq(profiles.ownerId, ownerId))
+      )
+      .for("update");
+    if (!profile) throw new Error("Arquivo não pertence à conta");
+    if (action === "cover") {
+      if (media.kind !== "photo" || media.status !== "approved")
+        throw new Error("A capa precisa ser uma foto aprovada");
+      await tx
+        .update(profiles)
+        .set({ avatarUrl: media.url })
+        .where(eq(profiles.id, profile.id));
+    } else {
+      await tx
+        .update(profileMedia)
+        .set({ status: "private" })
+        .where(eq(profileMedia.id, media.id));
+      if (profile.avatarUrl === media.url)
+        await tx
+          .update(profiles)
+          .set({ avatarUrl: null })
+          .where(eq(profiles.id, profile.id));
+    }
+    await tx
+      .insert(auditLogs)
+      .values({
+        actorUserId: ownerId,
+        action: `media.${action}`,
+        entityType: "media",
+        entityId: media.id,
+        metadata: "{}",
+      });
+  });
+  return { success: true };
 }

@@ -1,3 +1,4 @@
+import { readSiteSettings } from "../site-config";
 import type { Express } from "express";
 import { createContext } from "./context";
 import { ENV, runtimeConfigStatus } from "./env";
@@ -23,6 +24,7 @@ export function registerStorageProxy(app: Express) {
       return;
     }
 
+    try { if (!(await readSiteSettings()).showGallery) { res.status(404).send("Media unavailable"); return; } } catch { res.status(503).send("Media unavailable"); return; }
     const media = await getMediaByStorageKey(key);
     if (!media || media.status !== "approved" || !(await isMediaProfilePublic(media.profileId))) {
       res.status(404).send("Media not found");
