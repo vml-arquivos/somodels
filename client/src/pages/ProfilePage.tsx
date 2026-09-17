@@ -11,11 +11,21 @@ import {
   type ReportCategory,
 } from "@shared/safety";
 
-const contactLabels: Record<string, string> = {
+const contactMethods = ["whatsapp", "phone", "telegram"] as const;
+type ContactMethod = (typeof contactMethods)[number];
+
+const contactLabels: Record<ContactMethod, string> = {
   whatsapp: "Abrir WhatsApp",
   phone: "Ligar",
   telegram: "Abrir Telegram",
 };
+
+function isContactMethod(value: unknown): value is ContactMethod {
+  return (
+    typeof value === "string" &&
+    contactMethods.includes(value as ContactMethod)
+  );
+}
 
 export default function ProfilePage() {
   const { slug = "" } = useParams<{ slug: string }>();
@@ -87,14 +97,11 @@ export default function ProfilePage() {
     onError: error => toast.error(error.message),
   });
 
-  const availableContactMethods = useMemo(
-    () =>
-      ((data?.profile as any)?.availableContactMethods ?? []).filter(
-        (value: unknown): value is "whatsapp" | "phone" | "telegram" =>
-          typeof value === "string" && ["whatsapp", "phone", "telegram"].includes(value)
-      ),
-    [data]
-  );
+  const availableContactMethods = useMemo<ContactMethod[]>(() => {
+    const methods = (data?.profile as { availableContactMethods?: unknown[] } | undefined)
+      ?.availableContactMethods ?? [];
+    return methods.filter(isContactMethod);
+  }, [data]);
 
   const refreshSafety = async () => {
     await utils.safety.invalidate();

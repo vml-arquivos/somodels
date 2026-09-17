@@ -29,3 +29,10 @@ A abertura pública, o KYC efetivo e os pagamentos continuam desligados até a c
 
 - limita a descrição da denúncia pública a 200 caracteres para manter o payload JSON dentro do `varchar(500)` legado de `moderation_cases.reason`, inclusive no pior caso de escape, sem alterar migration histórica;
 - adiciona `docs/FINAL-PACKAGE-VALIDATION.md` com proveniência do checkpoint, hashes das migrations e critérios de empacotamento.
+
+## 2026-09-17 — hotfix de build do contato seguro
+
+- corrige a tipagem dos métodos de contato em `ProfilePage.tsx`, eliminando o `TS7006` no callback da lista de canais;
+- remove a mutação incompatível do retorno de `getPublicProfile()` em `server/routers.ts` e passa a retornar um novo payload sanitizado, eliminando o `TS2353` de `availableContactMethods`;
+- mantém a remoção de telefone/WhatsApp/Telegram dos payloads públicos e preserva o fluxo autenticado de `safety.contactIntent`;
+- nenhuma migration ou schema de banco foi alterado neste hotfix.

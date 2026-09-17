@@ -109,6 +109,45 @@ function publicUser(user: User) {
   };
 }
 
+type PublicContactMethod = "whatsapp" | "phone" | "telegram";
+
+type ContactBearingProfile = {
+  whatsapp?: string | null;
+  phone?: string | null;
+  telegram?: string | null;
+  contactOptions?: unknown;
+  demoContactDisabled?: unknown;
+  availableContactMethods?: unknown;
+};
+
+function sanitizePublicProfileContact<T extends ContactBearingProfile>(profile: T) {
+  const availableContactMethods: PublicContactMethod[] = [
+    profile.whatsapp ? "whatsapp" : null,
+    profile.phone ? "phone" : null,
+    profile.telegram ? "telegram" : null,
+  ].filter((method): method is PublicContactMethod => method !== null);
+
+  const {
+    phone: _phone,
+    whatsapp: _whatsapp,
+    telegram: _telegram,
+    contactOptions: _contactOptions,
+    demoContactDisabled: _demoContactDisabled,
+    availableContactMethods: _availableContactMethods,
+    ...publicProfile
+  } = profile;
+
+  return {
+    ...publicProfile,
+    availableContactMethods,
+    phone: null,
+    whatsapp: null,
+    telegram: null,
+    contactOptions: [] as string[],
+    demoContactDisabled: true as const,
+  };
+}
+
 function ageAccessEnabled() {
   return (
     ENV.publicAccessEnabled &&
@@ -327,35 +366,13 @@ export const appRouter = router({
           input.slug,
           await hasValidAgeSession(ctx.req)
         );
-        if (data) {
-          data.profile = {
-            ...data.profile,
-            availableContactMethods: [
-              data.profile.whatsapp ? "whatsapp" : null,
-              data.profile.phone ? "phone" : null,
-              data.profile.telegram ? "telegram" : null,
-            ].filter(Boolean),
-            phone: null,
-            whatsapp: null,
-            telegram: null,
-            contactOptions: [],
-            demoContactDisabled: true,
-          };
-          data.related = data.related.map(p => ({
-            ...p,
-            availableContactMethods: [
-              p.whatsapp ? "whatsapp" : null,
-              p.phone ? "phone" : null,
-              p.telegram ? "telegram" : null,
-            ].filter(Boolean),
-            phone: null,
-            whatsapp: null,
-            telegram: null,
-            contactOptions: [],
-            demoContactDisabled: true,
-          }));
-        }
-        return data;
+        if (!data) return data;
+
+        return {
+          ...data,
+          profile: sanitizePublicProfileContact(data.profile),
+          related: data.related.map(sanitizePublicProfileContact),
+        };
       }),
     mine: protectedProcedure.query(({ ctx }) => getOwnerProfiles(ctx.user.id)),
     mineById: protectedProcedure
