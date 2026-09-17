@@ -9,3 +9,23 @@ O schema Drizzle foi ampliado com verificação de idade, identidade/KYC, sessõ
 O storage passou a exigir sessão de idade aprovada, publicação do perfil, aprovação da mídia e entitlement para mídia premium. O upload passou a usar chaves aleatórias, limites, validação base64 e assinaturas binárias. A aplicação ganhou headers de segurança, `trust proxy`, CORS de origem para mutações, healthcheck com status do banco, endpoint de release, robots e sitemap.
 
 A abertura pública, o KYC efetivo e os pagamentos continuam desligados até a configuração e o teste de provedores reais e a aprovação jurídica/comercial correspondente.
+
+## 2026-09-17 — fundação Trust & Safety e hardening de produção
+
+- adicionadas capability flags fail-closed para marketplace adulto, acompanhantes, age assurance, identity, secure contact, sponsored listings, creator content 18+, favoritos, bloqueios e denúncias;
+- contatos brutos removidos dos payloads públicos de listagem e perfil;
+- adicionado fluxo autenticado de intenção de contato com age gate, bloqueio bilateral e aceite vigente do titular;
+- adicionados favoritos e bloqueios com autorização backend e auditoria;
+- adicionadas denúncias categorizadas/priorizadas, dedupe de caso aberto, fila administrativa e trilha de decisão em audit log;
+- perfil ganhou ações de favorito, bloqueio, denúncia e contato controlado, todas protegidas por flags;
+- painel admin ganhou fila Trust & Safety;
+- build de produção deixou de carregar plugins de instrumentação de preview/editor;
+- rotas passaram a lazy loading e o build ganhou budget automatizado de chunk;
+- documentação de ADR, flags, segurança, moderação, contato e rollback consolidada;
+- migrations históricas `0000`–`0005` preservadas sem alteração;
+- checkpoint do Work validado com 113 testes, TypeScript, build e smoke HTTP local verdes.
+
+### Ajuste final de integridade do pacote
+
+- limita a descrição da denúncia pública a 200 caracteres para manter o payload JSON dentro do `varchar(500)` legado de `moderation_cases.reason`, inclusive no pior caso de escape, sem alterar migration histórica;
+- adiciona `docs/FINAL-PACKAGE-VALIDATION.md` com proveniência do checkpoint, hashes das migrations e critérios de empacotamento.

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { defaultSiteSettings, portfolioPolicy } from "@shared/portfolio";
+import { reportCategoryLabels, type ReportCategory } from "@shared/safety";
 import PortfolioEditor from "@/components/PortfolioEditor";
 import StudioHeader from "@/components/StudioHeader";
 const tabs = {
@@ -11,6 +12,7 @@ const tabs = {
   users: "Usuários",
   profiles: "Portfólios",
   moderation: "Moderação",
+  reports: "Denúncias",
   finance: "Financeiro",
   settings: "Página inicial",
   audit: "Auditoria",
@@ -35,6 +37,7 @@ export default function AdminDashboard() {
     [status, setStatus] = useState<"all" | "active" | "suspended">("all"),
     [page, setPage] = useState(0),
     [auditPage, setAuditPage] = useState(0);
+  const [reportDecision, setReportDecision] = useState("");
   const [uid, setUid] = useState<number | null>(null),
     [pid, setPid] = useState<number | null>(null),
     [editingProfile, setEditingProfile] = useState(false),
@@ -68,6 +71,9 @@ export default function AdminDashboard() {
   );
   const pendingMedia = trpc.admin.pendingMedia.useQuery(undefined, {
     enabled: allowed && tab === "moderation",
+  });
+  const reports = trpc.safety.adminReports.useQuery(undefined, {
+    enabled: allowed && tab === "reports",
   });
   const finance = trpc.management.finance.useQuery(undefined, {
     enabled: allowed && tab === "finance",
@@ -166,6 +172,14 @@ export default function AdminDashboard() {
   const media = trpc.admin.moderateMedia.useMutation({
     onSuccess: () => {
       toast.success("Mídia atualizada");
+      refresh();
+    },
+    onError: error,
+  });
+  const updateReport = trpc.safety.updateReport.useMutation({
+    onSuccess: () => {
+      setReportDecision("");
+      toast.success("Denúncia atualizada e ação registrada na auditoria");
       refresh();
     },
     onError: error,
@@ -814,6 +828,114 @@ export default function AdminDashboard() {
                 )}
               </>
             )}
+            {tab === "reports" && (
+              <section className="studio-panel">
+                <div className="studio-title">
+                  <div>
+                    <p className="studio-kicker">Trust &amp; Safety</p>
+                    <h2>Fila de denúncias</h2>
+                    <p className="studio-muted">
+                      O denunciante não é exibido nesta fila. Casos urgentes aparecem primeiro; decisões são auditadas.
+                    </p>
+                  </div>
+                </div>
+                <Failure error={reports.error} />
+                <label>
+                  Justificativa administrativa para a próxima decisão
+                  <textarea
+                    rows={3}
+                    maxLength={1000}
+                    value={reportDecision}
+                    onChange={event => setReportDecision(event.target.value)}
+                    placeholder="Registre somente o necessário para justificar a ação."
+                  />
+                </label>
+                {reports.isLoading ? (
+                  <p>Carregando denúncias…</p>
+                ) : !reports.data?.length ? (
+                  <p>Nenhuma denúncia na fila.</p>
+                ) : (
+                  <div className="studio-table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Prioridade</th>
+                          <th>Categoria</th>
+                          <th>Perfil</th>
+                          <th>Status</th>
+                          <th>Recebida</th>
+                          <th>Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reports.data.map(report => (
+                          <tr key={report.id}>
+                            <td>{report.priority}</td>
+                            <td>
+                              <strong>
+                                {reportCategoryLabels[report.category as ReportCategory] || "Outro"}
+                              </strong>
+                              <small>{report.description}</small>
+                            </td>
+                            <td>
+                              #{report.profileId} {report.profileName || "Perfil indisponível"}
+                            </td>
+                            <td>{report.status}</td>
+                            <td>{date(report.createdAt)}</td>
+                            <td>
+                              <div className="studio-actions">
+                                {report.status === "open" && (
+                                  <button
+                                    disabled={updateReport.isPending}
+                                    onClick={() =>
+                                      updateReport.mutate({
+                                        id: report.id,
+                                        status: "in_review",
+                                        decision: reportDecision || undefined,
+                                      })
+                                    }
+                                  >
+                                    Assumir
+                                  </button>
+                                )}
+                                {!['approved', 'rejected', 'closed'].includes(report.status) && (
+                                  <button
+                                    disabled={updateReport.isPending}
+                                    onClick={() =>
+                                      updateReport.mutate({
+                                        id: report.id,
+                                        status: "closed",
+                                        decision: reportDecision || "Caso encerrado após revisão administrativa.",
+                                      })
+                                    }
+                                  >
+                                    Encerrar
+                                  </button>
+                                )}
+                                {['approved', 'rejected', 'closed'].includes(report.status) && (
+                                  <button
+                                    disabled={updateReport.isPending}
+                                    onClick={() =>
+                                      updateReport.mutate({
+                                        id: report.id,
+                                        status: "open",
+                                        decision: reportDecision || "Caso reaberto para nova análise.",
+                                      })
+                                    }
+                                  >
+                                    Reabrir
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )}
             {tab === "settings" && (
               <div className="studio-split">
                 <section className="studio-panel">
@@ -882,7 +1004,7 @@ export default function AdminDashboard() {
                       : "oculta"}
                     . Contatos:{" "}
                     {site.showContact
-                      ? "visíveis nos perfis aprovados"
+                      ? "disponíveis somente pelo fluxo autenticado e autorizado"
                       : "ocultos"}
                     .
                   </p>

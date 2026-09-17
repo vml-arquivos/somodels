@@ -72,3 +72,29 @@
 - [ ] Validar testes, build e migration contra a configuração de produção
 - [x] Criar commit de produção no repositório conectado
 - [x] Enviar o commit para o GitHub e confirmar o SHA remoto
+
+## Continuação do Work — 17/09/2026
+
+- [x] Adicionar feature flags fail-closed para o novo domínio e capacidades críticas
+- [x] Remover telefone/WhatsApp/Telegram dos payloads públicos de descoberta e perfil
+- [x] Implementar intenção de contato autenticada, age-gated, condicionada a bloqueio e aceite vigente
+- [x] Implementar favoritos com backend, UI, ACL e auditoria
+- [x] Implementar bloqueios de perfil com backend, UI, ACL e auditoria
+- [x] Implementar denúncias categorizadas, priorizadas e deduplicadas
+- [x] Implementar fila administrativa de denúncias com decisões auditadas
+- [x] Remover instrumentação de preview do build de produção
+- [x] Aplicar lazy loading às rotas e budget de bundle
+- [x] Ampliar suíte para 113 testes no checkpoint validado do Work
+- [x] Preservar byte a byte as migrations históricas 0000–0005
+- [x] Criar ADR, matriz de regressão, documentação de flags, segurança, moderação, contato e rollback
+- [x] Gerar pacote final sem `.git`, `node_modules`, `dist` ou segredos
+
+### Dependências externas antes de ativação ampla
+
+- [ ] Formalizar entidade jurídica, jurisdições, DPO/canal de privacidade e políticas públicas
+- [ ] Homologar provider real de age assurance e callbacks
+- [ ] Homologar provider real de identity/KYC e retenção
+- [ ] Homologar MySQL/TiDB real com backup e restore test
+- [ ] Implementar/contratar relay interno e controles anti-spam de alto volume
+- [ ] Aprovar provider de pagamentos compatível antes de `PAYMENTS_ENABLED=true`
+- [ ] Implementar domínio separado de creator content 18+ antes de `CREATOR_CONTENT_18_ENABLED=true`

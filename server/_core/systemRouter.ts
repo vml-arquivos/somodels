@@ -23,7 +23,20 @@ export const systemRouter = router({
     ageVerificationRequired: ENV.requireAgeVerification,
     ageVerificationConfigured: runtimeConfigStatus().ageVerification,
     kycRequired: ENV.requireIdentityVerification,
-    paymentsEnabled: false,
+    featureFlags: {
+      adultMarketplaceEnabled: ENV.adultMarketplaceEnabled,
+      escortListingsEnabled: ENV.escortListingsEnabled,
+      ageAssuranceEnabled: ENV.ageAssuranceEnabled,
+      identityVerificationEnabled: ENV.identityVerificationEnabled,
+      secureContactEnabled: ENV.secureContactEnabled,
+      sponsoredListingsEnabled: ENV.sponsoredListingsEnabled,
+      creatorContent18Enabled: ENV.creatorContent18Enabled,
+      paymentsEnabled: ENV.paymentsEnabled,
+      favoritesEnabled: ENV.favoritesEnabled,
+      blockingEnabled: ENV.blockingEnabled,
+      reportsEnabled: ENV.reportsEnabled,
+    },
+    paymentsEnabled: ENV.paymentsEnabled && runtimeConfigStatus().payments,
   })),
 
   notifyOwner: adminProcedure

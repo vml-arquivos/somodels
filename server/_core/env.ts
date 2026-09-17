@@ -42,6 +42,18 @@ export const ENV = {
   allowDemoSeed: readBoolean(process.env.ALLOW_DEMO_SEED, isTestMode),
   demoContactsEnabled: readBoolean(process.env.DEMO_CONTACTS_ENABLED, false),
   robotsNoIndex: readBoolean(process.env.ROBOTS_NOINDEX, isTestMode),
+  // New marketplace capabilities are deliberately independent from legacy launch gates.
+  // They remain disabled until product/compliance/provider readiness is explicitly approved.
+  adultMarketplaceEnabled: readBoolean(process.env.ADULT_MARKETPLACE_ENABLED, false),
+  escortListingsEnabled: readBoolean(process.env.ESCORT_LISTINGS_ENABLED, false),
+  ageAssuranceEnabled: readBoolean(process.env.AGE_ASSURANCE_ENABLED, false),
+  identityVerificationEnabled: readBoolean(process.env.IDENTITY_VERIFICATION_ENABLED, false),
+  secureContactEnabled: readBoolean(process.env.SECURE_CONTACT_ENABLED, false),
+  sponsoredListingsEnabled: readBoolean(process.env.SPONSORED_LISTINGS_ENABLED, false),
+  creatorContent18Enabled: readBoolean(process.env.CREATOR_CONTENT_18_ENABLED, false),
+  favoritesEnabled: readBoolean(process.env.FAVORITES_ENABLED, false),
+  blockingEnabled: readBoolean(process.env.BLOCKING_ENABLED, false),
+  reportsEnabled: readBoolean(process.env.REPORTS_ENABLED, false),
   adminEmails,
   ageVerificationProvider: process.env.AGE_VERIFICATION_PROVIDER ?? "",
   ageVerificationApiKey: process.env.AGE_VERIFICATION_API_KEY ?? "",

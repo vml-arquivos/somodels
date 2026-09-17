@@ -250,7 +250,7 @@ export function DiscoveryPage({ fixedCity }: { fixedCity?: string }) {
           <h3>Publicação responsável</h3>
           <p>{portfolioPolicy}</p>
           <p className="studio-muted">
-            Os dados de contato só ficam disponíveis enquanto a autorização do titular estiver vigente. Documentos de identidade não fazem parte da vitrine.
+            Dados de contato não são publicados na vitrine. Quando o contato seguro estiver habilitado, a saída para um canal externo exige conta autenticada, age gate válido, ausência de bloqueio e autorização vigente do titular. Documentos de identidade não fazem parte da vitrine.
           </p>
         </section>
       </main>

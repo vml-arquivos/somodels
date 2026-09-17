@@ -35,3 +35,11 @@ A migration `0005_portfolio_management.sql` deve ser aplicada após backup e ant
 ## Hotfix de compatibilidade de schema — 16/09/2026
 
 O container de produção executa `pnpm db:migrate` antes de iniciar `dist/index.js`. O healthcheck valida também os objetos de banco exigidos pela migration `0005_portfolio_management.sql`. Assim, um deploy não é considerado saudável quando o código está à frente do schema.
+
+## Fundação de marketplace adulto — 17/09/2026
+
+Este repositório agora contém uma **fundação técnica desligada por padrão** para evolução controlada a um marketplace adulto legal. A experiência pública existente continua como fallback até a aprovação/ativação das flags descritas em [`docs/FEATURE-FLAGS.md`](docs/FEATURE-FLAGS.md). A decisão técnica e os bloqueios de compliance estão em [`docs/ADR-0001-adult-marketplace-scope.md`](docs/ADR-0001-adult-marketplace-scope.md).
+
+O incremento adiciona favoritos, bloqueios, denúncias e contato externo controlado reutilizando as tabelas já existentes no baseline. Telefones, WhatsApp e Telegram não são mais enviados em payload público de descoberta/perfil; o href de saída só é retornado por um procedimento autenticado e age-gated quando o recurso estiver habilitado e a autorização do titular estiver vigente.
+
+As migrations históricas `0000`–`0005` permanecem intactas. Não use `db:push` em produção. Antes de ativar qualquer capability nova, siga [`docs/DEPLOY-ROLLBACK-PLAN.md`](docs/DEPLOY-ROLLBACK-PLAN.md) e mantenha payments/creator content desligados até provider e compliance aprovados.

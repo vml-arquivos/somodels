@@ -6,11 +6,14 @@ import {
   ageVerifications,
   authSessions,
   auditLogs,
+  blocks,
   creditWallets,
   emailVerifications,
+  favorites,
   identityVerifications,
   InsertProfile,
   InsertProfileMedia,
+  moderationCases,
   passwordResetTokens,
   premiumEntitlements,
   profileMedia,
@@ -18,6 +21,13 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import {
+  canActOnProfile,
+  decodeReportReason,
+  encodeReportReason,
+  priorityForReport,
+  type ReportCategory,
+} from "../shared/safety";
 import { hashPassword } from "./auth-crypto";
 import {
   buildProfileContentDigest,
@@ -1045,6 +1055,356 @@ export async function getMediaByStorageKey(storageKey: string) {
     .where(eq(profileMedia.storageKey, storageKey))
     .limit(1);
   return rows[0];
+}
+
+
+async function requirePublicInteractionProfile(executor: any, profileId: number) {
+  const conditions = [
+    eq(profiles.id, profileId),
+    eq(profiles.status, "approved"),
+    eq(profiles.isPublished, true),
+    eq(profiles.portfolioReviewed, true),
+  ];
+  if (!ENV.allowFakeData) {
+    conditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
+  }
+  const [profile] = await executor
+    .select()
+    .from(profiles)
+    .where(and(...conditions))
+    .limit(1);
+  if (!profile) throw new Error("Perfil indisponível");
+  return profile;
+}
+
+export async function favoriteProfile(userId: number, profileId: number) {
+  if (!ENV.favoritesEnabled) throw new Error("Favoritos ainda não estão habilitados");
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const profile = await requirePublicInteractionProfile(db, profileId);
+  if (!canActOnProfile(userId, profile.ownerId)) throw new Error("Não é possível favoritar o próprio perfil");
+  await db
+    .insert(favorites)
+    .values({ userId, profileId })
+    .onDuplicateKeyUpdate({ set: { profileId } });
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "profile.favorite.added",
+    entityType: "profile",
+    entityId: profileId,
+  });
+  return { favorited: true as const };
+}
+
+export async function unfavoriteProfile(userId: number, profileId: number) {
+  if (!ENV.favoritesEnabled) throw new Error("Favoritos ainda não estão habilitados");
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .delete(favorites)
+    .where(and(eq(favorites.userId, userId), eq(favorites.profileId, profileId)));
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "profile.favorite.removed",
+    entityType: "profile",
+    entityId: profileId,
+  });
+  return { favorited: false as const };
+}
+
+export async function getFavoriteStatus(userId: number, profileId: number) {
+  if (!ENV.favoritesEnabled) return { enabled: false as const, favorited: false as const };
+  const db = await getDb();
+  if (!db) return { enabled: true as const, favorited: false as const };
+  const [row] = await db
+    .select({ id: favorites.id })
+    .from(favorites)
+    .where(and(eq(favorites.userId, userId), eq(favorites.profileId, profileId)))
+    .limit(1);
+  return { enabled: true as const, favorited: Boolean(row) };
+}
+
+export async function listFavoriteProfiles(userId: number) {
+  if (!ENV.favoritesEnabled) return [];
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [
+    eq(favorites.userId, userId),
+    eq(profiles.status, "approved"),
+    eq(profiles.isPublished, true),
+    eq(profiles.portfolioReviewed, true),
+  ];
+  if (!ENV.allowFakeData) {
+    conditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
+  }
+  const rows = await db
+    .select({ profile: profiles, favoriteCreatedAt: favorites.createdAt })
+    .from(favorites)
+    .innerJoin(profiles, eq(profiles.id, favorites.profileId))
+    .where(and(...conditions))
+    .orderBy(desc(favorites.createdAt));
+  return rows.map(row => ({
+    ...hydratePublicProfile(row.profile),
+    phone: null,
+    whatsapp: null,
+    telegram: null,
+    contactOptions: [],
+    favoriteCreatedAt: row.favoriteCreatedAt,
+  }));
+}
+
+export async function blockProfile(userId: number, profileId: number) {
+  if (!ENV.blockingEnabled) throw new Error("Bloqueios ainda não estão habilitados");
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const profile = await requirePublicInteractionProfile(db, profileId);
+  if (!canActOnProfile(userId, profile.ownerId)) throw new Error("Não é possível bloquear o próprio perfil");
+  await db
+    .insert(blocks)
+    .values({ userId, blockedProfileId: profileId, blockedUserId: null })
+    .onDuplicateKeyUpdate({ set: { blockedProfileId: profileId } });
+  if (ENV.favoritesEnabled) {
+    await db
+      .delete(favorites)
+      .where(and(eq(favorites.userId, userId), eq(favorites.profileId, profileId)));
+  }
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "profile.blocked",
+    entityType: "profile",
+    entityId: profileId,
+  });
+  return { blocked: true as const };
+}
+
+export async function unblockProfile(userId: number, profileId: number) {
+  if (!ENV.blockingEnabled) throw new Error("Bloqueios ainda não estão habilitados");
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .delete(blocks)
+    .where(and(eq(blocks.userId, userId), eq(blocks.blockedProfileId, profileId)));
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "profile.unblocked",
+    entityType: "profile",
+    entityId: profileId,
+  });
+  return { blocked: false as const };
+}
+
+export async function getBlockStatus(userId: number, profileId: number) {
+  if (!ENV.blockingEnabled) return { enabled: false as const, blocked: false as const };
+  const db = await getDb();
+  if (!db) return { enabled: true as const, blocked: false as const };
+  const [row] = await db
+    .select({ id: blocks.id })
+    .from(blocks)
+    .where(and(eq(blocks.userId, userId), eq(blocks.blockedProfileId, profileId)))
+    .limit(1);
+  return { enabled: true as const, blocked: Boolean(row) };
+}
+
+export async function listBlockedProfiles(userId: number) {
+  if (!ENV.blockingEnabled) return [];
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: blocks.id,
+      profileId: blocks.blockedProfileId,
+      createdAt: blocks.createdAt,
+      stageName: profiles.stageName,
+      slug: profiles.slug,
+    })
+    .from(blocks)
+    .leftJoin(profiles, eq(profiles.id, blocks.blockedProfileId))
+    .where(eq(blocks.userId, userId))
+    .orderBy(desc(blocks.createdAt));
+  return rows.filter(row => row.profileId !== null);
+}
+
+export async function createProfileReport(
+  userId: number,
+  input: { profileId: number; category: ReportCategory; description: string }
+) {
+  if (!ENV.reportsEnabled) throw new Error("Denúncias ainda não estão habilitadas");
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const profile = await requirePublicInteractionProfile(db, input.profileId);
+  if (!canActOnProfile(userId, profile.ownerId)) throw new Error("Use o suporte administrativo para relatar o próprio perfil");
+  const reason = encodeReportReason({
+    category: input.category,
+    description: input.description,
+  });
+  const priority = priorityForReport(input.category);
+  const [existing] = await db
+    .select({ id: moderationCases.id, status: moderationCases.status })
+    .from(moderationCases)
+    .where(
+      and(
+        eq(moderationCases.targetType, "report"),
+        eq(moderationCases.targetId, input.profileId),
+        eq(moderationCases.createdBy, userId),
+        or(
+          eq(moderationCases.status, "open"),
+          eq(moderationCases.status, "in_review"),
+          eq(moderationCases.status, "appealed")
+        )
+      )
+    )
+    .orderBy(desc(moderationCases.createdAt))
+    .limit(1);
+  if (existing) return { id: existing.id, status: existing.status, duplicate: true as const };
+  const result = await db.insert(moderationCases).values({
+    targetType: "report",
+    targetId: input.profileId,
+    status: "open",
+    priority,
+    reason,
+    createdBy: userId,
+  });
+  const id = Number(result[0].insertId);
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "report.created",
+    entityType: "moderation_case",
+    entityId: id,
+    metadata: { category: input.category, priority, targetProfileId: input.profileId },
+  });
+  return { id, status: "open" as const, duplicate: false as const };
+}
+
+export async function listAdminReports() {
+  if (!ENV.reportsEnabled) return [];
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: moderationCases.id,
+      profileId: moderationCases.targetId,
+      status: moderationCases.status,
+      priority: moderationCases.priority,
+      reason: moderationCases.reason,
+      assignedTo: moderationCases.assignedTo,
+      createdBy: moderationCases.createdBy,
+      resolvedAt: moderationCases.resolvedAt,
+      createdAt: moderationCases.createdAt,
+      updatedAt: moderationCases.updatedAt,
+      profileName: profiles.stageName,
+      profileSlug: profiles.slug,
+    })
+    .from(moderationCases)
+    .leftJoin(profiles, eq(profiles.id, moderationCases.targetId))
+    .where(eq(moderationCases.targetType, "report"))
+    .orderBy(
+      sql`CASE ${moderationCases.priority} WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END`,
+      desc(moderationCases.createdAt)
+    )
+    .limit(250);
+  return rows.map(row => ({ ...row, ...decodeReportReason(row.reason) }));
+}
+
+export async function updateAdminReport(input: {
+  id: number;
+  actorUserId: number;
+  status: "open" | "in_review" | "approved" | "rejected" | "appealed" | "closed";
+  decision?: string;
+}) {
+  if (!ENV.reportsEnabled) throw new Error("Denúncias ainda não estão habilitadas");
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.transaction(async tx => {
+    const [current] = await tx
+      .select()
+      .from(moderationCases)
+      .where(and(eq(moderationCases.id, input.id), eq(moderationCases.targetType, "report")))
+      .for("update");
+    if (!current) throw new Error("Denúncia não encontrada");
+    const terminal = ["approved", "rejected", "closed"].includes(input.status);
+    await tx
+      .update(moderationCases)
+      .set({
+        status: input.status,
+        assignedTo: input.status === "open" ? null : (current.assignedTo ?? input.actorUserId),
+        resolvedAt: terminal ? new Date() : null,
+      })
+      .where(eq(moderationCases.id, input.id));
+    await tx.insert(auditLogs).values({
+      actorUserId: input.actorUserId,
+      action: `report.status.${input.status}`,
+      entityType: "moderation_case",
+      entityId: input.id,
+      metadata: JSON.stringify({
+        previousStatus: current.status,
+        decision: input.decision?.trim() || null,
+      }),
+    });
+  });
+  return { success: true as const };
+}
+
+export async function getReportAuditHistory(reportId: number) {
+  if (!ENV.reportsEnabled) return [];
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: auditLogs.id,
+      actorUserId: auditLogs.actorUserId,
+      action: auditLogs.action,
+      metadata: auditLogs.metadata,
+      createdAt: auditLogs.createdAt,
+    })
+    .from(auditLogs)
+    .where(and(eq(auditLogs.entityType, "moderation_case"), eq(auditLogs.entityId, reportId)))
+    .orderBy(asc(auditLogs.createdAt), asc(auditLogs.id));
+}
+
+export async function getSafeExternalContact(
+  viewerUserId: number,
+  profileId: number,
+  method: "whatsapp" | "phone" | "telegram"
+) {
+  if (!ENV.secureContactEnabled) throw new Error("Contato seguro ainda não está habilitado");
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const profile = await requirePublicInteractionProfile(db, profileId);
+  if (!canActOnProfile(viewerUserId, profile.ownerId)) throw new Error("Use o painel do titular para revisar seus contatos");
+  const [block] = await db
+    .select({ id: blocks.id })
+    .from(blocks)
+    .where(
+      or(
+        and(eq(blocks.userId, viewerUserId), eq(blocks.blockedProfileId, profileId)),
+        and(eq(blocks.userId, profile.ownerId), eq(blocks.blockedUserId, viewerUserId))
+      )
+    )
+    .limit(1);
+  if (block) throw new Error("Contato indisponível");
+  const terms = await readProfileTermsStatus(db, profile);
+  if (!terms.current) throw new Error("A autorização de contato do titular não está vigente");
+
+  let href: string | null = null;
+  if (method === "whatsapp" && profile.whatsapp) {
+    const digits = profile.whatsapp.replace(/\D/g, "");
+    if (digits) href = `https://wa.me/${digits}`;
+  } else if (method === "phone" && profile.phone) {
+    const normalized = profile.phone.replace(/[^+\d]/g, "");
+    if (normalized) href = `tel:${normalized}`;
+  } else if (method === "telegram" && profile.telegram) {
+    const username = profile.telegram.trim().replace(/^@/, "");
+    if (/^[A-Za-z0-9_]{5,32}$/.test(username)) href = `https://t.me/${username}`;
+  }
+  if (!href) throw new Error("Este método de contato não está disponível");
+  await writeAuditLog({
+    actorUserId: viewerUserId,
+    action: "contact.external_exit",
+    entityType: "profile",
+    entityId: profileId,
+    metadata: { method },
+  });
+  return { href, method, offPlatform: true as const };
 }
 
 export async function ensureCreditWallet(userId: number) {

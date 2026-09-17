@@ -3,6 +3,7 @@ import { profileInputSchema } from "../shared/profile-schema";
 import { readSiteSettings } from "./site-config";
 import { managementRouter } from "./management";
 import { z } from "zod";
+import { reportProfileInputSchema } from "../shared/safety";
 import type { User } from "../drizzle/schema";
 import { COOKIE_NAME } from "@shared/const";
 import {
@@ -42,6 +43,19 @@ import {
   listAdminProfiles,
   listAdminUsers,
   getAdminProfile,
+  favoriteProfile,
+  unfavoriteProfile,
+  getFavoriteStatus,
+  listFavoriteProfiles,
+  blockProfile,
+  unblockProfile,
+  getBlockStatus,
+  listBlockedProfiles,
+  createProfileReport,
+  listAdminReports,
+  updateAdminReport,
+  getReportAuditHistory,
+  getSafeExternalContact,
   listPendingMedia,
   listPendingProfiles,
   listPublishedProfiles,
@@ -290,19 +304,21 @@ export const appRouter = router({
           ...(input ?? {}),
           publicAllowed: await hasValidAgeSession(ctx.req),
         });
-        const settings = await readSiteSettings();
-        return rows.map(p =>
-          settings.showContact
-            ? p
-            : {
-                ...p,
-                phone: null,
-                whatsapp: null,
-                telegram: null,
-                contactOptions: [],
-                demoContactDisabled: true,
-              }
-        );
+        // Contact details are never part of the public discovery payload.
+        // Authenticated viewers request a gated off-platform intent through safety.contactIntent.
+        return rows.map(p => ({
+          ...p,
+          availableContactMethods: [
+            p.whatsapp ? "whatsapp" : null,
+            p.phone ? "phone" : null,
+            p.telegram ? "telegram" : null,
+          ].filter(Boolean),
+          phone: null,
+          whatsapp: null,
+          telegram: null,
+          contactOptions: [],
+          demoContactDisabled: true,
+        }));
       }),
     bySlug: publicProcedure
       .input(z.object({ slug: z.string().min(2).max(160) }))
@@ -311,9 +327,14 @@ export const appRouter = router({
           input.slug,
           await hasValidAgeSession(ctx.req)
         );
-        if (data && !(await readSiteSettings()).showContact) {
+        if (data) {
           data.profile = {
             ...data.profile,
+            availableContactMethods: [
+              data.profile.whatsapp ? "whatsapp" : null,
+              data.profile.phone ? "phone" : null,
+              data.profile.telegram ? "telegram" : null,
+            ].filter(Boolean),
             phone: null,
             whatsapp: null,
             telegram: null,
@@ -322,6 +343,11 @@ export const appRouter = router({
           };
           data.related = data.related.map(p => ({
             ...p,
+            availableContactMethods: [
+              p.whatsapp ? "whatsapp" : null,
+              p.phone ? "phone" : null,
+              p.telegram ? "telegram" : null,
+            ].filter(Boolean),
             phone: null,
             whatsapp: null,
             telegram: null,
@@ -379,6 +405,62 @@ export const appRouter = router({
         })
       )
       .mutation(({ ctx, input }) => createMedia(ctx.user.id, input as any)),
+  }),
+  safety: router({
+    favoriteStatus: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive() }))
+      .query(({ ctx, input }) => getFavoriteStatus(ctx.user.id, input.profileId)),
+    favorite: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => favoriteProfile(ctx.user.id, input.profileId)),
+    unfavorite: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => unfavoriteProfile(ctx.user.id, input.profileId)),
+    favorites: protectedProcedure.query(({ ctx }) => listFavoriteProfiles(ctx.user.id)),
+    blockStatus: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive() }))
+      .query(({ ctx, input }) => getBlockStatus(ctx.user.id, input.profileId)),
+    blockProfile: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => blockProfile(ctx.user.id, input.profileId)),
+    unblockProfile: protectedProcedure
+      .input(z.object({ profileId: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => unblockProfile(ctx.user.id, input.profileId)),
+    blocks: protectedProcedure.query(({ ctx }) => listBlockedProfiles(ctx.user.id)),
+    reportProfile: protectedProcedure
+      .input(reportProfileInputSchema)
+      .mutation(({ ctx, input }) => createProfileReport(ctx.user.id, input)),
+    contactIntent: protectedProcedure
+      .input(
+        z.object({
+          profileId: z.number().int().positive(),
+          method: z.enum(["whatsapp", "phone", "telegram"]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (!(await readSiteSettings()).showContact) {
+          throw new Error("Os contatos estão temporariamente desabilitados");
+        }
+        if (!(await hasValidAgeSession(ctx.req))) {
+          throw new Error("Conclua a verificação de idade antes de acessar o contato");
+        }
+        return getSafeExternalContact(ctx.user.id, input.profileId, input.method);
+      }),
+    adminReports: adminProcedure.query(() => listAdminReports()),
+    adminReportHistory: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ input }) => getReportAuditHistory(input.id)),
+    updateReport: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          status: z.enum(["open", "in_review", "approved", "rejected", "appealed", "closed"]),
+          decision: z.string().trim().max(1000).optional(),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        updateAdminReport({ ...input, actorUserId: ctx.user.id })
+      ),
   }),
   premium: router({
     createIntent: protectedProcedure
