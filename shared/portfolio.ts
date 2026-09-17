@@ -9,6 +9,8 @@ export const portfolioCategories = [
 ] as const;
 export const portfolioPolicy =
   "Somente portfólios profissionais. Não são permitidos anúncios de serviços sexuais, conteúdo sexual explícito ou uso de imagens sem autorização.";
+export const portfolioTermsVersion = "2026-09-17";
+export const portfolioTermsText = portfolioPolicy;
 export function normalizePhone(value: string): string {
   const raw = value.trim();
   if (!raw) return "";
