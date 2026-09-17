@@ -14,18 +14,6 @@ const phoneSchema = z
       return z.NEVER;
     }
   });
-export const profileMediaInputSchema = z.object({
-  profileId: z.number().int().positive(),
-  kind: z.enum(["photo", "video"]),
-  title: z.string().max(160).optional(),
-  description: z.string().max(2000).optional(),
-  storageKey: z.string().min(1).max(500),
-  url: z.string().startsWith("/manus-storage/").max(600),
-  mimeType: z.string().min(1).max(120),
-  isPremium: z.boolean().default(false),
-  sortOrder: z.number().int().min(0).max(1000).default(0),
-});
-
 export const profileInputSchema = z.object({
   stageName: z.string().trim().min(2).max(120),
   slug: z

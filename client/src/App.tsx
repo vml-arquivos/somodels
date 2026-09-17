@@ -11,7 +11,6 @@ import ProfilePage from "./pages/ProfilePage";
 import CityPage from "./pages/CityPage";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-import AdminNewPortfolioPage from "./pages/AdminNewPortfolioPage";
 import LoginPage from "./pages/LoginPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import TestSignupPage from "./pages/TestSignupPage";
@@ -26,7 +25,6 @@ function Router() {
     <Route path="/perfil/:slug" component={ProfilePage} />
     <Route path="/cidade/:city" component={CityPage} />
     <Route path="/titular" component={OwnerDashboard} />
-    <Route path="/admin/portfolio/novo" component={AdminNewPortfolioPage} />
     <Route path="/admin" component={AdminDashboard} />
     <Route path="/404" component={NotFound} />
     <Route component={NotFound} />

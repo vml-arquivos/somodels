@@ -1,5 +1,4 @@
-import { getMediaById, getAdminProfile, getUserById } from "../db";
-import { canManage } from "../management";
+import { getMediaById, getAdminProfile } from "../db";
 import { storageGetSignedUrl } from "../storage";
 import { readSiteSettings } from "../site-config";
 import "dotenv/config";
@@ -13,9 +12,9 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic } from "./serve-static";
+import { serveStatic, setupVite } from "./vite";
 import { storagePut } from "../storage";
-import { getIdentityVerification, isDatabaseReady, listPublishedProfiles } from "../db";
+import { getIdentityVerification, getOwnerProfile, isDatabaseReady, listPublishedProfiles } from "../db";
 import { assertProductionConfig, ENV, runtimeConfigStatus } from "./env";
 import { bootstrapLocalAccounts } from "../auth";
 
@@ -111,24 +110,15 @@ async function startServer() {
       const ctx = await createContext({ req, res } as any);
       if (!ctx.user || ctx.user.accountStatus !== "active") return res.status(401).json({ error: "Não autenticado" });
       if (ctx.user.mustChangePassword) return res.status(403).json({ error: "Altere sua senha antes de continuar" });
+      if (ENV.requireIdentityVerification) {
+        const identity = await getIdentityVerification(ctx.user.id);
+        if (identity?.status !== "approved") return res.status(403).json({ error: "Verificação de identidade obrigatória" });
+      }
       const { profileId, kind, filename, contentType, data } = req.body ?? {};
       if (!profileId || !kind || !filename || !contentType || typeof data !== "string") return res.status(400).json({ error: "Dados de upload incompletos" });
       if (!["photo", "video"].includes(kind)) return res.status(400).json({ error: "Tipo de mídia inválido" });
-      const numericProfileId = Number(profileId);
-      if (!Number.isSafeInteger(numericProfileId) || numericProfileId <= 0)
-        return res.status(400).json({ error: "Perfil inválido" });
-      const targetProfile = await getAdminProfile(numericProfileId);
-      if (!targetProfile) return res.status(404).json({ error: "Perfil não encontrado" });
-      const owner = await getUserById(targetProfile.profile.ownerId);
-      if (!owner || owner.accountStatus !== "active")
-        return res.status(403).json({ error: "Titular indisponível" });
-      const ownProfile = owner.id === ctx.user.id;
-      if (!ownProfile && !canManage(ctx.user, owner))
-        return res.status(403).json({ error: "Você não pode alterar este perfil" });
-      if (ownProfile && ENV.requireIdentityVerification) {
-        const identity = await getIdentityVerification(owner.id);
-        if (identity?.status !== "approved") return res.status(403).json({ error: "Verificação de identidade obrigatória" });
-      }
+      const ownedProfile = await getOwnerProfile(ctx.user.id, Number(profileId));
+      if (!ownedProfile) return res.status(403).json({ error: "Perfil não pertence à conta autenticada" });
       const allowedPhoto = ["image/jpeg", "image/png", "image/webp", "image/avif"].includes(contentType);
       const allowedVideo = ["video/mp4", "video/webm", "video/quicktime"].includes(contentType);
       if ((kind === "photo" && !allowedPhoto) || (kind === "video" && !allowedVideo)) return res.status(415).json({ error: "Formato de mídia não permitido" });
@@ -139,7 +129,7 @@ async function startServer() {
       if (buffer.byteLength === 0 || buffer.byteLength > maxBytes) return res.status(413).json({ error: "Arquivo excede o limite permitido" });
       if (!hasMagicBytes(buffer, kind, contentType)) return res.status(415).json({ error: "Assinatura do arquivo não corresponde ao tipo declarado" });
       const extension = path.extname(String(filename)).toLowerCase().replace(/[^a-z0-9.]/g, "") || (kind === "photo" ? ".jpg" : ".mp4");
-      const safeKey = `profiles/${owner.id}/${numericProfileId}/${kind}/${randomUUID()}${extension}`;
+      const safeKey = `profiles/${ctx.user.id}/${profileId}/${kind}/${randomUUID()}${extension}`;
       const uploaded = await storagePut(safeKey, buffer, contentType);
       return res.json(uploaded);
     } catch (error) {
@@ -148,12 +138,8 @@ async function startServer() {
     }
   });
   app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
-  if (ENV.nodeEnv === "development") {
-    const { setupVite } = await import("./vite-dev");
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+  if (ENV.nodeEnv === "development") await setupVite(app, server);
+  else serveStatic(app);
   const preferredPort = ENV.port;
   const port = (await isPortAvailable(preferredPort)) ? preferredPort : preferredPort + 1;
   server.listen(port, () => console.log(`[Startup] so-models listening on ${port} release=${ENV.release}`));

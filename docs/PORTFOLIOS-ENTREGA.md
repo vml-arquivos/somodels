@@ -28,7 +28,7 @@ Adaptação autorizada para portfólios profissionais de modelos e criadores, se
 2. Em homologação, instale com `corepack pnpm install --frozen-lockfile` e valide a migration `drizzle/0005_portfolio_management.sql`.
 3. Com DATABASE_URL apontando ao banco correto, execute `pnpm db:migrate` no ambiente de deploy. Esse comando aplica as migrations versionadas; não gera SQL novo. Não use `db:push` em produção.
 4. A migration cria `site_settings` e `finance_entries` vazias e adiciona `profiles.portfolioReviewed` com default false. Não insere registros de exemplo nem remove dados existentes.
-5. Publique a aplicação somente após aplicar a migration. O Dockerfile NÃO aplica migrations automaticamente. O healthcheck geral existente não substitui a conferência das tabelas novas.
+5. O runtime agora executa `pnpm db:migrate` antes de iniciar o servidor. Se uma migration falhar, o container não sobe, evitando código novo com banco antigo. O healthcheck também valida a coluna `profiles.portfolioReviewed` e as tabelas `site_settings` e `finance_entries`; schema incompleto retorna 503.
 6. Confirme login, troca obrigatória de senha, acessos por papel, configuração da página inicial, salvamento de rascunho, revisão, upload e abertura das mídias, incluindo bloqueio público de perfis ocultos.
 
 A reversão da aplicação deve ser planejada: a versão anterior não conhece o campo de revisão de portfólios. Em rollback, mantenha a vitrine pública fechada para evitar republicar conteúdo legado. As duas tabelas novas podem ser preservadas; não exclua lançamentos/configurações para fazer rollback.

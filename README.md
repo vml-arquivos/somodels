@@ -31,3 +31,7 @@ Este pacote inclui correções de autorização e proteção de dados. Não cons
 Esta versão adapta as páginas e categorias a portfólios profissionais, sem oferta de serviços sexuais. Não cria contas, perfis, imagens ou lançamentos de exemplo. O seed demonstrativo está desativado. Registros existentes são preservados, mas precisam de revisão de adequação antes de voltar à vitrine.
 
 A migration `0005_portfolio_management.sql` deve ser aplicada após backup e antes de iniciar a nova versão. Use `pnpm db:migrate`; não use `db:push` em produção. O deploy não aplica migrations automaticamente. A migração cria duas tabelas vazias e uma coluna de controle; não publica registros. Consulte `docs/PORTFOLIOS-ENTREGA.md`.
+
+## Hotfix de compatibilidade de schema — 16/09/2026
+
+O container de produção executa `pnpm db:migrate` antes de iniciar `dist/index.js`. O healthcheck valida também os objetos de banco exigidos pela migration `0005_portfolio_management.sql`. Assim, um deploy não é considerado saudável quando o código está à frente do schema.

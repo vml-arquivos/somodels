@@ -1,0 +1,23 @@
+Hotfix de compatibilidade de schema — validação disponível neste ambiente
+
+Evidência de causa:
+- A migration drizzle/0005_portfolio_management.sql cria profiles.portfolioReviewed, site_settings e finance_entries.
+- O código do dashboard consulta profiles.portfolioReviewed.
+- O print de produção mostra falha exatamente nessa consulta.
+
+Alterações do hotfix:
+- Dockerfile: pnpm db:migrate antes de node dist/index.js.
+- server/db.ts: /healthz exige os objetos da migration 0005.
+- documentação atualizada.
+
+Validações estáticas executadas:
+- migration 0005 presente no pacote: OK
+- package.json contém db:migrate: OK
+- runtime Docker contém pnpm, node_modules, drizzle e drizzle.config.ts: OK
+- comando de startup usa && e falha fechado se migration falhar: OK
+- arquivos temporários de backup removidos: OK
+
+Limitações do ambiente:
+- pnpm check/test/build não puderam ser reexecutados porque o ambiente não resolve registry.npmjs.org e o ZIP não contém node_modules.
+- banco de produção e Coolify não estão conectados nesta sessão; a migration não foi executada remotamente daqui.
+- o hotfix não altera a migration 0005 nem dados existentes.
