@@ -7,6 +7,7 @@ export default function ProfilePage() {
   const { slug = "" } = useParams<{ slug: string }>();
   const result = trpc.profiles.bySlug.useQuery({ slug });
   const settings = trpc.management.settings.useQuery();
+  const config = trpc.system.config.useQuery();
   const data = result.data;
   const links = contactLinks(data?.profile.phone, data?.profile.whatsapp);
   return (
@@ -29,6 +30,10 @@ export default function ProfilePage() {
               title={`${data.profile.stageName} — Só Models`}
               description={data.profile.description || "Portfólio profissional"}
               path={`/perfil/${slug}`}
+              image={data.profile.avatarUrl || undefined}
+              noindex={Boolean(
+                config.data?.robotsNoIndex || config.data?.ageVerificationRequired
+              )}
             />
             <section className="studio-profile-hero">
               <div className="studio-cover">

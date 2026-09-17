@@ -28,11 +28,13 @@ import {
   revokeLocalSession,
 } from "./auth";
 import {
+  acceptProfileTerms,
   createAgeVerificationSession,
   createMedia,
   createPremiumIntent,
   getApprovedAgeVerification,
   getIdentityVerification,
+  getProfileTermsStatus,
   getOwnerProfile,
   getOwnerProfiles,
   getPublicProfile,
@@ -278,6 +280,8 @@ export const appRouter = router({
             city: z.string().max(120).optional(),
             category: z.string().max(60).optional(),
             attribute: z.string().max(60).optional(),
+            limit: z.number().int().min(1).max(25).optional(),
+            offset: z.number().int().min(0).max(10000).optional(),
           })
           .optional()
       )
@@ -334,6 +338,19 @@ export const appRouter = router({
     identity: protectedProcedure.query(({ ctx }) =>
       getIdentityVerification(ctx.user.id)
     ),
+    termsStatus: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ ctx, input }) => getProfileTermsStatus(input.id, ctx.user.id)),
+    acceptTerms: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          adultConfirmed: z.literal(true),
+          rightsConfirmed: z.literal(true),
+          responsibilityConfirmed: z.literal(true),
+        })
+      )
+      .mutation(({ ctx, input }) => acceptProfileTerms(ctx.user.id, input.id)),
     save: protectedProcedure
       .input(
         profileInputSchema.extend({

@@ -84,3 +84,67 @@ describe("profile terms acceptance", () => {
     });
   });
 });
+
+it("reports that the owner never accepted when no record exists", () => {
+  expect(evaluateProfileTermsAcceptance(profile, media, null)).toMatchObject({
+    current: false,
+    reason: "never_accepted",
+  });
+});
+
+it("invalidates acceptance when the terms version changes", () => {
+  const record = accepted();
+  const metadata = JSON.parse(record.metadata);
+  metadata.termsVersion = "old-version";
+  expect(evaluateProfileTermsAcceptance(profile, media, { ...record, metadata: JSON.stringify(metadata) })).toMatchObject({
+    current: false,
+    reason: "terms_updated",
+  });
+});
+
+it("invalidates acceptance when the terms hash changes", () => {
+  const record = accepted();
+  const metadata = JSON.parse(record.metadata);
+  metadata.termsHash = "tampered";
+  expect(evaluateProfileTermsAcceptance(profile, media, { ...record, metadata: JSON.stringify(metadata) })).toMatchObject({
+    current: false,
+    reason: "terms_updated",
+  });
+});
+
+it("requires the adult confirmation flag", () => {
+  const record = accepted();
+  const metadata = JSON.parse(record.metadata);
+  metadata.adultConfirmed = false;
+  expect(evaluateProfileTermsAcceptance(profile, media, { ...record, metadata: JSON.stringify(metadata) }).reason).toBe("invalid_acceptance");
+});
+
+it("requires the rights confirmation flag", () => {
+  const record = accepted();
+  const metadata = JSON.parse(record.metadata);
+  metadata.rightsConfirmed = false;
+  expect(evaluateProfileTermsAcceptance(profile, media, { ...record, metadata: JSON.stringify(metadata) }).reason).toBe("invalid_acceptance");
+});
+
+it("requires the responsibility confirmation flag", () => {
+  const record = accepted();
+  const metadata = JSON.parse(record.metadata);
+  metadata.responsibilityConfirmed = false;
+  expect(evaluateProfileTermsAcceptance(profile, media, { ...record, metadata: JSON.stringify(metadata) }).reason).toBe("invalid_acceptance");
+});
+
+it("invalidates acceptance when media ordering metadata changes", () => {
+  const record = accepted();
+  const changed = [{ ...media[0], sortOrder: 4 }];
+  expect(evaluateProfileTermsAcceptance(profile, changed, record).reason).toBe("content_changed");
+});
+
+it("keeps the digest stable when the media array arrives in a different order", () => {
+  const twoMedia = [...media, { ...media[0], id: 2, storageHash: "def" }];
+  const record = accepted(profile, twoMedia);
+  expect(evaluateProfileTermsAcceptance(profile, [...twoMedia].reverse(), record).current).toBe(true);
+});
+
+it("exposes the accepted terms version for auditing", () => {
+  expect(evaluateProfileTermsAcceptance(profile, media, accepted()).acceptedVersion).toBe(currentPortfolioTerms().termsVersion);
+});

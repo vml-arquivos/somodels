@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useParams } from "wouter";
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import {
   defaultSiteSettings,
@@ -8,11 +8,18 @@ import {
 } from "@shared/portfolio";
 import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
-export default function Home() {
-  const params = useParams<{ city?: string }>();
-  const [search, setSearch] = useState(""),
-    [city, setCity] = useState(params.city || ""),
-    [category, setCategory] = useState("");
+import {
+  buildDiscoverySearch,
+  cityPath,
+  DISCOVERY_PAGE_SIZE,
+  parseDiscoverySearch,
+  type DiscoveryFilters,
+} from "@/lib/discovery";
+
+export function DiscoveryPage({ fixedCity }: { fixedCity?: string }) {
+  const [filters, setFilters] = useState<DiscoveryFilters>(() =>
+    parseDiscoverySearch(window.location.search, fixedCity)
+  );
   const settings = trpc.management.settings.useQuery();
   const site = settings.data || defaultSiteSettings;
   const config = trpc.system.config.useQuery();
@@ -22,42 +29,102 @@ export default function Home() {
     site.showGallery &&
     !!config.data?.publicAccessEnabled &&
     age.data?.status === "approved";
+  const activeCity = fixedCity || filters.city;
   const list = trpc.profiles.list.useQuery(
     {
-      search: search || undefined,
-      city: city || undefined,
-      category: category || undefined,
+      search: filters.search || undefined,
+      city: activeCity || undefined,
+      category: filters.category || undefined,
+      limit: DISCOVERY_PAGE_SIZE + 1,
+      offset: filters.page * DISCOVERY_PAGE_SIZE,
     },
     { enabled: open }
   );
+  const items = list.data?.slice(0, DISCOVERY_PAGE_SIZE) ?? [];
+  const hasNext = (list.data?.length ?? 0) > DISCOVERY_PAGE_SIZE;
+  const filtered = Boolean(filters.search || filters.category || (!fixedCity && filters.city));
+  const noindex = Boolean(
+    config.data?.robotsNoIndex || config.data?.ageVerificationRequired || filtered
+  );
+  const canonicalPath = fixedCity ? cityPath(fixedCity) : "/";
+  const title = fixedCity
+    ? `Portfólios profissionais em ${fixedCity} — Só Models`
+    : "Só Models — Portfólios profissionais";
+  const description = fixedCity
+    ? `Descubra portfólios profissionais de modelos e criadores em ${fixedCity}.`
+    : site.subtitle;
+
+
+  useEffect(() => {
+    const onPopState = () =>
+      setFilters(parseDiscoverySearch(window.location.search, fixedCity));
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [fixedCity]);
+
+  useEffect(() => {
+    const next = `${window.location.pathname}${buildDiscoverySearch(filters, fixedCity)}`;
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (next !== current) window.history.replaceState(null, "", next);
+  }, [filters, fixedCity]);
+
+  const updateFilter = (key: "search" | "city" | "category", value: string) =>
+    setFilters(current => ({ ...current, [key]: value, page: 0 }));
+
+  const jsonLd = fixedCity
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Só Models",
+            item: new URL("/", window.location.origin).toString(),
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: fixedCity,
+            item: new URL(canonicalPath, window.location.origin).toString(),
+          },
+        ],
+      }
+    : undefined;
+
   return (
     <div className="studio">
       <Seo
-        title="Só Models — Portfólios profissionais"
-        description={site.subtitle}
-        path="/"
+        title={title}
+        description={description}
+        path={canonicalPath}
+        noindex={noindex}
+        jsonLd={jsonLd}
       />
       <StudioHeader>
         <Link href="/login">Entrar</Link>
         <Link href="/admin">Administração</Link>
       </StudioHeader>
       <main className="studio-main">
+        {fixedCity && (
+          <nav className="studio-breadcrumb" aria-label="Navegação estrutural">
+            <Link href="/">Vitrine</Link>
+            <span aria-hidden="true">/</span>
+            <span>{fixedCity}</span>
+          </nav>
+        )}
         <section className="studio-hero">
           <div>
             <p className="studio-kicker">Modelos · Criadores · Projetos</p>
-            <h1>{site.title}</h1>
-            <p>{site.subtitle}</p>
+            <h1>{fixedCity ? `Talentos em ${fixedCity}` : site.title}</h1>
+            <p>{fixedCity ? description : site.subtitle}</p>
             <a className="studio-cta" href="#portfolios">
               {site.buttonText}
             </a>
           </div>
           <div className="studio-hero-art" aria-hidden="true">
             <span>
-              Seu
-              <br />
-              próximo
-              <br />
-              <em>projeto.</em>
+              Seu<br />próximo<br /><em>projeto.</em>
             </span>
           </div>
         </section>
@@ -65,7 +132,7 @@ export default function Home() {
           <div className="studio-title">
             <div>
               <p className="studio-kicker">Descubra talentos</p>
-              <h2>Portfólios profissionais</h2>
+              <h2>{fixedCity ? `Portfólios em ${fixedCity}` : "Portfólios profissionais"}</h2>
             </div>
           </div>
           {settings.error ? (
@@ -86,19 +153,21 @@ export default function Home() {
                 <input
                   aria-label="Buscar portfólio"
                   placeholder="Nome ou especialidade"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  value={filters.search}
+                  onChange={e => updateFilter("search", e.target.value)}
                 />
-                <input
-                  aria-label="Cidade"
-                  placeholder="Cidade"
-                  value={city}
-                  onChange={e => setCity(e.target.value)}
-                />
+                {!fixedCity && (
+                  <input
+                    aria-label="Cidade"
+                    placeholder="Cidade"
+                    value={filters.city}
+                    onChange={e => updateFilter("city", e.target.value)}
+                  />
+                )}
                 <select
                   aria-label="Categoria"
-                  value={category}
-                  onChange={e => setCategory(e.target.value)}
+                  value={filters.category}
+                  onChange={e => updateFilter("category", e.target.value)}
                 >
                   <option value="">Todas as categorias</option>
                   {portfolioCategories.map(c => (
@@ -106,11 +175,9 @@ export default function Home() {
                   ))}
                 </select>
                 <button
-                  onClick={() => {
-                    setSearch("");
-                    setCity("");
-                    setCategory("");
-                  }}
+                  onClick={() =>
+                    setFilters({ search: "", city: fixedCity || "", category: "", page: 0 })
+                  }
                 >
                   Limpar
                 </button>
@@ -119,36 +186,50 @@ export default function Home() {
                 <p>Carregando portfólios…</p>
               ) : list.error ? (
                 <p role="alert">Não foi possível carregar os portfólios.</p>
-              ) : list.data?.length ? (
-                <div className="studio-cards">
-                  {list.data.map((p: any) => (
-                    <Link
-                      href={`/perfil/${p.slug}`}
-                      className="studio-portfolio-card"
-                      key={p.id}
+              ) : items.length ? (
+                <>
+                  <div className="studio-cards">
+                    {items.map((p: any) => (
+                      <article className="studio-portfolio-card" key={p.id}>
+                        <Link href={`/perfil/${p.slug}`} className="studio-card-main">
+                          <div className="studio-cover">
+                            {p.avatarUrl ? (
+                              <img
+                                src={p.avatarUrl}
+                                alt={`Portfólio de ${p.stageName}`}
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span>{p.stageName.slice(0, 1)}</span>
+                            )}
+                          </div>
+                          <div>
+                            <small>{p.categories.join(" · ")}</small>
+                            <h3>{p.stageName}</h3>
+                          </div>
+                        </Link>
+                        <Link href={cityPath(p.city)} className="studio-city-link">
+                          {p.city}{p.region ? ` / ${p.region}` : ""}
+                        </Link>
+                      </article>
+                    ))}
+                  </div>
+                  <nav className="studio-pagination" aria-label="Paginação de portfólios">
+                    <button
+                      disabled={filters.page === 0 || list.isFetching}
+                      onClick={() => setFilters(current => ({ ...current, page: Math.max(0, current.page - 1) }))}
                     >
-                      <div className="studio-cover">
-                        {p.avatarUrl ? (
-                          <img
-                            src={p.avatarUrl}
-                            alt={`Portfólio de ${p.stageName}`}
-                            loading="lazy"
-                          />
-                        ) : (
-                          <span>{p.stageName.slice(0, 1)}</span>
-                        )}
-                      </div>
-                      <div>
-                        <small>{p.categories.join(" · ")}</small>
-                        <h3>{p.stageName}</h3>
-                        <p>
-                          {p.city}
-                          {p.region ? ` / ${p.region}` : ""}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                      Anterior
+                    </button>
+                    <span>Página {filters.page + 1}</span>
+                    <button
+                      disabled={!hasNext || list.isFetching}
+                      onClick={() => setFilters(current => ({ ...current, page: current.page + 1 }))}
+                    >
+                      Próxima
+                    </button>
+                  </nav>
+                </>
               ) : (
                 <div className="studio-panel">
                   <h3>Nenhum portfólio encontrado</h3>
@@ -158,7 +239,7 @@ export default function Home() {
             </>
           )}
         </section>
-        {site.showAbout && (
+        {site.showAbout && !fixedCity && (
           <section className="studio-about">
             <p className="studio-kicker">Sobre a plataforma</p>
             <h2>Trabalhos que merecem ser vistos.</h2>
@@ -169,12 +250,15 @@ export default function Home() {
           <h3>Publicação responsável</h3>
           <p>{portfolioPolicy}</p>
           <p className="studio-muted">
-            Os dados de contato são publicados pelo titular. Documentos de
-            identidade não fazem parte da vitrine.
+            Os dados de contato só ficam disponíveis enquanto a autorização do titular estiver vigente. Documentos de identidade não fazem parte da vitrine.
           </p>
         </section>
       </main>
       <footer className="studio-footer">{site.footer}</footer>
     </div>
   );
+}
+
+export default function Home() {
+  return <DiscoveryPage />;
 }

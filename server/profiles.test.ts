@@ -24,5 +24,8 @@ describe("profile data", () => {
     expect(profile.telegram).toBeNull();
     expect(profile.contactOptions).toEqual(["Contato demonstrativo desativado"]);
     expect(profile.demoContactDisabled).toBe(true);
+    expect(profile).not.toHaveProperty("ownerId");
+    expect(profile).not.toHaveProperty("status");
+    expect(profile).not.toHaveProperty("rejectionReason");
   });
 });

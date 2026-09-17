@@ -15,8 +15,9 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { storagePut } from "../storage";
 import { getIdentityVerification, getOwnerProfile, isDatabaseReady, listPublishedProfiles } from "../db";
-import { assertProductionConfig, ENV, runtimeConfigStatus } from "./env";
+import { assertProductionConfig, ENV } from "./env";
 import { bootstrapLocalAccounts } from "../auth";
+import { isPublicIndexingEnabled } from "../public-indexing";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -74,19 +75,54 @@ async function startServer() {
   app.get("/healthz", healthHandler);
   app.get("/health", healthHandler);
   app.get("/api/release", (_req, res) => res.json({ service: "so-models", release: ENV.release }));
-  app.get("/robots.txt", (_req, res) => {
-    const body = !ENV.robotsNoIndex && ENV.publicAccessEnabled && runtimeConfigStatus().ageVerification ? `User-agent: *\\nAllow: /\\nDisallow: /admin\\nDisallow: /titular\\nDisallow: /api/\\nSitemap: ${ENV.canonicalOrigin || "https://somodels.buscarr.com.br"}/sitemap.xml\\n` : "User-agent: *\\nDisallow: /\\n";
+  app.get("/robots.txt", async (_req, res) => {
+    let showGallery = false;
+    try {
+      showGallery = (await readSiteSettings()).showGallery;
+    } catch {
+      showGallery = false;
+    }
+    const indexingEnabled = isPublicIndexingEnabled({
+      robotsNoIndex: ENV.robotsNoIndex,
+      publicAccessEnabled: ENV.publicAccessEnabled,
+      requireAgeVerification: ENV.requireAgeVerification,
+      showGallery,
+    });
+    const body = indexingEnabled
+      ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /titular\nDisallow: /api/\nSitemap: ${ENV.canonicalOrigin || "https://somodels.buscarr.com.br"}/sitemap.xml\n`
+      : "User-agent: *\nDisallow: /\n";
     res.type("text/plain").send(body);
   });
   app.get("/sitemap.xml", async (_req, res) => {
-    if (ENV.robotsNoIndex || !ENV.publicAccessEnabled || !runtimeConfigStatus().ageVerification || !(await readSiteSettings()).showGallery) {
-      res.type("application/xml").send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+    let showGallery = false;
+    try {
+      showGallery = (await readSiteSettings()).showGallery;
+    } catch {
+      showGallery = false;
+    }
+    const indexingEnabled = isPublicIndexingEnabled({
+      robotsNoIndex: ENV.robotsNoIndex,
+      publicAccessEnabled: ENV.publicAccessEnabled,
+      requireAgeVerification: ENV.requireAgeVerification,
+      showGallery,
+    });
+    if (!indexingEnabled) {
+      res
+        .type("application/xml")
+        .send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
       return;
     }
-    const published = await listPublishedProfiles({ publicAllowed: true, limit: 5000 });
+    const published = await listPublishedProfiles({ publicAllowed: true, limit: 60 });
     const origin = ENV.canonicalOrigin || "https://somodels.buscarr.com.br";
-    const urls = published.map(profile => `<url><loc>${origin}/perfil/${encodeURIComponent(profile.slug)}</loc><lastmod>${new Date(profile.updatedAt).toISOString()}</lastmod></url>`).join("");
-    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
+    const urls = published
+      .map(
+        profile =>
+          `<url><loc>${origin}/perfil/${encodeURIComponent(profile.slug)}</loc><lastmod>${new Date(profile.updatedAt).toISOString()}</lastmod></url>`
+      )
+      .join("");
+    res
+      .type("application/xml")
+      .send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
   });
   app.use(express.json({ limit: "140mb", strict: true }));
   app.use(express.urlencoded({ limit: "140mb", extended: false }));
@@ -112,7 +148,11 @@ async function startServer() {
       if (ctx.user.mustChangePassword) return res.status(403).json({ error: "Altere sua senha antes de continuar" });
       if (ENV.requireIdentityVerification) {
         const identity = await getIdentityVerification(ctx.user.id);
-        if (identity?.status !== "approved") return res.status(403).json({ error: "Verificação de identidade obrigatória" });
+        if (
+          identity?.status !== "approved" ||
+          (identity.expiresAt && identity.expiresAt <= new Date())
+        )
+          return res.status(403).json({ error: "Verificação de identidade obrigatória" });
       }
       const { profileId, kind, filename, contentType, data } = req.body ?? {};
       if (!profileId || !kind || !filename || !contentType || typeof data !== "string") return res.status(400).json({ error: "Dados de upload incompletos" });

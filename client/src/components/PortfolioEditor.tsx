@@ -3,6 +3,9 @@ import { trpc } from "@/lib/trpc";
 import {
   portfolioCategories,
   portfolioPolicy,
+  portfolioTermsClauses,
+  portfolioTermsTitle,
+  portfolioTermsVersion,
   contactLinks,
 } from "@shared/portfolio";
 import { toast } from "sonner";
@@ -39,18 +42,30 @@ export default function PortfolioEditor({
   });
   const [busy, setBusy] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [termsChecks, setTermsChecks] = useState({
+    adultConfirmed: false,
+    rightsConfirmed: false,
+    responsibilityConfirmed: false,
+  });
   const save = trpc.profiles.save.useMutation();
   const adminSave = trpc.management.saveProfile.useMutation();
   const add = trpc.media.add.useMutation();
   const cover = trpc.profiles.cover.useMutation();
   const hide = trpc.profiles.hideMedia.useMutation();
+  const ownerTerms = trpc.profiles.termsStatus.useQuery(
+    { id: initial?.id || 0 },
+    { enabled: Boolean(initial?.id) && !admin }
+  );
+  const acceptTerms = trpc.profiles.acceptTerms.useMutation();
   const update = (key: string, value: any) =>
     setForm(f => ({ ...f, [key]: value }));
   const links = contactLinks(form.phone, form.whatsapp);
   async function submit(review: boolean) {
     if (!consent) {
       toast.error(
-        "Confirme a autorização do conteúdo e a política de portfólios"
+        admin
+          ? "Confirme que os dados foram fornecidos ou autorizados pelo titular"
+          : "Confirme a autorização do conteúdo e a política de portfólios"
       );
       return;
     }
@@ -80,14 +95,27 @@ export default function PortfolioEditor({
         contactOptions: [],
         isAvailableNow: false,
       };
-      const id = admin
-        ? await adminSave.mutateAsync({ ...payload, ownerId: ownerId! })
-        : await save.mutateAsync({ ...payload, submitForReview: review });
-      toast.success(
-        review
-          ? "Enviado para revisão"
-          : "Rascunho salvo. A publicação exige revisão."
-      );
+      if (admin) {
+        const id = await adminSave.mutateAsync({ ...payload, ownerId: ownerId! });
+        toast.success("Portfólio salvo para revisão do titular e da moderação");
+        onSaved(Number(id));
+        return;
+      }
+      const id = await save.mutateAsync({ ...payload, submitForReview: false });
+      if (review) {
+        const status = initial?.id ? await ownerTerms.refetch() : null;
+        if (!status?.data?.current) {
+          toast.error(
+            "Rascunho salvo. Aceite o termo de responsabilidade vigente para este conteúdo antes de enviar para revisão."
+          );
+          onSaved(Number(id));
+          return;
+        }
+        await save.mutateAsync({ ...payload, id: Number(id), submitForReview: true });
+        toast.success("Enviado para revisão");
+      } else {
+        toast.success("Rascunho salvo. A publicação exige revisão.");
+      }
       onSaved(Number(id));
     } catch (e) {
       toast.error((e as Error).message);
@@ -230,6 +258,80 @@ export default function PortfolioEditor({
           </button>
         )}
       </div>
+      <section className="studio-panel">
+        <h3>{portfolioTermsTitle}</h3>
+        {!initial?.id ? (
+          <p className="studio-muted">
+            Salve o rascunho primeiro. O aceite é vinculado ao conteúdo atual do perfil e às mídias cadastradas.
+          </p>
+        ) : admin ? (
+          <p className="studio-muted">
+            O administrador pode preparar o portfólio, mas somente o titular pode registrar o aceite contratual.
+          </p>
+        ) : (
+          <>
+            <p className={ownerTerms.data?.current ? "studio-notice" : "studio-muted"}>
+              {ownerTerms.data?.current
+                ? `Aceite vigente registrado em ${new Date(ownerTerms.data.acceptedAt!).toLocaleString("pt-BR")}.`
+                : "Leia e confirme o termo para o conteúdo atual deste portfólio."}
+            </p>
+            <ol className="studio-terms">
+              {portfolioTermsClauses.map(clause => <li key={clause}>{clause}</li>)}
+            </ol>
+            <p className="studio-muted">Versão {portfolioTermsVersion}</p>
+            <label className="studio-check">
+              <input
+                type="checkbox"
+                checked={termsChecks.adultConfirmed}
+                onChange={e => setTermsChecks(v => ({ ...v, adultConfirmed: e.target.checked }))}
+              />
+              Confirmo que tenho 18 anos ou mais.
+            </label>
+            <label className="studio-check">
+              <input
+                type="checkbox"
+                checked={termsChecks.rightsConfirmed}
+                onChange={e => setTermsChecks(v => ({ ...v, rightsConfirmed: e.target.checked }))}
+              />
+              Confirmo que possuo os direitos e autorizações necessários sobre os dados, fotos e vídeos.
+            </label>
+            <label className="studio-check">
+              <input
+                type="checkbox"
+                checked={termsChecks.responsibilityConfirmed}
+                onChange={e => setTermsChecks(v => ({ ...v, responsibilityConfirmed: e.target.checked }))}
+              />
+              Assumo a responsabilidade pelo conteúdo que envio ou autorizo publicar.
+            </label>
+            <button
+              className="primary"
+              disabled={
+                acceptTerms.isPending ||
+                !termsChecks.adultConfirmed ||
+                !termsChecks.rightsConfirmed ||
+                !termsChecks.responsibilityConfirmed
+              }
+              onClick={async () => {
+                try {
+                  await acceptTerms.mutateAsync({
+                    id: initial.id,
+                    adultConfirmed: true,
+                    rightsConfirmed: true,
+                    responsibilityConfirmed: true,
+                  });
+                  await ownerTerms.refetch();
+                  setTermsChecks({ adultConfirmed: false, rightsConfirmed: false, responsibilityConfirmed: false });
+                  toast.success("Termo registrado para o conteúdo atual");
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+            >
+              Aceitar termo e registrar
+            </button>
+          </>
+        )}
+      </section>
       <section className="studio-panel">
         <h3>Fotos e vídeos</h3>
         {!initial?.id ? (

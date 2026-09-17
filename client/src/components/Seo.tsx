@@ -41,6 +41,9 @@ export default function Seo({
     if (image) {
       upsertMeta("property", "og:image", new URL(image, origin).toString());
       upsertMeta("name", "twitter:image", new URL(image, origin).toString());
+    } else {
+      document.head.querySelector('meta[property="og:image"]')?.remove();
+      document.head.querySelector('meta[name="twitter:image"]')?.remove();
     }
     let link = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!link) {
