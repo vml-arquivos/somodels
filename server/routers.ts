@@ -1,5 +1,5 @@
 import { updateOwnedMedia } from "./db";
-import { profileInputSchema } from "../shared/profile-schema";
+import { profileInputSchema, profileMediaInputSchema } from "../shared/profile-schema";
 import { readSiteSettings } from "./site-config";
 import { managementRouter } from "./management";
 import { z } from "zod";
@@ -28,11 +28,13 @@ import {
   revokeLocalSession,
 } from "./auth";
 import {
+  acceptProfileTerms,
   createAgeVerificationSession,
   createMedia,
   createPremiumIntent,
   getApprovedAgeVerification,
   getIdentityVerification,
+  getProfileTermsStatus,
   getOwnerProfile,
   getOwnerProfiles,
   getPublicProfile,
@@ -334,6 +336,23 @@ export const appRouter = router({
     identity: protectedProcedure.query(({ ctx }) =>
       getIdentityVerification(ctx.user.id)
     ),
+    termsStatus: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ ctx, input }) =>
+        getProfileTermsStatus(input.id, ctx.user.id)
+      ),
+    acceptTerms: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          adultConfirmed: z.literal(true),
+          rightsConfirmed: z.literal(true),
+          responsibilityConfirmed: z.literal(true),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        acceptProfileTerms(ctx.user.id, input.id)
+      ),
     save: protectedProcedure
       .input(
         profileInputSchema.extend({
@@ -348,19 +367,7 @@ export const appRouter = router({
   }),
   media: router({
     add: protectedProcedure
-      .input(
-        z.object({
-          profileId: z.number().int().positive(),
-          kind: z.enum(["photo", "video"]),
-          title: z.string().max(160).optional(),
-          description: z.string().max(2000).optional(),
-          storageKey: z.string().min(1).max(500),
-          url: z.string().startsWith("/manus-storage/").max(600),
-          mimeType: z.string().min(1).max(120),
-          isPremium: z.boolean().default(false),
-          sortOrder: z.number().int().min(0).max(1000).default(0),
-        })
-      )
+      .input(profileMediaInputSchema)
       .mutation(({ ctx, input }) => createMedia(ctx.user.id, input as any)),
   }),
   premium: router({

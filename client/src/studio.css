@@ -138,6 +138,16 @@
   margin: 12px 0;
   line-height: 1.6;
 }
+.studio-terms {
+  margin: 12px 0;
+  padding-left: 20px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--s-text);
+}
+.studio-terms li {
+  margin: 6px 0;
+}
 .studio-header {
   display: flex;
   align-items: center;

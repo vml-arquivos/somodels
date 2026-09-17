@@ -7,8 +7,12 @@ import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   getDb,
   getAdminProfile,
+  getMediaById,
+  getProfileTermsStatus,
   getUserById,
   saveProfile,
+  createMedia,
+  updateOwnedMedia,
   createLocalUser,
 } from "./db";
 import {
@@ -23,7 +27,7 @@ import {
 import { createOpaqueToken, hashToken, hashPassword } from "./auth-crypto";
 import { assertPasswordPolicy } from "./auth";
 import { ENV } from "./_core/env";
-import { profileInputSchema } from "../shared/profile-schema";
+import { profileInputSchema, profileMediaInputSchema } from "../shared/profile-schema";
 import { defaultSiteSettings, siteSettingsSchema } from "../shared/portfolio";
 import type { User } from "../drizzle/schema";
 
@@ -78,6 +82,19 @@ async function targetFor(actor: User, id: number) {
       message: "Você não pode alterar esta conta",
     });
   return target;
+}
+async function profileTargetFor(actor: User, profileId: number) {
+  const detail = await getAdminProfile(profileId);
+  if (!detail) throw new TRPCError({ code: "NOT_FOUND", message: "Perfil não encontrado" });
+  const target = await getUserById(detail.profile.ownerId);
+  if (
+    !target ||
+    target.accountStatus !== "active" ||
+    target.openId.startsWith("deleted:") ||
+    !(actor.id === target.id || canManage(actor, target))
+  )
+    throw new TRPCError({ code: "FORBIDDEN", message: "Você não pode alterar este perfil" });
+  return { detail, target };
 }
 function adminVisibility(actor: User) {
   return actor.role === "dev" ? undefined : sql`${users.role} <> 'dev'`;
@@ -430,6 +447,34 @@ export const managementRouter = router({
         profileId
       );
       return profileId;
+    }),
+  profileTermsStatus: adminProcedure
+    .input(idSchema)
+    .query(async ({ ctx, input }) => {
+      await profileTargetFor(ctx.user, input.id);
+      return getProfileTermsStatus(input.id);
+    }),
+  addMedia: adminProcedure
+    .input(profileMediaInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { target } = await profileTargetFor(ctx.user, input.profileId);
+      return createMedia(target.id, input as any, {
+        actorUserId: ctx.user.id,
+        skipIdentityVerification: ctx.user.id !== target.id,
+      });
+    }),
+  updateMedia: adminProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        action: z.enum(["cover", "hide"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const media = await getMediaById(input.id);
+      if (!media) throw new TRPCError({ code: "NOT_FOUND", message: "Mídia não encontrada" });
+      const { target } = await profileTargetFor(ctx.user, media.profileId);
+      return updateOwnedMedia(target.id, input.id, input.action, ctx.user.id);
     }),
   overview: adminProcedure.query(async ({ ctx }) => {
     const db = await database();

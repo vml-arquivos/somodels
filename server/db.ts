@@ -1,4 +1,9 @@
 import { portfolioCategories } from "../shared/portfolio";
+import {
+  buildProfileContentDigest,
+  currentPortfolioTerms,
+  evaluateProfileTermsAcceptance,
+} from "./profile-terms";
 import { createHash } from "node:crypto";
 import { and, asc, desc, eq, like, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -298,6 +303,104 @@ export async function writeAuditLog(input: {
   });
 }
 
+async function readProfileTermsStatus(executor: any, profile: any) {
+  const media = await executor
+    .select({
+      id: profileMedia.id,
+      kind: profileMedia.kind,
+      title: profileMedia.title,
+      description: profileMedia.description,
+      storageHash: profileMedia.storageHash,
+      mimeType: profileMedia.mimeType,
+      sortOrder: profileMedia.sortOrder,
+    })
+    .from(profileMedia)
+    .where(eq(profileMedia.profileId, profile.id))
+    .orderBy(asc(profileMedia.id));
+  const [latest] = await executor
+    .select({
+      actorUserId: auditLogs.actorUserId,
+      metadata: auditLogs.metadata,
+      createdAt: auditLogs.createdAt,
+    })
+    .from(auditLogs)
+    .where(
+      and(
+        eq(auditLogs.entityType, "profile"),
+        eq(auditLogs.entityId, profile.id),
+        eq(auditLogs.action, "profile.terms.accepted")
+      )
+    )
+    .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
+    .limit(1);
+  return evaluateProfileTermsAcceptance(profile, media, latest ?? null);
+}
+
+export async function getProfileTermsStatus(profileId: number, ownerId?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [profile] = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.id, profileId))
+    .limit(1);
+  if (!profile) throw new Error("Perfil não encontrado");
+  if (ownerId !== undefined && profile.ownerId !== ownerId)
+    throw new Error("Perfil não pertence à conta");
+  return readProfileTermsStatus(db, profile);
+}
+
+export async function acceptProfileTerms(ownerId: number, profileId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.transaction(async tx => {
+    const [profile] = await tx
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, profileId))
+      .for("update");
+    if (!profile || profile.ownerId !== ownerId)
+      throw new Error("Perfil não pertence à conta");
+    const [owner] = await tx
+      .select({ id: users.id, status: users.accountStatus })
+      .from(users)
+      .where(eq(users.id, ownerId))
+      .limit(1);
+    if (!owner || owner.status !== "active") throw new Error("Titular inativo");
+    const media = await tx
+      .select({
+        id: profileMedia.id,
+        kind: profileMedia.kind,
+        title: profileMedia.title,
+        description: profileMedia.description,
+        storageHash: profileMedia.storageHash,
+        mimeType: profileMedia.mimeType,
+        sortOrder: profileMedia.sortOrder,
+      })
+      .from(profileMedia)
+      .where(eq(profileMedia.profileId, profileId))
+      .orderBy(asc(profileMedia.id));
+    const terms = currentPortfolioTerms();
+    const contentDigest = buildProfileContentDigest(profile, media);
+    await tx.insert(auditLogs).values({
+      actorUserId: ownerId,
+      action: "profile.terms.accepted",
+      entityType: "profile",
+      entityId: profileId,
+      metadata: JSON.stringify({
+        termsVersion: terms.termsVersion,
+        termsHash: terms.termsHash,
+        termsText: terms.termsText,
+        contentDigest,
+        adultConfirmed: true,
+        rightsConfirmed: true,
+        responsibilityConfirmed: true,
+      }),
+    });
+  });
+  return getProfileTermsStatus(profileId, ownerId);
+}
+
 const parseJson = (value: string | null | undefined) => {
   try {
     return value ? JSON.parse(value) : [];
@@ -539,12 +642,19 @@ export async function saveProfile(
 
 export async function createMedia(
   ownerId: number,
-  input: Omit<InsertProfileMedia, "storageHash"> & { storageHash?: string }
+  input: Omit<InsertProfileMedia, "storageHash"> & { storageHash?: string },
+  options: { actorUserId?: number; skipIdentityVerification?: boolean } = {}
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const identity = await getIdentityVerification(ownerId);
-  if (ENV.requireIdentityVerification && identity?.status !== "approved") {
+  const identity = options.skipIdentityVerification
+    ? undefined
+    : await getIdentityVerification(ownerId);
+  if (
+    !options.skipIdentityVerification &&
+    ENV.requireIdentityVerification &&
+    identity?.status !== "approved"
+  ) {
     throw new Error(
       "A verificação de identidade do anunciante é obrigatória antes do upload"
     );
@@ -572,10 +682,11 @@ export async function createMedia(
     .values({ ...input, storageHash, status: "pending" });
   const mediaId = Number(inserted[0].insertId);
   await writeAuditLog({
-    actorUserId: ownerId,
+    actorUserId: options.actorUserId ?? ownerId,
     action: "media.created",
     entityType: "media",
     entityId: mediaId,
+    metadata: { ownerId },
   });
   return mediaId;
 }
@@ -725,6 +836,11 @@ export async function moderateProfile(
             "O titular precisa de verificação de identidade válida"
           );
       }
+      const terms = await readProfileTermsStatus(tx, profile);
+      if (!terms.current)
+        throw new Error(
+          "O titular precisa aceitar o termo de responsabilidade vigente para o conteúdo atual antes da aprovação"
+        );
     }
     const canPublish =
       status === "approved" && (ENV.testMode || ENV.publicLaunchEnabled);
@@ -765,12 +881,53 @@ export async function moderateMedia(
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  await db.update(profileMedia).set({ status }).where(eq(profileMedia.id, id));
-  await writeAuditLog({
-    actorUserId,
-    action: `media.moderated.${status}`,
-    entityType: "media",
-    entityId: id,
+  const [hint] = await db
+    .select({ profileId: profileMedia.profileId })
+    .from(profileMedia)
+    .where(eq(profileMedia.id, id))
+    .limit(1);
+  if (!hint) throw new Error("Mídia não encontrada");
+  await db.transaction(async tx => {
+    const [profile] = await tx
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, hint.profileId))
+      .for("update");
+    const [media] = await tx
+      .select()
+      .from(profileMedia)
+      .where(eq(profileMedia.id, id))
+      .for("update");
+    if (!profile || !media || media.profileId !== profile.id)
+      throw new Error("Mídia não encontrada");
+    if (status === "approved") {
+      const terms = await readProfileTermsStatus(tx, profile);
+      if (!terms.current)
+        throw new Error(
+          "O titular precisa aceitar o termo de responsabilidade vigente para o conteúdo atual antes da aprovação da mídia"
+        );
+      if (ENV.requireIdentityVerification) {
+        const [identity] = await tx
+          .select()
+          .from(identityVerifications)
+          .where(eq(identityVerifications.userId, profile.ownerId))
+          .orderBy(desc(identityVerifications.updatedAt))
+          .limit(1);
+        if (
+          identity?.status !== "approved" ||
+          (identity.expiresAt && identity.expiresAt <= new Date())
+        )
+          throw new Error("O titular precisa de verificação de identidade válida");
+      }
+    }
+    await tx.update(profileMedia).set({ status }).where(eq(profileMedia.id, id));
+    await tx.insert(auditLogs).values({
+      actorUserId: actorUserId ?? null,
+      action: `media.moderated.${status}`,
+      entityType: "media",
+      entityId: id,
+      metadata: "{}",
+    });
   });
 }
 
@@ -854,7 +1011,8 @@ export async function getMediaById(id: number) {
 export async function updateOwnedMedia(
   ownerId: number,
   mediaId: number,
-  action: "cover" | "hide"
+  action: "cover" | "hide",
+  actorUserId = ownerId
 ) {
   const db = await getDb();
   if (!db) throw new Error("Banco indisponível");
@@ -894,7 +1052,7 @@ export async function updateOwnedMedia(
     await tx
       .insert(auditLogs)
       .values({
-        actorUserId: ownerId,
+        actorUserId,
         action: `media.${action}`,
         entityType: "media",
         entityId: media.id,

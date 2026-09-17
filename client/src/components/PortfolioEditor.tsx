@@ -3,6 +3,9 @@ import { trpc } from "@/lib/trpc";
 import {
   portfolioCategories,
   portfolioPolicy,
+  portfolioTermsClauses,
+  portfolioTermsTitle,
+  portfolioTermsVersion,
   contactLinks,
 } from "@shared/portfolio";
 import { toast } from "sonner";
@@ -39,18 +42,43 @@ export default function PortfolioEditor({
   });
   const [busy, setBusy] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [termsChecks, setTermsChecks] = useState({
+    adultConfirmed: false,
+    rightsConfirmed: false,
+    responsibilityConfirmed: false,
+  });
   const save = trpc.profiles.save.useMutation();
   const adminSave = trpc.management.saveProfile.useMutation();
   const add = trpc.media.add.useMutation();
+  const adminAdd = trpc.management.addMedia.useMutation();
   const cover = trpc.profiles.cover.useMutation();
   const hide = trpc.profiles.hideMedia.useMutation();
+  const adminMedia = trpc.management.updateMedia.useMutation();
+  const ownerTerms = trpc.profiles.termsStatus.useQuery(
+    { id: initial?.id || 0 },
+    { enabled: Boolean(initial?.id) && !admin }
+  );
+  const adminTerms = trpc.management.profileTermsStatus.useQuery(
+    { id: initial?.id || 0 },
+    { enabled: Boolean(initial?.id) && admin }
+  );
+  const acceptTerms = trpc.profiles.acceptTerms.useMutation();
+  const termsStatus = admin ? adminTerms.data : ownerTerms.data;
   const update = (key: string, value: any) =>
     setForm(f => ({ ...f, [key]: value }));
   const links = contactLinks(form.phone, form.whatsapp);
   async function submit(review: boolean) {
     if (!consent) {
       toast.error(
-        "Confirme a autorização do conteúdo e a política de portfólios"
+        admin
+          ? "Confirme que os dados foram fornecidos ou autorizados pelo titular"
+          : "Confirme a autorização do conteúdo e a política de portfólios"
+      );
+      return;
+    }
+    if (review && !admin && !termsStatus?.current) {
+      toast.error(
+        "Salve o conteúdo final e aceite o termo de responsabilidade vigente antes de enviar para revisão"
       );
       return;
     }
@@ -97,7 +125,7 @@ export default function PortfolioEditor({
   }
   async function upload(file: File | undefined) {
     if (!file || !initial?.id) return;
-    const kind = file.type.startsWith("video/") ? "video" : "photo";
+    const kind: "photo" | "video" = file.type.startsWith("video/") ? "video" : "photo";
     if (file.size > (kind === "video" ? 100 : 12) * 1024 * 1024) {
       toast.error("Arquivo acima do limite: fotos 12 MB e vídeos 100 MB");
       return;
@@ -127,7 +155,7 @@ export default function PortfolioEditor({
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Falha no envio");
-      await add.mutateAsync({
+      const mediaInput = {
         profileId: initial.id,
         kind,
         storageKey: result.key,
@@ -135,7 +163,9 @@ export default function PortfolioEditor({
         mimeType: file.type,
         isPremium: false,
         sortOrder: media.length,
-      });
+      };
+      if (admin) await adminAdd.mutateAsync(mediaInput);
+      else await add.mutateAsync(mediaInput);
       toast.success("Arquivo recebido para revisão");
       onSaved(initial.id);
     } catch (e) {
@@ -213,7 +243,9 @@ export default function PortfolioEditor({
           checked={consent}
           onChange={e => setConsent(e.target.checked)}
         />
-        Confirmo que tenho autorização para os dados e arquivos.{" "}
+        {admin
+          ? "Confirmo que estou registrando informações e arquivos fornecidos ou autorizados pelo titular. Este ato administrativo não substitui o aceite contratual do titular. "
+          : "Confirmo que tenho autorização para os dados e arquivos. "}
         {portfolioPolicy}
       </label>
       <div className="studio-actions">
@@ -231,25 +263,103 @@ export default function PortfolioEditor({
         )}
       </div>
       <section className="studio-panel">
+        <h3>{portfolioTermsTitle}</h3>
+        {!initial?.id ? (
+          <p className="studio-muted">
+            Salve o rascunho primeiro. O aceite é vinculado ao conteúdo do perfil e às mídias cadastradas.
+          </p>
+        ) : admin ? (
+          <>
+            <p className={termsStatus?.current ? "studio-notice" : "studio-error"}>
+              Aceite do titular: {termsStatus?.current ? "vigente" : "pendente ou desatualizado"}.
+            </p>
+            <p className="studio-muted">
+              Versão atual: {portfolioTermsVersion}. O administrador pode preparar dados e arquivos, mas não pode aceitar em nome do titular.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className={termsStatus?.current ? "studio-notice" : "studio-muted"}>
+              {termsStatus?.current
+                ? `Aceite vigente registrado em ${new Date(termsStatus.acceptedAt!).toLocaleString("pt-BR")}.`
+                : "Leia e confirme o termo para o conteúdo atual deste portfólio."}
+            </p>
+            <ol className="studio-terms">
+              {portfolioTermsClauses.map(clause => (
+                <li key={clause}>{clause}</li>
+              ))}
+            </ol>
+            <p className="studio-muted">Versão {portfolioTermsVersion}</p>
+            <label className="studio-check">
+              <input
+                type="checkbox"
+                checked={termsChecks.adultConfirmed}
+                onChange={e => setTermsChecks(v => ({ ...v, adultConfirmed: e.target.checked }))}
+              />
+              Confirmo que tenho 18 anos ou mais.
+            </label>
+            <label className="studio-check">
+              <input
+                type="checkbox"
+                checked={termsChecks.rightsConfirmed}
+                onChange={e => setTermsChecks(v => ({ ...v, rightsConfirmed: e.target.checked }))}
+              />
+              Confirmo que possuo os direitos e autorizações necessários sobre os dados, fotos e vídeos.
+            </label>
+            <label className="studio-check">
+              <input
+                type="checkbox"
+                checked={termsChecks.responsibilityConfirmed}
+                onChange={e => setTermsChecks(v => ({ ...v, responsibilityConfirmed: e.target.checked }))}
+              />
+              Assumo a responsabilidade pelo conteúdo que envio ou autorizo publicar no meu perfil.
+            </label>
+            <button
+              className="primary"
+              disabled={
+                acceptTerms.isPending ||
+                !termsChecks.adultConfirmed ||
+                !termsChecks.rightsConfirmed ||
+                !termsChecks.responsibilityConfirmed
+              }
+              onClick={async () => {
+                try {
+                  await acceptTerms.mutateAsync({ id: initial.id, ...termsChecks } as any);
+                  await ownerTerms.refetch();
+                  setTermsChecks({
+                    adultConfirmed: false,
+                    rightsConfirmed: false,
+                    responsibilityConfirmed: false,
+                  });
+                  toast.success("Termo registrado para o conteúdo atual");
+                } catch (e) {
+                  toast.error((e as Error).message);
+                }
+              }}
+            >
+              Aceitar termo e registrar
+            </button>
+          </>
+        )}
+      </section>
+      <section className="studio-panel">
         <h3>Fotos e vídeos</h3>
         {!initial?.id ? (
           <p>Salve o rascunho antes de enviar arquivos.</p>
         ) : (
           <>
-            {!admin && (
-              <label>
-                Adicionar arquivo
-                <input
-                  disabled={busy}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm,video/quicktime"
-                  onChange={e => {
-                    upload(e.target.files?.[0]);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            )}
+            <label>
+              Adicionar arquivo
+              <input
+                disabled={busy}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm,video/quicktime"
+                onChange={e => {
+                  upload(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+            </label>
             <p className="studio-muted">
               Fotos até 12 MB. Vídeos até 100 MB. Arquivos novos ficam privados
               até a revisão.
@@ -272,39 +382,46 @@ export default function PortfolioEditor({
                   <p>
                     {m.status} · {m.kind === "photo" ? "Foto" : "Vídeo"}
                   </p>
-                  {!admin && (
-                    <div className="studio-actions">
-                      {m.kind === "photo" && (
-                        <button
-                          disabled={busy || cover.isPending}
-                          onClick={async () => {
-                            try {
-                              await cover.mutateAsync({ id: m.id });
-                              toast.success("Capa atualizada");
-                              onSaved(initial.id);
-                            } catch (e) {
-                              toast.error((e as Error).message);
-                            }
-                          }}
-                        >
-                          Usar como capa
-                        </button>
-                      )}
+                  <div className="studio-actions">
+                    {m.kind === "photo" && (
                       <button
-                        disabled={busy || hide.isPending}
+                        disabled={
+                          busy ||
+                          cover.isPending ||
+                          adminMedia.isPending ||
+                          m.status !== "approved"
+                        }
                         onClick={async () => {
                           try {
-                            await hide.mutateAsync({ id: m.id });
+                            if (admin)
+                              await adminMedia.mutateAsync({ id: m.id, action: "cover" });
+                            else await cover.mutateAsync({ id: m.id });
+                            toast.success("Capa atualizada");
                             onSaved(initial.id);
                           } catch (e) {
                             toast.error((e as Error).message);
                           }
                         }}
                       >
-                        Ocultar arquivo
+                        Usar como capa
                       </button>
-                    </div>
-                  )}
+                    )}
+                    <button
+                      disabled={busy || hide.isPending || adminMedia.isPending}
+                      onClick={async () => {
+                        try {
+                          if (admin)
+                            await adminMedia.mutateAsync({ id: m.id, action: "hide" });
+                          else await hide.mutateAsync({ id: m.id });
+                          onSaved(initial.id);
+                        } catch (e) {
+                          toast.error((e as Error).message);
+                        }
+                      }}
+                    >
+                      Ocultar arquivo
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
