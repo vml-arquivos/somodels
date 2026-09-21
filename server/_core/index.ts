@@ -141,8 +141,8 @@ async function startServer() {
       return;
     }
     const published = await listPublishedProfiles({ publicAllowed: true, limit: 60 });
-    const cities = [...new Set(published.map(profile => profile.city).filter(Boolean))];
-    const categories = [...new Set(published.flatMap(profile => profile.categories).filter(Boolean))];
+    const cities = Array.from(new Set(published.map(profile => profile.city).filter(Boolean)));
+    const categories = Array.from(new Set(published.flatMap(profile => profile.categories).filter(Boolean)));
     const origin = ENV.canonicalOrigin || "https://somodels.buscarr.com.br";
     const pages = ["/", "/termos", "/privacidade", "/seguranca", "/denuncia", "/ajuda", "/contato"];
     const urls = [
