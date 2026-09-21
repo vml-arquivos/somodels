@@ -105,15 +105,12 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
 
   return (
     <div className="studio">
-      <Seo title={title} description={description} path={canonicalPath} image="/images/hero/ero-models-hero.png" noindex={noindex} jsonLd={jsonLd} />
-      <StudioHeader>
-        <Link href="/login">Entrar</Link>
-        <Link href="/admin">Administração</Link>
-      </StudioHeader>
+      <Seo title={title} description={description} path={canonicalPath} image="/images/hero/ero-models-hero.webp" noindex={noindex} jsonLd={jsonLd} />
+      <StudioHeader />
       <main className="studio-main">
         {(fixedCity || fixedCategory) && (
           <nav className="studio-breadcrumb" aria-label="Navegação estrutural">
-            <Link href="/">Vitrine</Link>
+            <Link href="/">Início</Link>
             <span aria-hidden="true">/</span>
             <span>{fixedCity || fixedCategory}</span>
           </nav>
@@ -130,8 +127,8 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
             </h1>
             <p>{fixedCity || fixedCategory ? description : site.subtitle}</p>
             <div className="studio-actions">
-              <a className="studio-cta" href="#portfolios">{site.buttonText}</a>
-              <Link className="studio-cta studio-cta-secondary" href="/cadastro">Criar meu portfólio</Link>
+              <a className="studio-cta" href="#busca">{site.buttonText}</a>
+              <Link className="studio-cta studio-cta-secondary" href="/cadastro">Publicar meu perfil</Link>
             </div>
           </div>
           <div className="studio-hero-art">
@@ -143,7 +140,7 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
           </div>
         </section>
         <section id="portfolios">
-          <div className="studio-title">
+          <div className="studio-title" id="busca">
             <div>
               <p className="studio-kicker">Descubra talentos</p>
               <h2>{fixedCity ? `Portfólios em ${fixedCity}` : fixedCategory ? `Portfólios de ${fixedCategory}` : "Portfólios profissionais"}</h2>
@@ -230,6 +227,20 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
             </section>
           )}
         </section>
+        {!fixedCity && !fixedCategory && (
+          <section id="categorias" className="studio-category-strip" aria-labelledby="category-title">
+            <div>
+              <p className="studio-kicker">Explorar por especialidade</p>
+              <h2 id="category-title">Comece por uma categoria</h2>
+              <p className="studio-muted">Encontre portfólios por área de atuação e refine a busca quando quiser.</p>
+            </div>
+            <div className="studio-category-links">
+              {portfolioCategories.map(category => (
+                <Link key={category} href={categoryPath(category)}>{category}</Link>
+              ))}
+            </div>
+          </section>
+        )}
         {site.showAbout && !fixedCity && !fixedCategory && (
           <section className="studio-about"><p className="studio-kicker">Sobre a plataforma</p><h2>Uma vitrine profissional, clara e responsável.</h2><p>{site.about}</p></section>
         )}

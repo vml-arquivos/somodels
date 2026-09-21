@@ -14,11 +14,11 @@
   </defs>
   <rect width="1200" height="630" fill="url(#bg)"/>
   <rect width="1200" height="630" fill="url(#glow)"/>
-  <g transform="translate(80 76) scale(1.2)">
-    <path fill="#F7E9E6" d="M16 56c0-23 19-40 42-40 9 0 17 2 24 7-4 4-9 7-15 9-4-2-8-3-12-3-15 0-27 11-27 27 0 10 5 19 13 24-4 4-8 7-14 9-7-8-11-19-11-33Z"/>
-    <path fill="#C84B68" d="M84 44c0 23-19 40-42 40-9 0-17-2-24-7 4-4 9-7 15-9 4 2 8 3 12 3 15 0 27-11 27-27 0-10-5-19-13-24 4-4 8-7 14-9 7 8 11 19 11 33Z"/>
-    <path fill="#E6AFA5" d="M40 37c10-3 20-9 25-17 5 3 9 8 11 13-4 10-13 17-23 22-8 4-12 10-13 19-5-2-10-5-14-9 0-11 5-22 14-28Z"/>
+  <g transform="translate(84 70) scale(1.2)" fill="none" stroke="#F7E9E6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M73 31C67 22 58 17 47 17C29 17 15 31 15 49C15 67 29 81 47 81C58 81 67 76 73 67"/>
+    <path d="M27 67C33 76 42 81 53 81C71 81 85 67 85 49C85 31 71 17 53 17C42 17 33 22 27 31"/>
   </g>
+  <rect x="198" y="92" width="2" height="86" rx="1" fill="#C84B68"/>
   <text x="220" y="150" fill="#F7E9E6" font-family="Manrope, Arial, sans-serif" font-size="64" font-weight="800" letter-spacing="-3">Ero Models</text>
   <text x="86" y="322" fill="#F7E9E6" font-family="Manrope, Arial, sans-serif" font-size="52" font-weight="500" letter-spacing="-1.6">Encontre talentos.</text>
   <text x="86" y="386" fill="#E6AFA5" font-family="Manrope, Arial, sans-serif" font-size="52" font-weight="500" letter-spacing="-1.6">Apresente seu trabalho.</text>

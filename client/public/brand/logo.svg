@@ -1,12 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 112" role="img" aria-labelledby="title desc">
   <title id="title">Ero Models</title>
-  <desc id="desc">Marca Ero Models com símbolo de fitas interligadas.</desc>
-  <g transform="translate(6 6) scale(.98)">
-    <path fill="#3B1537" d="M16 56c0-23 19-40 42-40 9 0 17 2 24 7-4 4-9 7-15 9-4-2-8-3-12-3-15 0-27 11-27 27 0 10 5 19 13 24-4 4-8 7-14 9-7-8-11-19-11-33Z"/>
-    <path fill="#7B1F43" d="M84 44c0 23-19 40-42 40-9 0-17-2-24-7 4-4 9-7 15-9 4 2 8 3 12 3 15 0 27-11 27-27 0-10-5-19-13-24 4-4 8-7 14-9 7 8 11 19 11 33Z"/>
-    <path fill="#E6AFA5" d="M40 37c10-3 20-9 25-17 5 3 9 8 11 13-4 10-13 17-23 22-8 4-12 10-13 19-5-2-10-5-14-9 0-11 5-22 14-28Z"/>
+  <desc id="desc">Lockup da Ero Models com símbolo monolinear e assinatura editorial.</desc>
+  <g transform="translate(7 7) scale(.86)" fill="none" stroke="#3B1537" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M73 31C67 22 58 17 47 17C29 17 15 31 15 49C15 67 29 81 47 81C58 81 67 76 73 67"/>
+    <path d="M27 67C33 76 42 81 53 81C71 81 85 67 85 49C85 31 71 17 53 17C42 17 33 22 27 31"/>
   </g>
-  <text x="112" y="57" fill="#3B1537" font-family="Manrope, Arial, sans-serif" font-size="39" font-weight="800" letter-spacing="-1.8">Ero</text>
-  <text x="115" y="82" fill="#7B1F43" font-family="Space Mono, monospace" font-size="12" font-weight="700" letter-spacing="3.6">MODELS</text>
-  <path d="M115 94h164" stroke="#E6AFA5" stroke-width="2" stroke-linecap="round"/>
+  <rect x="105" y="27" width="1.5" height="58" rx=".75" fill="#E6AFA5"/>
+  <text x="128" y="58" fill="#3B1537" font-family="Manrope, Arial, sans-serif" font-size="40" font-weight="800" letter-spacing="-2">Ero</text>
+  <text x="131" y="81" fill="#7B1F43" font-family="Space Mono, monospace" font-size="11.5" font-weight="700" letter-spacing="4.1">MODELS</text>
 </svg>
