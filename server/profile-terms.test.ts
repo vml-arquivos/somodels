@@ -4,6 +4,7 @@ import {
   currentPortfolioTerms,
   evaluateProfileTermsAcceptance,
 } from "./profile-terms";
+import { portfolioPolicy, portfolioTermsClauses } from "../shared/portfolio";
 
 const profile = {
   id: 10,
@@ -54,6 +55,15 @@ function accepted(p = profile, m = media) {
 }
 
 describe("profile terms acceptance", () => {
+  it("permits adult and sexual-service disclosures only within the legal and consent rules", () => {
+    expect(portfolioPolicy).toContain("conteúdo adulto");
+    expect(portfolioPolicy).toContain("serviços sexuais legalmente permitidos");
+    expect(portfolioPolicy).toContain("18 anos ou mais");
+    expect(portfolioPolicy).toContain("mídia não consensual");
+    expect(portfolioTermsClauses.join(" ")).toContain("A divulgação de conteúdo adulto e de serviços sexuais");
+    expect(portfolioTermsClauses.join(" ")).toContain("menores, exploração, tráfico, coerção");
+  });
+
   it("accepts only the owner, current terms and exact current content", () => {
     expect(evaluateProfileTermsAcceptance(profile, media, accepted()).current).toBe(true);
   });

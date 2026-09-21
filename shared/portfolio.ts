@@ -8,14 +8,14 @@ export const portfolioCategories = [
   "Apresentador",
 ] as const;
 export const portfolioPolicy =
-  "Somente portfólios profissionais. Não são permitidos anúncios de serviços sexuais, conteúdo sexual explícito ou uso de imagens sem autorização.";
-export const portfolioTermsVersion = "2026-09-17";
+  "É permitido divulgar portfólios, conteúdo adulto e serviços sexuais legalmente permitidos, desde que o titular tenha 18 anos ou mais, autorize expressamente o conteúdo e assuma a responsabilidade pela publicação. Não são permitidos menores, exploração, tráfico, coerção, violência, fraude, impersonação, mídia não consensual, conteúdo ilegal ou material sem autorização.";
+export const portfolioTermsVersion = "2026-09-21";
 export const portfolioTermsTitle = "Termo de responsabilidade e publicação";
 export const portfolioTermsClauses = [
   "Declaro ter 18 anos ou mais e capacidade legal para administrar este portfólio.",
   "Declaro ser responsável pelo perfil e possuir os direitos, licenças e autorizações necessários para usar nomes, dados, imagens, voz, fotos, vídeos e demais materiais enviados, inclusive autorizações de terceiros quando aplicáveis.",
   "Assumo responsabilidade pela veracidade, legalidade e origem do conteúdo que envio ou autorizo publicar no meu perfil e comprometo-me a manter essas informações atualizadas.",
-  "Não publicarei conteúdo ilegal, envolvendo menores, não consensual, sexual explícito, oferta de serviços sexuais, exploração, fraude, violação de privacidade, propriedade intelectual ou material sem autorização.",
+  "Não publicarei conteúdo envolvendo menores, exploração, tráfico, coerção, violência, fraude, impersonação, mídia não consensual, conteúdo ilegal ou material sem autorização. A divulgação de conteúdo adulto e de serviços sexuais só será feita quando legalmente permitida, consensual, autorizada pelo titular e compatível com as regras da plataforma.",
   "Autorizo a Ero Models a armazenar, exibir, moderar, ocultar ou remover o conteúdo do portfólio conforme estes termos, as regras da plataforma e a legislação aplicável.",
   "Reconheço que a plataforma fornece infraestrutura de portfólio e moderação e não endossa declarações individuais dos titulares. Este termo não exclui deveres ou responsabilidades da plataforma que não possam ser afastados pela legislação aplicável.",
   "Compreendo que alterações relevantes nos dados, fotos ou vídeos do perfil exigem um novo aceite antes da próxima aprovação ou publicação.",

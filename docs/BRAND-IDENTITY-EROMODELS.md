@@ -8,7 +8,7 @@
 
 Ero Models apresenta pessoas, trabalhos e possibilidades com uma linguagem visual de revista contemporânea. A marca deve transmitir **visibilidade com critério**, **conexão com privacidade** e **presença sem excesso**. O nome Ero é curto, memorável e funciona bem em uma arquitetura de marca digital: `Ero Models`, `Ero` para assinaturas curtas e `eromodels.com.br` para o endereço institucional.
 
-A frase principal da marca é **“Encontre talentos. Apresente seu trabalho.”**. A frase de apoio é **“Portfólios profissionais, apresentados com clareza.”**. A linguagem evita promessas de contratação, garantias de resultado, termos sexualizados e qualquer associação com conteúdo explícito ou serviços sexuais.
+A frase principal da marca é **“Encontre talentos. Apresente seu trabalho.”**. A frase de apoio é **“Portfólios e anúncios, apresentados com clareza.”**. A linguagem evita promessas de contratação, garantias de resultado e sexualização gratuita. Quando houver conteúdo adulto ou divulgação de serviços sexuais legalmente permitidos, a comunicação deve ser objetiva, consensual, não enganosa e compatível com maioridade, privacidade e moderação.
 
 ## Símbolo selecionado
 
@@ -52,7 +52,7 @@ A família primária é **Manrope**, usada em títulos, texto corrido, navegaç�
 
 ## Fotografia e direção de arte
 
-A imagem deve apresentar trabalho, contexto e presença profissional. Priorizar luz natural ou editorial suave, composição limpa, diversidade real e enquadramentos que respeitem a pessoa. Evitar poses explicitamente sexualizadas, transparências, nudez, imagens de terceiros sem autorização, clichês de stock e excesso de retoque.
+A imagem institucional deve apresentar trabalho, contexto e presença profissional. Priorizar luz natural ou editorial suave, composição limpa, diversidade real e enquadramentos que respeitem a pessoa. Para perfis e anúncios adultos autorizados, o conteúdo fornecido pelo titular pode seguir a proposta divulgada, desde que respeite maioridade, autorização, consentimento, direitos de imagem, moderação e a legislação aplicável. Imagens de terceiros sem autorização, conteúdo não consensual e material ilegal continuam proibidos.
 
 A imagem hero pode usar recortes, sobreposição de cor e espaço negativo para acomodar texto. Cards de perfil devem manter proporção consistente, foco no rosto ou no trabalho e uma legenda que informe categoria e cidade sem expor dados pessoais sensíveis.
 
@@ -64,7 +64,7 @@ CTAs primários usam `--ero-wine` com texto claro. CTAs secundários usam fundo 
 
 ## Voz e conteúdo
 
-A voz é direta, respeitosa e editorial. Frases preferidas incluem “apresente seu trabalho”, “organize seu portfólio”, “encontre por cidade e especialidade” e “publicação revisada”. Evitar “garantimos”, “topo”, “resultado certo”, “disponível para qualquer pedido” e qualquer linguagem que possa confundir portfólio profissional com oferta de serviço sexual.
+A voz é direta, respeitosa e editorial. Frases preferidas incluem “apresente seu trabalho”, “organize seu portfólio”, “encontre por cidade e especialidade” e “publicação revisada”. Evitar “garantimos”, “topo”, “resultado certo” e “disponível para qualquer pedido”. Diferenciar claramente o conteúdo do perfil, a divulgação feita pelo titular e qualquer canal de contato, sem prometer resultado ou ocultar condições relevantes.
 
 A plataforma deve comunicar revisão, privacidade, consentimento, idade mínima e canais de denúncia sempre que o contexto for cadastro, perfil ou contato. Demos e perfis fictícios devem permanecer explicitamente rotulados como demonstração e fora do índice público.
 
@@ -72,7 +72,7 @@ A plataforma deve comunicar revisão, privacidade, consentimento, idade mínima 
 
 O HTML base usa `favicon.svg`, `theme-color #3B1537` e o social card `social-card.svg`. A canonicalização do produto deve apontar para `https://eromodels.com.br/`. URLs com parâmetros, áreas privadas e demos permanecem noindex conforme as regras existentes de lançamento e segurança.
 
-O título institucional recomendado é **“Ero Models — Encontre talentos e apresente seu trabalho”**. A descrição recomendada é **“Uma vitrine de portfólios profissionais para modelos e criadores, organizada por cidade e especialidade, com publicação revisada e respeito à privacidade.”**. O domínio não deve ser apresentado como rede social, agência, serviço de acompanhantes ou promessa de contratação.
+O título institucional recomendado é **“Ero Models — Encontre talentos e apresente seu trabalho”**. A descrição recomendada é **“Uma vitrine de portfólios e anúncios para adultos, organizada por cidade e especialidade, com publicação revisada e respeito à privacidade.”**. O domínio não deve ser apresentado como rede social, agência, intermediadora de contratação ou promessa de resultado; cada anúncio deve ser identificado como conteúdo publicado sob responsabilidade do titular.
 
 ## Regras de uso
 
