@@ -407,18 +407,28 @@ export const managementRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const target = await getUserById(input.ownerId);
-      if (
-        !target ||
-        target.accountStatus !== "active" ||
-        !(ctx.user.id === target.id || canManage(ctx.user, target))
-      )
+    const target = await getUserById(input.ownerId);
+    if (
+      !target ||
+      !(ctx.user.id === target.id || canManage(ctx.user, target))
+    )
+      throw new TRPCError({ code: "FORBIDDEN" });
+
+    if (input.id) {
+      const detail = await getAdminProfile(input.id);
+      if (!detail || detail.profile.ownerId !== input.ownerId)
         throw new TRPCError({ code: "FORBIDDEN" });
-      if (input.id) {
-        const detail = await getAdminProfile(input.id);
-        if (!detail || detail.profile.ownerId !== input.ownerId)
-          throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      if (detail.profile.deletedAt)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Restaure o perfil antes de editá-lo",
+        });
+    } else if (target.accountStatus !== "active") {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "O titular precisa estar ativo para criar um novo perfil",
+      });
+    }
       const { id, ownerId, ...data } = input;
       const profileId = await saveProfile(ownerId, data as any, id, false);
       const db = await database();
@@ -444,8 +454,8 @@ export const managementRouter = router({
     const [portfolio] = await db
       .select({
         total: sql<number>`count(*)`,
-        published: sql<number>`sum(${profiles.isPublished} = 1 AND ${profiles.portfolioReviewed} = 1 AND ${profiles.status} = 'approved' AND EXISTS (SELECT 1 FROM ${users} WHERE ${users.id} = ${profiles.ownerId} AND ${users.accountStatus} = 'active'))`,
-        pending: sql<number>`sum(${profiles.status} = 'pending')`,
+        published: sql<number>`sum(${profiles.isActive} = 1 AND ${profiles.deletedAt} IS NULL AND ${profiles.isPublished} = 1 AND ${profiles.portfolioReviewed} = 1 AND ${profiles.status} = 'approved' AND EXISTS (SELECT 1 FROM ${users} WHERE ${users.id} = ${profiles.ownerId} AND ${users.accountStatus} = 'active'))`,
+        pending: sql<number>`sum(${profiles.deletedAt} IS NULL AND ${profiles.isActive} = 1 AND ${profiles.status} = 'pending')`,
       })
       .from(profiles);
     const cities = await db

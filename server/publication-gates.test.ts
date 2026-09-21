@@ -3,6 +3,7 @@ import { getPublicationGateBlockers, type PublicationGateInput } from "./publica
 
 const ready: PublicationGateInput = {
   ownerActive: true,
+  profileActive: true,
   identityApproved: true,
   termsCurrent: true,
   termsReason: null,
@@ -33,6 +34,7 @@ describe("publication gates", () => {
 
   it.each([
     ["ownerActive", "Titular inativo"],
+    ["profileActive", "Perfil inativo ou excluído"],
     ["identityApproved", "Verificação de identidade válida pendente"],
     ["termsCurrent", "Titular ainda não aceitou o termo aplicável"],
     ["profileComplete", "Complete nome profissional, endereço público, cidade e descrição"],

@@ -201,6 +201,8 @@ async function startServer() {
       const ownerId = managedProfile.profile.ownerId;
       const owner = await getUserById(ownerId);
       if (!owner || owner.accountStatus !== "active") return res.status(403).json({ error: "O titular precisa estar ativo" });
+      if (!managedProfile.profile.isActive || managedProfile.profile.deletedAt)
+        return res.status(403).json({ error: "O perfil está inativo ou excluído" });
       if (managedProfile.profile.ownerId !== ctx.user.id && !isAdmin)
         return res.status(403).json({ error: "Perfil não pertence à conta autenticada" });
       if (ENV.requireIdentityVerification && !isAdmin) {

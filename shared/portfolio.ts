@@ -68,6 +68,14 @@ export function portfolioPublicationLabel(profile: {
   return "Ainda não publicado";
 }
 
+export function profileOperationalLabel(profile: {
+  isActive?: boolean | null;
+  deletedAt?: Date | string | null;
+}) {
+  if (profile.deletedAt) return "Excluído";
+  return profile.isActive === false ? "Inativo" : "Ativo";
+}
+
 export const siteSettingsSchema = z.object({
   title: z.string().trim().min(3).max(120),
   subtitle: z.string().trim().min(3).max(400),
