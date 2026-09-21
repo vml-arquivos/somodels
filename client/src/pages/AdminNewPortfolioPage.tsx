@@ -15,7 +15,7 @@ export default function AdminNewPortfolioPage() {
     ["admin", "super_admin", "dev"].includes(user.role) &&
     !user.mustChangePassword;
   const accounts = trpc.management.users.useQuery(
-    { page: 0, search, status: "active" },
+    { page: 0, search, status: "active", kind: "owners" },
     { enabled: allowed }
   );
   const detail = trpc.admin.profileDetail.useQuery(
@@ -76,9 +76,7 @@ export default function AdminNewPortfolioPage() {
               ) : accounts.error ? (
                 <p role="alert">{accounts.error.message}</p>
               ) : (
-                accounts.data?.items
-                  .filter(account => account.role === "user")
-                  .map(account => (
+                accounts.data?.items.map(account => (
                     <button
                       className={`studio-list-item ${ownerId === account.id ? "selected" : ""}`}
                       key={account.id}
@@ -93,7 +91,7 @@ export default function AdminNewPortfolioPage() {
                   ))
               )}
               {!accounts.isLoading &&
-                !accounts.data?.items.some(account => account.role === "user") && (
+                !accounts.data?.items.length && (
                   <p>Nenhum titular ativo encontrado nesta busca.</p>
                 )}
             </aside>

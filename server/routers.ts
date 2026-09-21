@@ -574,12 +574,11 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number().int().positive(),
-          confirmation: z.string().trim().min(2).max(160),
-          reason: z.string().trim().min(3).max(500),
+          reason: z.string().trim().max(500).optional(),
         })
       )
       .mutation(({ ctx, input }) =>
-        softDeleteProfile(input.id, input.confirmation, ctx.user.id, input.reason)
+        softDeleteProfile(input.id, ctx.user.id, input.reason)
       ),
     restoreProfile: adminProcedure
       .input(
