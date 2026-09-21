@@ -9,18 +9,18 @@ RUN pnpm check && pnpm build
 # Coolify/Cloudflare must serve the same-origin CSS without a CORS mode that
 # can leave the stylesheet unloaded when the proxy omits ACAO on cached assets.
 RUN sed -i 's/ crossorigin=""//g; s/ crossorigin//g' /app/dist/public/index.html
+RUN pnpm prune --prod
+# The Vite dev chunk is lazy-loaded only when NODE_ENV=development.
+RUN rm -f /app/dist/vite-*.js
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
-RUN apk add --no-cache curl \
-  && npm install --global pnpm@10.4.1
-COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
+RUN apk add --no-cache curl
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
-COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 EXPOSE 3000
 USER node
-CMD ["sh", "-c", "pnpm db:migrate && node dist/index.js"]
+CMD ["sh", "-c", "node dist/migrate.mjs && node dist/index.js"]

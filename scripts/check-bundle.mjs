@@ -1,4 +1,4 @@
-import { readdir, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
 const assetsDir = path.resolve("dist/public/assets");
@@ -14,4 +14,14 @@ const largest = sizes.sort((a, b) => b.bytes - a.bytes)[0];
 console.log(`[bundle] maior chunk: ${largest.file} ${(largest.bytes / 1024).toFixed(1)} KiB; limite ${(budgetBytes / 1024).toFixed(0)} KiB`);
 if (largest.bytes > budgetBytes) {
   throw new Error(`Budget de bundle excedido: ${largest.file} tem ${largest.bytes} bytes`);
+}
+
+const migrationBundle = path.resolve("dist/migrate.mjs");
+if ((await stat(migrationBundle)).size === 0) {
+  throw new Error("Bundle de migration vazio");
+}
+
+const serverBundle = await readFile(path.resolve("dist/index.js"), "utf8");
+if (/from ["']drizzle-kit["']|require\(["']drizzle-kit["']\)/.test(serverBundle)) {
+  throw new Error("Drizzle Kit não pode ser necessário no runtime");
 }

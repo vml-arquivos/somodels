@@ -12,7 +12,6 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { setupVite } from "./vite";
 import { serveStatic } from "./serve-static";
 import { storagePut } from "../storage";
 import { getAdminProfile, getIdentityVerification, getUserById, isDatabaseReady, listPublishedProfiles } from "../db";
@@ -228,8 +227,10 @@ async function startServer() {
     }
   });
   app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
-  if (ENV.nodeEnv === "development") await setupVite(app, server);
-  else {
+  if (ENV.nodeEnv === "development") {
+    const { setupVite } = await import("./vite");
+    await setupVite(app, server);
+  } else {
     app.use(async (req, res, next) => {
       if (req.method !== "GET" || req.path.startsWith("/api/") || req.path.startsWith("/manus-storage/")) {
         next();

@@ -1,0 +1,5 @@
+# Falha de deployment — 2026-09-21
+
+O deployment do commit `1881eea` no Coolify falhou durante a construção da imagem final, antes da troca do container. O log exibido pelo Coolify termina no `Dockerfile:122` com `ERROR: failed to build: failed to solve: ResourceExhausted: failed to copy files: copy file range 1: no space left on device`. A etapa apontada é a cópia integral de `/app/node_modules` do estágio de build para o estágio runtime.
+
+A causa operacional é o empacotamento de dependências de desenvolvimento e ferramentas de build na imagem final. O Dockerfile executava o build com todas as dependências e depois copiava esse diretório integral, além de instalar `pnpm` globalmente no runtime apenas para executar `drizzle-kit migrate`. A correção será produzir o bundle de migration durante o build, podar dependências de desenvolvimento antes da cópia e iniciar o runtime com Node diretamente. Não há evidência de falha de TypeScript, testes ou do código da vitrine neste deployment; a aplicação anterior permaneceu saudável e servindo o release anterior.
