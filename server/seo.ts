@@ -2,6 +2,7 @@ import { ENV } from "./_core/env";
 import { readSiteSettings } from "./site-config";
 import { getPublicProfile } from "./db";
 import { isPublicIndexingEnabled } from "./public-indexing";
+import { getDemoProfileBySlug } from "../shared/demo-profiles";
 
 export type ServerSeo = {
   title: string;
@@ -186,6 +187,22 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
         name: `Portfólios de ${category}`,
         url: canonical,
       },
+    };
+  }
+
+  if (cleanPath.startsWith("/demo/perfil/")) {
+    const slug = decodeSegment(cleanPath.slice("/demo/perfil/".length), 160);
+    const demo = getDemoProfileBySlug(slug);
+    return {
+      title: demo
+        ? `${demo.stageName} — Prévia demonstrativa | ${ENV.siteName}`
+        : `Prévia demonstrativa indisponível — ${ENV.siteName}`,
+      description: demo
+        ? `${demo.description} Perfil fictício, sem contato real e fora da publicação oficial.`
+        : "Esta prévia demonstrativa não está disponível.",
+      canonical,
+      noindex: true,
+      image: demo?.avatarUrl,
     };
   }
 
