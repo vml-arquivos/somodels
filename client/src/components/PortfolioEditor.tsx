@@ -256,8 +256,8 @@ export default function PortfolioEditor({
           onChange={e => setConsent(e.target.checked)}
         />
         {admin
-          ? "Confirmo que estas informações e arquivos foram fornecidos ou autorizados pelo titular para preparar este perfil. O titular ainda deverá revisar o conteúdo e registrar o aceite do termo."
-          : "Confirmo que tenho autorização para usar estas informações e arquivos neste perfil."}{" "}
+          ? "Confirmo que estas informações e arquivos foram fornecidos ou autorizados pelo titular para preparar este perfil, inclusive eventual conteúdo adulto ou divulgação de serviços sexuais legalmente permitidos. O titular deverá revisar o conteúdo, confirmar maioridade, autorizar expressamente a publicação e registrar o aceite do termo."
+          : "Confirmo que estas informações e arquivos estão autorizados para divulgação neste perfil, inclusive eventual conteúdo adulto ou divulgação de serviços sexuais legalmente permitidos."}{" "}
         {portfolioPolicy}
       </label>
       <div className="studio-actions">

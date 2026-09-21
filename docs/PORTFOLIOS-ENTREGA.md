@@ -1,8 +1,8 @@
-# Entrega — portfólios profissionais
+# Entrega — portfólios e anúncios adultos
 
 ## Escopo
 
-Adaptação autorizada para portfólios profissionais de modelos e criadores, sem oferta de serviços sexuais. Os titulares preenchem seus próprios conteúdos. Nenhuma conta, perfil, foto, vídeo ou lançamento financeiro foi criado no banco nesta tarefa. Nenhum servidor de produção foi acessado ou alterado. O seed demonstrativo foi desativado; o cadastro de homologação existente continua restrito às flags de teste.
+Adaptação autorizada para portfólios e anúncios de adultos. O sistema pode receber divulgação de conteúdo adulto e de serviços sexuais legalmente permitidos quando houver maioridade, autorização expressa do titular, consentimento, moderação e os demais gates aplicáveis. Continuam proibidos menores, exploração, tráfico, coerção, violência, fraude, mídia não consensual, conteúdo ilegal e material sem autorização. Os titulares preenchem seus próprios conteúdos. Nenhuma conta, perfil, foto, vídeo ou lançamento financeiro foi criado no banco nesta tarefa. Nenhum servidor de produção foi acessado ou alterado. O seed demonstrativo foi desativado; o cadastro de homologação existente continua restrito às flags de teste.
 
 ## Funcionalidades entregues
 

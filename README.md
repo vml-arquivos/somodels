@@ -1,6 +1,6 @@
-# Só Models
+# Ero Models
 
-Só Models é uma plataforma de portfólios profissionais de modelos e criadores construída com React, Vite, Express, tRPC, Drizzle ORM e MySQL/TiDB. O código mantém a vitrine pública, perfis, área do titular, moderação, storage e primitives de monetização desacopladas, sem ativar cobrança fictícia.
+Ero Models é uma plataforma de portfólios e anúncios para adultos, construída com React, Vite, Express, tRPC, Drizzle ORM e MySQL/TiDB. O código mantém a vitrine pública, perfis, área do titular, moderação, storage e primitives de monetização desacopladas, sem ativar cobrança fictícia.
 
 ## Postura de lançamento
 
@@ -26,9 +26,9 @@ A estratégia de reconciliação está em [`docs/RECONCILIATION_REPORT.md`](docs
 
 Este pacote inclui correções de autorização e proteção de dados. Não constitui liberação para cadastros reais ou produção. Consulte `docs/SECURITY-HARDENING-2026-09-16.md` e os resultados de validação associados antes de implantar. Contas existentes não são reativadas ou promovidas pelo bootstrap, e a troca obrigatória de senha passa a ser exigida pela API.
 
-## Portfólios profissionais — atualização administrativa
+## Portfólios e anúncios adultos — atualização administrativa
 
-Esta versão adapta as páginas e categorias a portfólios profissionais, sem oferta de serviços sexuais. Não cria contas, perfis, imagens ou lançamentos de exemplo. O seed demonstrativo está desativado. Registros existentes são preservados, mas precisam de revisão de adequação antes de voltar à vitrine.
+Esta versão adapta as páginas e categorias a portfólios e anúncios para adultos. A divulgação de conteúdo adulto e de serviços sexuais legalmente permitidos depende de maioridade, autorização expressa do titular, consentimento, moderação, identidade e demais gates aplicáveis. Não são permitidos menores, exploração, tráfico, coerção, violência, fraude, mídia não consensual, conteúdo ilegal ou material sem autorização. O seed demonstrativo está desativado. Registros existentes são preservados, mas precisam de revisão de adequação antes de voltar à vitrine.
 
 A migration `0005_portfolio_management.sql` deve ser aplicada após backup e antes de iniciar a nova versão. Use `pnpm db:migrate`; não use `db:push` em produção. O deploy não aplica migrations automaticamente. A migração cria duas tabelas vazias e uma coluna de controle; não publica registros. Consulte `docs/PORTFOLIOS-ENTREGA.md`.
 

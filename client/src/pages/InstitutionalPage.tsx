@@ -12,8 +12,9 @@ const pages = {
     eyebrow: "Regras da plataforma",
     heading: "Termos de uso e publicação",
     paragraphs: [
-      "A Ero Models é uma plataforma de portfólios profissionais. O titular é responsável pela veracidade, legalidade, autorização e atualização do material que envia.",
-      "Não são permitidos menores, exploração, coerção, violência, fraude, impersonação, mídia sem consentimento, violação de privacidade, conteúdo ilegal ou material que infrinja direitos de terceiros.",
+      "A Ero Models é uma plataforma de portfólios e anúncios para pessoas adultas. O titular é responsável pela veracidade, legalidade, autorização e atualização do material que envia.",
+      "Conteúdo adulto e divulgação de serviços sexuais são admitidos quando legalmente permitidos, consensuais e expressamente autorizados pelo titular, sempre sujeitos aos gates de idade, identidade, moderação, privacidade e às regras da plataforma.",
+      "Não são permitidos menores, exploração, tráfico, coerção, violência, fraude, impersonação, mídia sem consentimento, violação de privacidade, conteúdo ilegal ou material que infrinja direitos de terceiros.",
       "A publicação depende de revisão, aceite vigente e dos controles de identidade e consentimento disponíveis. Uma verificação não é garantia de comportamento, segurança ou resultado de qualquer interação.",
     ],
     bullets: [
