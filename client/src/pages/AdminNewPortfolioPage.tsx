@@ -36,6 +36,9 @@ export default function AdminNewPortfolioPage() {
             <p className="studio-muted">
               O administrador pode preparar os mesmos dados, fotos e vídeos da área do titular. O aceite do termo continua exclusivo do titular antes da aprovação/publicação.
             </p>
+            <p className="studio-notice">
+              Rascunho criado pelo administrador. O titular ainda precisa revisar os dados, confirmar maioridade, direitos, responsabilidade e consentimento antes do envio para aprovação.
+            </p>
           </div>
           <Link href="/admin">Voltar ao painel</Link>
         </div>

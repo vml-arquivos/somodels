@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   contactLinks,
   normalizePhone,
+  portfolioPublicationLabel,
   siteSettingsSchema,
   defaultSiteSettings,
 } from "../shared/portfolio";
@@ -16,6 +17,10 @@ describe("portfolios and contacts", () => {
       whatsapp: "https://wa.me/5511912345678",
     });
     expect(normalizePhone("+351 912345678")).toBe("+351912345678");
+    expect(contactLinks("(11) 91234-5678", "")).toEqual({
+      tel: "tel:+5511912345678",
+      whatsapp: "https://wa.me/5511912345678",
+    });
   });
   it("rejects unsafe or incomplete phone values", () => {
     expect(() => normalizePhone("javascript:alert(1)")).toThrow();
@@ -57,6 +62,12 @@ describe("portfolios and contacts", () => {
         title: "x".repeat(121),
       }).success
     ).toBe(false);
+  });
+  it("labels the operational publication state", () => {
+    expect(portfolioPublicationLabel({ status: "draft" })).toBe("Rascunho");
+    expect(portfolioPublicationLabel({ status: "rejected" })).toBe("Ajustes solicitados");
+    expect(portfolioPublicationLabel({ status: "approved", isPublished: false })).toBe("Aprovado oculto");
+    expect(portfolioPublicationLabel({ status: "approved", isPublished: true, portfolioReviewed: true })).toBe("Publicado na vitrine");
   });
 });
 describe("administrative hierarchy", () => {

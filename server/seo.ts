@@ -17,9 +17,11 @@ const privatePrefixes = [
   "/login",
   "/redefinir-senha",
   "/alterar-senha",
+  "/cadastro",
   "/cadastro-teste",
   "/titular",
   "/admin",
+  "/admin/portfolio/novo",
   "/404",
   "/api/",
   "/manus-storage/",
@@ -51,8 +53,8 @@ function canonicalUrl(pathname: string) {
 function staticSeo(pathname: string) {
   if (pathname === "/") {
     return {
-      title: `${ENV.siteName} — Portfólios profissionais`,
-      description: "Descubra portfólios profissionais de modelos e criadores.",
+      title: `${ENV.siteName} — Encontre talentos e apresente seu trabalho`,
+      description: "Uma vitrine de portfólios profissionais para modelos e criadores, organizada por cidade e especialidade, com publicação revisada e respeito à privacidade.",
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "WebSite",
@@ -78,6 +80,10 @@ function staticSeo(pathname: string) {
       title: `Cadastro de homologação — ${ENV.siteName}`,
       description: "Cadastro privado de ambiente de testes.",
     },
+    "/cadastro": {
+      title: `Criar conta de titular — ${ENV.siteName}`,
+      description: "Crie sua conta para preparar um portfólio profissional.",
+    },
     "/titular": {
       title: `Meu portfólio — ${ENV.siteName}`,
       description: "Área privada do titular do portfólio.",
@@ -85,6 +91,10 @@ function staticSeo(pathname: string) {
     "/admin": {
       title: `Administração — ${ENV.siteName}`,
       description: "Área privada de administração da plataforma.",
+    },
+    "/admin/portfolio/novo": {
+      title: `Novo portfólio administrativo — ${ENV.siteName}`,
+      description: "Área privada para preparar um portfólio para um titular.",
     },
     "/404": {
       title: `Página não encontrada — ${ENV.siteName}`,

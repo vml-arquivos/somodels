@@ -27,4 +27,17 @@ describe("server SEO", () => {
     expect(seo.title).toBe("Entrar — Só Models");
     expect(seo.canonical).toBe("https://somodels.buscarr.com.br/login");
   });
+
+  it("keeps signup and administrative portfolio creation private", async () => {
+    const signup = await getServerSeo("/cadastro");
+    const adminPortfolio = await getServerSeo("/admin/portfolio/novo");
+    expect(signup).toMatchObject({ noindex: true, title: "Criar conta de titular — Só Models" });
+    expect(adminPortfolio).toMatchObject({ noindex: true, title: "Novo portfólio administrativo — Só Models" });
+  });
+
+  it("uses the responsible home positioning in the initial head", async () => {
+    const seo = await getServerSeo("/");
+    expect(seo.title).toContain("Encontre talentos");
+    expect(seo.description).toContain("publicação revisada");
+  });
 });

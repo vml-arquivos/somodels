@@ -128,7 +128,10 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
                   : site.title}
             </h1>
             <p>{fixedCity || fixedCategory ? description : site.subtitle}</p>
-            <a className="studio-cta" href="#portfolios">{site.buttonText}</a>
+            <div className="studio-actions">
+              <a className="studio-cta" href="#portfolios">{site.buttonText}</a>
+              <Link className="studio-cta studio-cta-secondary" href="/cadastro">Criar meu portfólio</Link>
+            </div>
           </div>
           <div className="studio-hero-art" aria-hidden="true">
             <span>Seu<br />próximo<br /><em>projeto.</em></span>
@@ -196,6 +199,28 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
         </section>
         {site.showAbout && !fixedCity && !fixedCategory && (
           <section className="studio-about"><p className="studio-kicker">Sobre a plataforma</p><h2>Trabalhos que merecem ser vistos.</h2><p>{site.about}</p></section>
+        )}
+        {!fixedCity && !fixedCategory && (
+          <section className="studio-home-grid" aria-label="Como a Só Models funciona">
+            <article className="studio-panel">
+              <p className="studio-kicker">Para titulares</p>
+              <h2>Seu trabalho merece uma apresentação profissional</h2>
+              <p>Crie seu portfólio, organize fotos e vídeos autorizados, informe suas especialidades e acompanhe cada etapa da revisão.</p>
+              <Link href="/cadastro">Começar meu portfólio</Link>
+            </article>
+            <article className="studio-panel">
+              <p className="studio-kicker">Para quem busca</p>
+              <h2>Pesquise por cidade e especialidade</h2>
+              <p>Encontre portfólios ativos em localidades e categorias disponíveis. A vitrine mostra somente perfis aprovados e publicados.</p>
+              <a href="#portfolios">Ver portfólios</a>
+            </article>
+            <article className="studio-panel">
+              <p className="studio-kicker">Publicação responsável</p>
+              <h2>Confiança começa com informação clara</h2>
+              <p>Leia as regras de publicação, conheça os canais de denúncia e não compartilhe dados sensíveis desnecessariamente.</p>
+              <Link href="/seguranca">Conhecer os controles de segurança</Link>
+            </article>
+          </section>
         )}
         <section className="studio-panel">
           <h3>Publicação responsável</h3>
