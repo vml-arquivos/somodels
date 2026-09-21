@@ -50,6 +50,7 @@ export default function PortfolioEditor({
   const save = trpc.profiles.save.useMutation();
   const adminSave = trpc.management.saveProfile.useMutation();
   const add = trpc.media.add.useMutation();
+  const adminAdd = trpc.admin.addMedia.useMutation();
   const cover = trpc.profiles.cover.useMutation();
   const hide = trpc.profiles.hideMedia.useMutation();
   const ownerTerms = trpc.profiles.termsStatus.useQuery(
@@ -125,7 +126,7 @@ export default function PortfolioEditor({
   }
   async function upload(file: File | undefined) {
     if (!file || !initial?.id) return;
-    const kind = file.type.startsWith("video/") ? "video" : "photo";
+    const kind: "photo" | "video" = file.type.startsWith("video/") ? "video" : "photo";
     if (file.size > (kind === "video" ? 100 : 12) * 1024 * 1024) {
       toast.error("Arquivo acima do limite: fotos 12 MB e vídeos 100 MB");
       return;
@@ -155,15 +156,20 @@ export default function PortfolioEditor({
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Falha no envio");
-      await add.mutateAsync({
+      const mediaInput = {
         profileId: initial.id,
         kind,
         storageKey: result.key,
         url: result.url,
         mimeType: file.type,
-        isPremium: false,
+        isPremium: false as const,
         sortOrder: media.length,
-      });
+      };
+      if (admin) {
+        await adminAdd.mutateAsync({ ...mediaInput, ownerId: ownerId! });
+      } else {
+        await add.mutateAsync(mediaInput);
+      }
       toast.success("Arquivo recebido para revisão");
       onSaved(initial.id);
     } catch (e) {
@@ -235,13 +241,21 @@ export default function PortfolioEditor({
           : "Informe um telefone válido."}{" "}
         {links.whatsapp ? "Link de WhatsApp será gerado automaticamente." : ""}
       </p>
+      {(links.tel || links.whatsapp) && (
+        <div className="studio-actions" aria-label="Prévia privada dos links de contato">
+          {links.tel && <a className="studio-cta" href={links.tel}>Testar link de ligação</a>}
+          {links.whatsapp && <a className="studio-cta" href={links.whatsapp} target="_blank" rel="noreferrer">Testar link de WhatsApp</a>}
+        </div>
+      )}
       <label className="studio-check">
         <input
           type="checkbox"
           checked={consent}
           onChange={e => setConsent(e.target.checked)}
         />
-        Confirmo que tenho autorização para os dados e arquivos.{" "}
+        {admin
+          ? "Confirmo que os dados e arquivos foram fornecidos ou autorizados pelo titular para preparação interna. Isto não substitui o aceite do titular."
+          : "Confirmo que tenho autorização para os dados e arquivos."}{" "}
         {portfolioPolicy}
       </label>
       <div className="studio-actions">
@@ -338,23 +352,21 @@ export default function PortfolioEditor({
           <p>Salve o rascunho antes de enviar arquivos.</p>
         ) : (
           <>
-            {!admin && (
-              <label>
-                Adicionar arquivo
-                <input
-                  disabled={busy}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm,video/quicktime"
-                  onChange={e => {
-                    upload(e.target.files?.[0]);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            )}
+            <label>
+              {admin ? "Adicionar arquivo em nome do titular" : "Adicionar arquivo"}
+              <input
+                disabled={busy}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm,video/quicktime"
+                onChange={e => {
+                  upload(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+            </label>
             <p className="studio-muted">
               Fotos até 12 MB. Vídeos até 100 MB. Arquivos novos ficam privados
-              até a revisão.
+              até a revisão. {admin ? "O titular ainda precisa revisar e aceitar o termo." : ""}
             </p>
             <div className="studio-media">
               {media.map(m => (

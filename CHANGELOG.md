@@ -2,6 +2,8 @@
 
 ## Próxima versão — reconciliação de produção
 
+A entrega seguinte completa a operação de portfólios: cadastro real de titular com rate limit, rota administrativa `/admin/portfolio/novo` com CTA, preparação de mídia por admin auditada, checklist backend de publicação, motivos obrigatórios em ajustes/suspensão, status operacional do titular, links privados de ligação e WhatsApp derivados de telefone normalizado, copy de home orientada a produto, fallback sem JavaScript e JSON-LD seguro de perfil. A copy legada é substituída por fallback reversível em código, sem migration de dados, porque o Coolify não tem backups agendados verificáveis. As flags de contato externo, KYC, age assurance, pagamentos e conteúdo de risco permanecem desligadas quando não há provider e operação aprovados.
+
 A auditoria de 2026-09-20 documentou a divergência entre o release público e o último deployment observado no Coolify, sem executar novo deploy. O servidor passou a renderizar SEO por rota, separar sitemaps fail-closed, expor páginas institucionais responsáveis, suportar categorias canônicas e aplicar rate limiting com expiração em login, upload, denúncias e contato. As capabilities adultas, KYC, pagamentos e providers continuam desligadas.
 
 A aplicação recebeu controles de sessão local com armazenamento server-side revogável, bootstrap seguro de super admin e dev, rotação obrigatória de senha temporária, rate limiting de login, serialização de usuário sem hashes e autorização para os papéis privilegiados.

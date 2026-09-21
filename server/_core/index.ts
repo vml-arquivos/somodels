@@ -1,4 +1,4 @@
-import { getMediaById, getAdminProfile } from "../db";
+import { getMediaById } from "../db";
 import { storageGetSignedUrl } from "../storage";
 import { readSiteSettings } from "../site-config";
 import "dotenv/config";
@@ -15,7 +15,7 @@ import { createContext } from "./context";
 import { setupVite } from "./vite";
 import { serveStatic } from "./serve-static";
 import { storagePut } from "../storage";
-import { getIdentityVerification, getOwnerProfile, isDatabaseReady, listPublishedProfiles } from "../db";
+import { getAdminProfile, getIdentityVerification, getUserById, isDatabaseReady, listPublishedProfiles } from "../db";
 import { assertProductionConfig, ENV } from "./env";
 import { bootstrapLocalAccounts } from "../auth";
 import { isPublicIndexingEnabled } from "../public-indexing";
@@ -121,7 +121,7 @@ async function startServer() {
   app.get("/robots.txt", async (_req, res) => {
     const indexingEnabled = await getSitemapIndexingState();
     const body = indexingEnabled
-      ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /titular\nDisallow: /login\nDisallow: /redefinir-senha\nDisallow: /alterar-senha\nDisallow: /cadastro-teste\nDisallow: /api/\nDisallow: /manus-storage/\nSitemap: ${ENV.canonicalOrigin || "https://somodels.buscarr.com.br"}/sitemap.xml\n`
+      ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /titular\nDisallow: /login\nDisallow: /redefinir-senha\nDisallow: /alterar-senha\nDisallow: /cadastro\nDisallow: /cadastro-teste\nDisallow: /api/\nDisallow: /manus-storage/\nSitemap: ${ENV.canonicalOrigin || "https://somodels.buscarr.com.br"}/sitemap.xml\n`
       : "User-agent: *\nDisallow: /\n";
     res.type("text/plain").send(body);
   });
@@ -193,16 +193,22 @@ async function startServer() {
         res.setHeader("Retry-After", String(rate.retryAfterSeconds));
         return res.status(429).json({ error: rateLimitMessage(rate.retryAfterSeconds) });
       }
-      if (ENV.requireIdentityVerification) {
-        const identity = await getIdentityVerification(ctx.user.id);
-        if (identity?.status !== "approved" || (identity.expiresAt && identity.expiresAt <= new Date()))
-          return res.status(403).json({ error: "Verificação de identidade obrigatória" });
-      }
       const { profileId, kind, filename, contentType, data } = req.body ?? {};
       if (!profileId || !kind || !filename || !contentType || typeof data !== "string") return res.status(400).json({ error: "Dados de upload incompletos" });
       if (!["photo", "video"].includes(kind)) return res.status(400).json({ error: "Tipo de mídia inválido" });
-      const ownedProfile = await getOwnerProfile(ctx.user.id, Number(profileId));
-      if (!ownedProfile) return res.status(403).json({ error: "Perfil não pertence à conta autenticada" });
+      const managedProfile = await getAdminProfile(Number(profileId));
+      const isAdmin = ["admin", "super_admin", "dev"].includes(ctx.user.role);
+      if (!managedProfile) return res.status(404).json({ error: "Perfil não encontrado" });
+      const ownerId = managedProfile.profile.ownerId;
+      const owner = await getUserById(ownerId);
+      if (!owner || owner.accountStatus !== "active") return res.status(403).json({ error: "O titular precisa estar ativo" });
+      if (managedProfile.profile.ownerId !== ctx.user.id && !isAdmin)
+        return res.status(403).json({ error: "Perfil não pertence à conta autenticada" });
+      if (ENV.requireIdentityVerification && !isAdmin) {
+        const identity = await getIdentityVerification(ownerId);
+        if (identity?.status !== "approved" || (identity.expiresAt && identity.expiresAt <= new Date()))
+          return res.status(403).json({ error: "Verificação de identidade obrigatória" });
+      }
       const allowedPhoto = ["image/jpeg", "image/png", "image/webp", "image/avif"].includes(contentType);
       const allowedVideo = ["video/mp4", "video/webm", "video/quicktime"].includes(contentType);
       if ((kind === "photo" && !allowedPhoto) || (kind === "video" && !allowedVideo)) return res.status(415).json({ error: "Formato de mídia não permitido" });
@@ -213,7 +219,7 @@ async function startServer() {
       if (buffer.byteLength === 0 || buffer.byteLength > maxBytes) return res.status(413).json({ error: "Arquivo excede o limite permitido" });
       if (!hasMagicBytes(buffer, kind, contentType)) return res.status(415).json({ error: "Assinatura do arquivo não corresponde ao tipo declarado" });
       const extension = path.extname(String(filename)).toLowerCase().replace(/[^a-z0-9.]/g, "") || (kind === "photo" ? ".jpg" : ".mp4");
-      const safeKey = `profiles/${ctx.user.id}/${profileId}/${kind}/${randomUUID()}${extension}`;
+      const safeKey = `profiles/${ownerId}/${profileId}/${kind}/${randomUUID()}${extension}`;
       const uploaded = await storagePut(safeKey, buffer, contentType);
       return res.json(uploaded);
     } catch (error) {

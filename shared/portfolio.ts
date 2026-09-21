@@ -48,6 +48,26 @@ export function contactLinks(phone?: string | null, whatsapp?: string | null) {
     return { tel: null, whatsapp: null };
   }
 }
+export const portfolioStatusLabels = {
+  draft: "Rascunho",
+  pending: "Aguardando revisão",
+  approved: "Aprovado oculto",
+  rejected: "Ajustes solicitados",
+  suspended: "Suspenso",
+} as const;
+
+export function portfolioPublicationLabel(profile: {
+  status?: keyof typeof portfolioStatusLabels;
+  isPublished?: boolean;
+  portfolioReviewed?: boolean;
+}) {
+  if (profile.status === "suspended") return portfolioStatusLabels.suspended;
+  if (profile.isPublished && profile.portfolioReviewed) return "Publicado na vitrine";
+  if (profile.status && profile.status in portfolioStatusLabels)
+    return portfolioStatusLabels[profile.status];
+  return "Ainda não publicado";
+}
+
 export const siteSettingsSchema = z.object({
   title: z.string().trim().min(3).max(120),
   subtitle: z.string().trim().min(3).max(400),
@@ -59,12 +79,12 @@ export const siteSettingsSchema = z.object({
   showContact: z.boolean(),
 });
 export const defaultSiteSettings = {
-  title: "Talentos, histórias e novos projetos.",
+  title: "Encontre talentos. Apresente seu trabalho. Abra novas oportunidades.",
   subtitle:
-    "Conheça portfólios profissionais de modelos e criadores. Explore trabalhos, especialidades e trajetórias.",
+    "Uma vitrine de portfólios profissionais para modelos e criadores, organizada por cidade e especialidade, com publicação revisada e respeito à privacidade.",
   buttonText: "Explorar portfólios",
   about:
-    "Um espaço para apresentar trabalhos e conectar profissionais a projetos criativos. Cada portfólio passa por revisão antes da publicação.",
+    "Cada portfólio passa por revisão antes de aparecer na vitrine. Informações de contato não são exibidas publicamente por padrão, e o titular mantém controle sobre os dados e arquivos enviados.",
   footer: "Só Models • Portfólios profissionais de modelos e criadores.",
   showGallery: true,
   showAbout: true,

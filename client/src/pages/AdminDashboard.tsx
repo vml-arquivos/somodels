@@ -70,6 +70,12 @@ export default function AdminDashboard() {
       enabled: allowed && !!pid && (tab === "profiles" || tab === "moderation"),
     }
   );
+  const profileReadiness = trpc.admin.profileReadiness.useQuery(
+    { id: pid || 0 },
+    {
+      enabled: allowed && !!pid && (tab === "profiles" || tab === "moderation"),
+    }
+  );
   const pendingMedia = trpc.admin.pendingMedia.useQuery(undefined, {
     enabled: allowed && tab === "moderation",
   });
@@ -220,7 +226,12 @@ export default function AdminDashboard() {
               Contas, portfólios profissionais e registros da plataforma.
             </p>
           </div>
-          <Link href="/alterar-senha?returnTo=/admin">Alterar minha senha</Link>
+          <div className="studio-actions">
+            <Link className="studio-cta" href="/admin/portfolio/novo">
+              Criar portfólio para um titular
+            </Link>
+            <Link href="/alterar-senha?returnTo=/admin">Alterar minha senha</Link>
+          </div>
         </div>
         {loading ? (
           <p>Verificando acesso…</p>
@@ -703,6 +714,19 @@ export default function AdminDashboard() {
                                   : "Oculto"}
                               </dd>
                             </dl>
+                            {profileReadiness.data && (
+                              <div className="studio-notice">
+                                <h4>Gates verificados</h4>
+                                <p>
+                                  Identidade: {profileReadiness.data.identityApproved ? "vigente" : "pendente"} · Termo: {profileReadiness.data.terms.current ? "vigente" : "pendente"} · Mídia pública aprovada: {profileReadiness.data.approvedMediaCount}
+                                </p>
+                                {profileReadiness.data.blockers.length > 0 && (
+                                  <ul>
+                                    {profileReadiness.data.blockers.map(blocker => <li key={blocker}>{blocker}</li>)}
+                                  </ul>
+                                )}
+                              </div>
+                            )}
                             <button onClick={() => setEditingProfile(true)}>
                               Editar informações
                             </button>
@@ -758,7 +782,7 @@ export default function AdminDashboard() {
                               {portfolioPolicy}
                             </label>
                             <label>
-                              Motivo da revisão
+                              Motivo da revisão, ajuste ou suspensão
                               <input
                                 value={reason}
                                 onChange={e => setReason(e.target.value)}
@@ -780,18 +804,19 @@ export default function AdminDashboard() {
                                 Aprovar publicação
                               </button>
                               <button
-                                disabled={moderate.isPending}
+                                disabled={moderate.isPending || reason.trim().length < 10}
                                 onClick={() =>
                                   moderate.mutate({
                                     id: pid!,
                                     status: "suspended",
+                                    rejectionReason: reason,
                                   })
                                 }
                               >
                                 Ocultar / suspender
                               </button>
                               <button
-                                disabled={moderate.isPending}
+                                disabled={moderate.isPending || reason.trim().length < 10}
                                 onClick={() =>
                                   moderate.mutate({
                                     id: pid!,

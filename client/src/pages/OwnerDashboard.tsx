@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import PortfolioEditor from "@/components/PortfolioEditor";
 import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
+import { portfolioPublicationLabel } from "@shared/portfolio";
 export default function OwnerDashboard() {
   const { user, loading } = useAuth();
   const [id, setId] = useState<number | null>(null);
@@ -15,6 +16,10 @@ export default function OwnerDashboard() {
   const detail = trpc.profiles.mineById.useQuery(
     { id: id || 0 },
     { enabled: !!id && !user?.mustChangePassword }
+  );
+  const readiness = trpc.profiles.publicationReadiness.useQuery(
+    { id: id || 0 },
+    { enabled: Boolean(id) && !user?.mustChangePassword }
   );
   async function saved(next: number) {
     setId(next);
@@ -70,11 +75,9 @@ export default function OwnerDashboard() {
                     >
                       <strong>{p.stageName}</strong>
                       <small>
-                        {p.city} · {p.status} ·{" "}
-                        {p.isPublished && p.portfolioReviewed
-                          ? "Publicado"
-                          : "Oculto"}
+                        {p.city} · {portfolioPublicationLabel(p)}
                       </small>
+                      <small>{p.rejectionReason || "Atualizado recentemente"}</small>
                     </button>
                   ))
                 ) : (
@@ -87,12 +90,43 @@ export default function OwnerDashboard() {
                 ) : detail.error ? (
                   <p role="alert">{detail.error.message}</p>
                 ) : (
-                  <PortfolioEditor
-                    key={`${id}-${version}`}
-                    initial={id ? detail.data?.profile : undefined}
-                    media={id ? detail.data?.media : []}
-                    onSaved={saved}
-                  />
+                  <>
+                    {id && detail.data?.profile && (
+                      <section className="studio-panel" aria-label="Status de publicação">
+                        <p className="studio-kicker">Status operacional</p>
+                        <h2>{portfolioPublicationLabel(detail.data.profile)}</h2>
+                        <p>
+                          {detail.data.profile.isPublished
+                            ? "Publicado na vitrine."
+                            : detail.data.profile.rejectionReason || "Ainda não publicado."}
+                        </p>
+                        {detail.data.profile.isPublished && (
+                          <Link className="studio-cta" href={`/perfil/${detail.data.profile.slug}`}>
+                            Abrir página pública
+                          </Link>
+                        )}
+                        {readiness.isLoading ? (
+                          <p>Calculando checklist…</p>
+                        ) : readiness.data ? (
+                          <div>
+                            <h3>Checklist de publicação</h3>
+                            <ul>
+                              <li>{readiness.data.terms.current ? "✓ Termo vigente aceito" : "○ Aceite do termo ainda pendente"}</li>
+                              <li>{readiness.data.approvedMediaCount > 0 ? "✓ Mídia pública aprovada" : "○ Aprove ao menos uma mídia pública"}</li>
+                              <li>{readiness.data.pendingMediaCount === 0 ? "✓ Sem mídia aguardando moderação" : `○ ${readiness.data.pendingMediaCount} mídia(s) aguardando moderação`}</li>
+                              {readiness.data.publicationBlockers.map(blocker => <li key={blocker}>○ {blocker}</li>)}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </section>
+                    )}
+                    <PortfolioEditor
+                      key={`${id}-${version}`}
+                      initial={id ? detail.data?.profile : undefined}
+                      media={id ? detail.data?.media : []}
+                      onSaved={saved}
+                    />
+                  </>
                 )}
               </section>
             </div>

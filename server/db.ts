@@ -1,4 +1,4 @@
-import { portfolioCategories } from "../shared/portfolio";
+import { contactLinks, defaultSiteSettings, portfolioCategories } from "../shared/portfolio";
 import { createHash } from "node:crypto";
 import { and, asc, desc, eq, like, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -18,6 +18,7 @@ import {
   premiumEntitlements,
   profileMedia,
   profiles,
+  siteSettings,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -34,6 +35,7 @@ import {
   currentPortfolioTerms,
   evaluateProfileTermsAcceptance,
 } from "./profile-terms";
+import { getPublicationGateBlockers } from "./publication-gates";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -350,6 +352,79 @@ async function readProfileTermsStatus(executor: any, profile: any) {
     .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
     .limit(1);
   return evaluateProfileTermsAcceptance(profile, media, latest ?? null);
+}
+
+export async function getProfilePublicationReadiness(profileId: number, executor?: any) {
+  const db = executor ?? (await getDb());
+  if (!db) throw new Error("Database unavailable");
+  const [profile] = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.id, profileId))
+    .limit(1);
+  if (!profile) throw new Error("Perfil não encontrado");
+  const [owner] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, profile.ownerId))
+    .limit(1);
+  const media = await db
+    .select()
+    .from(profileMedia)
+    .where(eq(profileMedia.profileId, profileId));
+  const terms = await readProfileTermsStatus(db, profile);
+  const [siteRow] = await db
+    .select({ value: siteSettings.value })
+    .from(siteSettings)
+    .where(eq(siteSettings.id, 1))
+    .limit(1);
+  let showGallery = defaultSiteSettings.showGallery;
+  try {
+    showGallery = siteRow ? Boolean(JSON.parse(siteRow.value).showGallery) : defaultSiteSettings.showGallery;
+  } catch {
+    showGallery = false;
+  }
+  let identityApproved = !ENV.requireIdentityVerification;
+  if (ENV.requireIdentityVerification) {
+    const [identity] = owner
+      ? await db
+          .select()
+          .from(identityVerifications)
+          .where(eq(identityVerifications.userId, owner.id))
+          .orderBy(desc(identityVerifications.updatedAt))
+          .limit(1)
+      : [];
+    identityApproved = identity?.status === "approved" && !(identity.expiresAt && identity.expiresAt <= new Date());
+  }
+  const categories = parseJson(profile.categories);
+  const approvedMedia = media.filter((item: any) => item.status === "approved" && !item.isPremium);
+  const gates = getPublicationGateBlockers({
+    ownerActive: owner?.accountStatus === "active",
+    identityApproved,
+    termsCurrent: terms.current,
+    termsReason: terms.reason,
+    profileComplete: Boolean(profile.stageName && profile.slug && profile.city && profile.description),
+    categoriesValid: Array.isArray(categories) && categories.length > 0 && categories.every((category: unknown) => typeof category === "string" && (portfolioCategories as readonly string[]).includes(category)),
+    approvedMediaCount: approvedMedia.length,
+    pendingMediaCount: media.filter((item: any) => item.status === "pending").length,
+    isDemo: Boolean(profile.isDemo),
+    isTest: Boolean(profile.isTest),
+    publicAccessEnabled: ENV.publicAccessEnabled,
+    publicLaunchEnabled: ENV.publicLaunchEnabled,
+    robotsNoIndex: ENV.robotsNoIndex,
+    requireAgeVerification: ENV.requireAgeVerification,
+    showGallery,
+    reportsEnabled: ENV.reportsEnabled,
+    blockingEnabled: ENV.blockingEnabled,
+  });
+  return {
+    ...gates,
+    terms,
+    approvedMediaCount: approvedMedia.length,
+    pendingMediaCount: media.filter((item: any) => item.status === "pending").length,
+    ownerActive: owner?.accountStatus === "active",
+    identityApproved,
+  };
 }
 
 export async function getProfileTermsStatus(profileId: number, ownerId?: number) {
@@ -731,15 +806,19 @@ export async function saveProfile(
 
 export async function createMedia(
   ownerId: number,
-  input: Omit<InsertProfileMedia, "storageHash"> & { storageHash?: string }
+  input: Omit<InsertProfileMedia, "storageHash"> & { storageHash?: string },
+  actorUserId = ownerId,
+  requireIdentity = true
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const identity = await getIdentityVerification(ownerId);
-  if (ENV.requireIdentityVerification && identity?.status !== "approved") {
-    throw new Error(
-      "A verificação de identidade do anunciante é obrigatória antes do upload"
-    );
+  if (requireIdentity) {
+    const identity = await getIdentityVerification(ownerId);
+    if (ENV.requireIdentityVerification && identity?.status !== "approved") {
+      throw new Error(
+        "A verificação de identidade do anunciante é obrigatória antes do upload"
+      );
+    }
   }
   const owned = await db
     .select({ id: profiles.id })
@@ -764,10 +843,11 @@ export async function createMedia(
     .values({ ...input, storageHash, status: "pending" });
   const mediaId = Number(inserted[0].insertId);
   await writeAuditLog({
-    actorUserId: ownerId,
-    action: "media.created",
+    actorUserId,
+    action: actorUserId === ownerId ? "media.created" : "media.created_by_admin",
     entityType: "media",
     entityId: mediaId,
+    metadata: actorUserId === ownerId ? undefined : { ownerUserId: ownerId },
   });
   return mediaId;
 }
@@ -876,6 +956,8 @@ export async function moderateProfile(
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  if (["rejected", "suspended"].includes(status) && !rejectionReason?.trim())
+    throw new Error("Informe o motivo da decisão");
   await db.transaction(async tx => {
     const [profile] = await tx
       .select()
@@ -883,6 +965,7 @@ export async function moderateProfile(
       .where(eq(profiles.id, id))
       .for("update");
     if (!profile) throw new Error("Perfil não encontrado");
+    let publicationBlockers: string[] = [];
     if (status === "approved") {
       const categories = parseJson(profile.categories);
       if (
@@ -896,35 +979,12 @@ export async function moderateProfile(
         throw new Error(
           "Revise as categorias e confirme que este é um portfólio profissional autorizado"
         );
-      const [owner] = await tx
-        .select()
-        .from(users)
-        .where(eq(users.id, profile.ownerId));
-      if (!owner || owner.accountStatus !== "active")
-        throw new Error("Titular inativo");
-      if (ENV.requireIdentityVerification) {
-        const [identity] = await tx
-          .select()
-          .from(identityVerifications)
-          .where(eq(identityVerifications.userId, profile.ownerId))
-          .orderBy(desc(identityVerifications.updatedAt))
-          .limit(1);
-        if (
-          identity?.status !== "approved" ||
-          (identity.expiresAt && identity.expiresAt <= new Date())
-        )
-          throw new Error(
-            "O titular precisa de verificação de identidade válida"
-          );
-      }
-      const terms = await readProfileTermsStatus(tx, profile);
-      if (!terms.current)
-        throw new Error(
-          "O titular precisa aceitar o termo de responsabilidade vigente para o conteúdo atual antes da aprovação"
-        );
+      const readiness = await getProfilePublicationReadiness(id, tx);
+      if (readiness.approvalBlockers.length)
+        throw new Error(readiness.approvalBlockers[0]);
+      publicationBlockers = readiness.publicationBlockers;
     }
-    const canPublish =
-      status === "approved" && (ENV.testMode || ENV.publicLaunchEnabled);
+    const canPublish = status === "approved" && publicationBlockers.length === 0;
     await tx
       .update(profiles)
       .set({
@@ -936,7 +996,9 @@ export async function moderateProfile(
           status === "rejected"
             ? rejectionReason?.trim() ||
               "Ajustes necessários antes da publicação"
-            : null,
+            : status === "approved" && publicationBlockers.length
+              ? `Aprovado e oculto: ${publicationBlockers.join("; ")}`
+              : null,
       })
       .where(eq(profiles.id, id));
     await tx
@@ -949,6 +1011,7 @@ export async function moderateProfile(
         metadata: JSON.stringify({
           isFeatured,
           portfolioConfirmed,
+          publicationBlockers,
           rejectionReason: rejectionReason ?? null,
         }),
       });
@@ -1002,6 +1065,27 @@ export async function moderateMedia(
       }
     }
     await tx.update(profileMedia).set({ status }).where(eq(profileMedia.id, id));
+    if (profile.status === "approved") {
+      const readiness = await getProfilePublicationReadiness(profile.id, tx);
+      await tx
+        .update(profiles)
+        .set({
+          isPublished: readiness.ready,
+          rejectionReason: readiness.ready
+            ? null
+            : `Aprovado e oculto: ${readiness.blockers.join("; ")}`,
+        })
+        .where(eq(profiles.id, profile.id));
+      if (profile.isPublished !== readiness.ready) {
+        await tx.insert(auditLogs).values({
+          actorUserId: actorUserId ?? null,
+          action: readiness.ready ? "profile.published" : "profile.unpublished",
+          entityType: "profile",
+          entityId: profile.id,
+          metadata: JSON.stringify({ blockers: readiness.blockers }),
+        });
+      }
+    }
     await tx.insert(auditLogs).values({
       actorUserId: actorUserId ?? null,
       action: `media.moderated.${status}`,
@@ -1386,12 +1470,10 @@ export async function getSafeExternalContact(
   if (!terms.current) throw new Error("A autorização de contato do titular não está vigente");
 
   let href: string | null = null;
-  if (method === "whatsapp" && profile.whatsapp) {
-    const digits = profile.whatsapp.replace(/\D/g, "");
-    if (digits) href = `https://wa.me/${digits}`;
+  if (method === "whatsapp") {
+    href = contactLinks(profile.phone, profile.whatsapp).whatsapp;
   } else if (method === "phone" && profile.phone) {
-    const normalized = profile.phone.replace(/[^+\d]/g, "");
-    if (normalized) href = `tel:${normalized}`;
+    href = contactLinks(profile.phone, profile.whatsapp).tel;
   } else if (method === "telegram" && profile.telegram) {
     const username = profile.telegram.trim().replace(/^@/, "");
     if (/^[A-Za-z0-9_]{5,32}$/.test(username)) href = `https://t.me/${username}`;

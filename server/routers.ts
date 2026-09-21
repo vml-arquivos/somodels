@@ -25,6 +25,7 @@ import {
   authenticateLocalUser,
   changePassword,
   createLocalSession,
+  registerUser,
   registerTestUser,
   revokeLocalSession,
 } from "./auth";
@@ -39,6 +40,8 @@ import {
   getOwnerProfile,
   getOwnerProfiles,
   getPublicProfile,
+  getProfilePublicationReadiness,
+  getUserById,
   hasPremiumAccess,
   listAdminProfiles,
   listAdminUsers,
@@ -70,6 +73,11 @@ import { createInMemoryRateLimiter, rateLimitMessage, sensitiveRateLimits } from
 const loginAttempts = createInMemoryRateLimiter({
   max: ENV.loginRateLimitMax,
   windowMs: ENV.loginRateLimitWindowMs,
+  maxKeys: 20_000,
+});
+const registrationAttempts = createInMemoryRateLimiter({
+  max: 5,
+  windowMs: 60 * 60 * 1000,
   maxKeys: 20_000,
 });
 const reportRateLimiter = createInMemoryRateLimiter({ ...sensitiveRateLimits.report, maxKeys: 20_000 });
@@ -117,7 +125,7 @@ type ContactBearingProfile = {
 
 function sanitizePublicProfileContact<T extends ContactBearingProfile>(profile: T) {
   const availableContactMethods: PublicContactMethod[] = [
-    profile.whatsapp ? "whatsapp" : null,
+    profile.whatsapp || profile.phone ? "whatsapp" : null,
     profile.phone ? "phone" : null,
     profile.telegram ? "telegram" : null,
   ].filter((method): method is PublicContactMethod => method !== null);
@@ -201,6 +209,32 @@ export const appRouter = router({
           user: publicUser(user),
           mustChangePassword: user.mustChangePassword,
         };
+      }),
+    registerPublic: publicProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(2).max(120),
+          email: z.string().email().max(320),
+          password: z.string().min(16).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const decision = registrationAttempts.consume(getClientKey(ctx.req));
+        if (!decision.allowed)
+          throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+        const user = await registerUser(input);
+        const session = await createLocalSession(user);
+        ctx.res.cookie(LOCAL_SESSION_COOKIE, session.token, {
+          ...getLocalSessionCookieOptions(ctx.req),
+          maxAge: session.expiresAt.getTime() - Date.now(),
+        });
+        await writeAuditLog({
+          actorUserId: user.id,
+          action: "auth.register_public",
+          entityType: "user",
+          entityId: user.id,
+        });
+        return { user: publicUser(user) };
       }),
     login: publicProcedure
       .input(
@@ -343,7 +377,7 @@ export const appRouter = router({
         return rows.map(p => ({
           ...p,
           availableContactMethods: [
-            p.whatsapp ? "whatsapp" : null,
+            p.whatsapp || p.phone ? "whatsapp" : null,
             p.phone ? "phone" : null,
             p.telegram ? "telegram" : null,
           ].filter(Boolean),
@@ -379,6 +413,13 @@ export const appRouter = router({
     termsStatus: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ ctx, input }) => getProfileTermsStatus(input.id, ctx.user.id)),
+    publicationReadiness: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const owned = await getOwnerProfile(ctx.user.id, input.id);
+        if (!owned) throw new Error("Perfil não pertence à conta");
+        return getProfilePublicationReadiness(input.id);
+      }),
     acceptTerms: protectedProcedure
       .input(
         z.object({
@@ -498,15 +539,24 @@ export const appRouter = router({
     profileDetail: adminProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => getAdminProfile(input.id)),
+    profileReadiness: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ input }) => getProfilePublicationReadiness(input.id)),
     moderateProfile: adminProcedure
       .input(
-        z.object({
-          id: z.number().int().positive(),
-          status: z.enum(["approved", "rejected", "suspended", "pending"]),
-          isFeatured: z.boolean().optional(),
-          rejectionReason: z.string().trim().max(500).optional(),
-          portfolioConfirmed: z.boolean().default(false),
-        })
+        z
+          .object({
+            id: z.number().int().positive(),
+            status: z.enum(["approved", "rejected", "suspended", "pending"]),
+            isFeatured: z.boolean().optional(),
+            rejectionReason: z.string().trim().max(500).optional(),
+            portfolioConfirmed: z.boolean().default(false),
+          })
+          .superRefine((value, ctx) => {
+            if (["rejected", "suspended"].includes(value.status) && !value.rejectionReason?.trim()) {
+              ctx.addIssue({ code: "custom", path: ["rejectionReason"], message: "Informe o motivo da decisão" });
+            }
+          })
       )
       .mutation(({ ctx, input }) =>
         moderateProfile(
@@ -528,6 +578,30 @@ export const appRouter = router({
       .mutation(({ ctx, input }) =>
         moderateMedia(input.id, input.status, ctx.user.id)
       ),
+    addMedia: adminProcedure
+      .input(
+        z.object({
+          ownerId: z.number().int().positive(),
+          profileId: z.number().int().positive(),
+          kind: z.enum(["photo", "video"]),
+          title: z.string().max(160).optional(),
+          description: z.string().max(2000).optional(),
+          storageKey: z.string().min(1).max(500),
+          url: z.string().startsWith("/manus-storage/").max(600),
+          mimeType: z.string().min(1).max(120),
+          isPremium: z.literal(false).default(false),
+          sortOrder: z.number().int().min(0).max(1000).default(0),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const detail = await getAdminProfile(input.profileId);
+        const owner = await getUserById(input.ownerId);
+        if (!owner || owner.accountStatus !== "active")
+          throw new Error("O titular precisa estar ativo");
+        if (!detail || detail.profile.ownerId !== input.ownerId)
+          throw new Error("O perfil não pertence ao titular selecionado");
+        return createMedia(input.ownerId, input as any, ctx.user.id, false);
+      }),
     assertPasswordPolicy: adminProcedure
       .input(z.object({ password: z.string().min(1).max(200) }))
       .mutation(({ input }) => {

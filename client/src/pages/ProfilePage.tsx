@@ -129,6 +129,21 @@ export default function ProfilePage() {
               description={data.profile.description || "Portfólio profissional"}
               path={`/perfil/${slug}`}
               image={data.profile.avatarUrl || undefined}
+              jsonLd={{
+                "@context": "https://schema.org",
+                "@type": "ProfilePage",
+                name: data.profile.stageName,
+                url: new URL(`/perfil/${slug}`, window.location.origin).toString(),
+                dateModified: new Date(data.profile.updatedAt).toISOString(),
+                mainEntity: {
+                  "@type": "Person",
+                  name: data.profile.stageName,
+                  jobTitle: data.profile.categories.join(", "),
+                  description: data.profile.description || undefined,
+                  image: data.profile.avatarUrl || undefined,
+                  worksFor: { "@type": "Organization", name: "Só Models" },
+                },
+              }}
               noindex={Boolean(
                 config.data?.robotsNoIndex ||
                   config.data?.ageVerificationRequired ||

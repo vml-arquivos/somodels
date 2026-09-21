@@ -5,6 +5,8 @@ export default function PublicFooter() {
     <footer className="studio-footer">
       <span> Só Models • Portfólios profissionais de modelos e criadores.</span>
       <nav aria-label="Informações da plataforma">
+        <Link href="/cadastro">Criar meu portfólio</Link>
+        <Link href="/login">Entrar</Link>
         <Link href="/termos">Termos</Link>
         <Link href="/privacidade">Privacidade</Link>
         <Link href="/seguranca">Segurança</Link>
