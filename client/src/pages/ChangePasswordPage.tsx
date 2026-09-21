@@ -15,7 +15,7 @@ export default function ChangePasswordPage() {
   });
   return (
     <div className="studio">
-      <Seo title="Alterar senha — Só Models" description="Área privada de alteração de senha." noindex />
+      <Seo title="Alterar senha — Ero Models" description="Área privada de alteração de senha." noindex />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">

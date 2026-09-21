@@ -7,12 +7,12 @@ import { trpc } from "@/lib/trpc";
 const pages = {
   terms: {
     path: "/termos",
-    title: "Termos da plataforma — Só Models",
-    description: "Regras de uso, publicação e moderação da Só Models.",
+    title: "Termos da plataforma — Ero Models",
+    description: "Regras de uso, publicação e moderação da Ero Models.",
     eyebrow: "Regras da plataforma",
     heading: "Termos de uso e publicação",
     paragraphs: [
-      "A Só Models é uma plataforma de portfólios profissionais. O titular é responsável pela veracidade, legalidade, autorização e atualização do material que envia.",
+      "A Ero Models é uma plataforma de portfólios profissionais. O titular é responsável pela veracidade, legalidade, autorização e atualização do material que envia.",
       "Não são permitidos menores, exploração, coerção, violência, fraude, impersonação, mídia sem consentimento, violação de privacidade, conteúdo ilegal ou material que infrinja direitos de terceiros.",
       "A publicação depende de revisão, aceite vigente e dos controles de identidade e consentimento disponíveis. Uma verificação não é garantia de comportamento, segurança ou resultado de qualquer interação.",
     ],
@@ -24,8 +24,8 @@ const pages = {
   },
   privacy: {
     path: "/privacidade",
-    title: "Privacidade — Só Models",
-    description: "Como a Só Models minimiza, protege e utiliza dados na plataforma.",
+    title: "Privacidade — Ero Models",
+    description: "Como a Ero Models minimiza, protege e utiliza dados na plataforma.",
     eyebrow: "Privacidade",
     heading: "Privacidade e proteção de dados",
     paragraphs: [
@@ -41,14 +41,14 @@ const pages = {
   },
   safety: {
     path: "/seguranca",
-    title: "Segurança e confiança — Só Models",
+    title: "Segurança e confiança — Ero Models",
     description: "Orientações de segurança, consentimento, verificação e contato responsável.",
     eyebrow: "Segurança e confiança",
     heading: "Descoberta responsável",
     paragraphs: [
-      "A Só Models combina publicação consentida, revisão humana, proteção de mídia, controles de acesso e ferramentas de denúncia. Esses controles reduzem riscos, mas não eliminam riscos de uma interação fora da plataforma.",
+      "A Ero Models combina publicação consentida, revisão humana, proteção de mídia, controles de acesso e ferramentas de denúncia. Esses controles reduzem riscos, mas não eliminam riscos de uma interação fora da plataforma.",
       "Verificação de identidade ou idade, quando disponível, tem escopo específico e não representa endosso, garantia de conduta ou garantia de segurança pessoal.",
-      "Ao sair para um canal externo, confirme identidade, limites, consentimento e condições diretamente com a outra pessoa. A conversa externa não é controlada pela Só Models.",
+      "Ao sair para um canal externo, confirme identidade, limites, consentimento e condições diretamente com a outra pessoa. A conversa externa não é controlada pela Ero Models.",
     ],
     bullets: [
       "Interrompa a interação diante de pressão, ameaça, extorsão ou pedido de pagamento suspeito.",
@@ -58,7 +58,7 @@ const pages = {
   },
   reports: {
     path: "/denuncia",
-    title: "Denúncias e remoção — Só Models",
+    title: "Denúncias e remoção — Ero Models",
     description: "Como denunciar perfil, mídia ou comportamento que viole as regras.",
     eyebrow: "Trust & Safety",
     heading: "Denúncias e resposta a incidentes",
@@ -75,7 +75,7 @@ const pages = {
   },
   help: {
     path: "/ajuda",
-    title: "Ajuda — Só Models",
+    title: "Ajuda — Ero Models",
     description: "Orientações para titulares, visitantes, publicação, mídia e segurança.",
     eyebrow: "Central de ajuda",
     heading: "Como usar a plataforma",
@@ -92,12 +92,12 @@ const pages = {
   },
   contact: {
     path: "/contato",
-    title: "Contato — Só Models",
-    description: "Canais e orientações para contato com a Só Models.",
+    title: "Contato — Ero Models",
+    description: "Canais e orientações para contato com a Ero Models.",
     eyebrow: "Contato",
     heading: "Fale com a plataforma",
     paragraphs: [
-      "O contato com titulares, quando habilitado, é uma saída controlada para um canal informado pelo próprio titular. A Só Models não controla a conversa depois que ela sai da plataforma.",
+      "O contato com titulares, quando habilitado, é uma saída controlada para um canal informado pelo próprio titular. A Ero Models não controla a conversa depois que ela sai da plataforma.",
       "O canal formal para privacidade, solicitações jurídicas e incidentes deve ser configurado pelo operador antes do lançamento público. Não inventamos um endereço de suporte ou uma identidade jurídica que ainda não foi homologada.",
       "Para denunciar um perfil, prefira a ação contextual no próprio perfil. Para uma conta administrativa, use o login e os canais internos definidos pelo operador.",
     ],

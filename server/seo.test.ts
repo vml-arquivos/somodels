@@ -10,7 +10,7 @@ describe("server SEO", () => {
 
   it("renders canonical, robots and JSON-LD safely", () => {
     const head = renderSeoHead({
-      title: "Só Models",
+      title: "Ero Models",
       description: "Descrição segura",
       canonical: "https://example.com/",
       noindex: false,
@@ -24,15 +24,15 @@ describe("server SEO", () => {
   it("keeps private routes noindex", async () => {
     const seo = await getServerSeo("/login");
     expect(seo.noindex).toBe(true);
-    expect(seo.title).toBe("Entrar — Só Models");
-    expect(seo.canonical).toBe("https://somodels.buscarr.com.br/login");
+    expect(seo.title).toBe("Entrar — Ero Models");
+    expect(seo.canonical).toBe("https://eromodels.com.br/login");
   });
 
   it("keeps signup and administrative portfolio creation private", async () => {
     const signup = await getServerSeo("/cadastro");
     const adminPortfolio = await getServerSeo("/admin/portfolio/novo");
-    expect(signup).toMatchObject({ noindex: true, title: "Criar conta de titular — Só Models" });
-    expect(adminPortfolio).toMatchObject({ noindex: true, title: "Novo portfólio administrativo — Só Models" });
+    expect(signup).toMatchObject({ noindex: true, title: "Criar conta de titular — Ero Models" });
+    expect(adminPortfolio).toMatchObject({ noindex: true, title: "Novo portfólio administrativo — Ero Models" });
   });
 
   it("uses the responsible home positioning in the initial head", async () => {

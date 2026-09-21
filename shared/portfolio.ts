@@ -16,7 +16,7 @@ export const portfolioTermsClauses = [
   "Declaro ser responsável pelo perfil e possuir os direitos, licenças e autorizações necessários para usar nomes, dados, imagens, voz, fotos, vídeos e demais materiais enviados, inclusive autorizações de terceiros quando aplicáveis.",
   "Assumo responsabilidade pela veracidade, legalidade e origem do conteúdo que envio ou autorizo publicar no meu perfil e comprometo-me a manter essas informações atualizadas.",
   "Não publicarei conteúdo ilegal, envolvendo menores, não consensual, sexual explícito, oferta de serviços sexuais, exploração, fraude, violação de privacidade, propriedade intelectual ou material sem autorização.",
-  "Autorizo a Só Models a armazenar, exibir, moderar, ocultar ou remover o conteúdo do portfólio conforme estes termos, as regras da plataforma e a legislação aplicável.",
+  "Autorizo a Ero Models a armazenar, exibir, moderar, ocultar ou remover o conteúdo do portfólio conforme estes termos, as regras da plataforma e a legislação aplicável.",
   "Reconheço que a plataforma fornece infraestrutura de portfólio e moderação e não endossa declarações individuais dos titulares. Este termo não exclui deveres ou responsabilidades da plataforma que não possam ser afastados pela legislação aplicável.",
   "Compreendo que alterações relevantes nos dados, fotos ou vídeos do perfil exigem um novo aceite antes da próxima aprovação ou publicação.",
 ] as const;
@@ -85,7 +85,7 @@ export const defaultSiteSettings = {
   buttonText: "Explorar portfólios",
   about:
     "Cada portfólio passa por revisão antes de aparecer na vitrine. Informações de contato não são exibidas publicamente por padrão, e o titular mantém controle sobre os dados e arquivos enviados.",
-  footer: "Só Models • Portfólios profissionais de modelos e criadores.",
+  footer: "Ero Models • Portfólios profissionais de modelos e criadores.",
   showGallery: true,
   showAbout: true,
   showContact: true,

@@ -27,7 +27,7 @@ export default function LoginPage() {
   });
   return (
     <div className="studio">
-      <Seo title="Entrar — Só Models" description="Acesso privado à conta Só Models." noindex />
+      <Seo title="Entrar — Ero Models" description="Acesso privado à conta Ero Models." noindex />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">

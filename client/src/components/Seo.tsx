@@ -33,6 +33,7 @@ export default function Seo({
     upsertMeta("name", "robots", noindex ? "noindex, nofollow" : "index, follow");
     upsertMeta("property", "og:title", title);
     upsertMeta("property", "og:description", description);
+    upsertMeta("property", "og:site_name", "Ero Models");
     upsertMeta("property", "og:type", "website");
     upsertMeta("property", "og:url", canonical);
     upsertMeta("name", "twitter:card", image ? "summary_large_image" : "summary");

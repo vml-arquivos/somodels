@@ -9,7 +9,7 @@ export default function StudioHeader({
   return (
     <header className="studio-header">
       <Link href="/" className="studio-brand">
-        Só<span>Models</span>
+        <img src="/brand/logo.svg" alt="Ero Models" className="studio-brand-logo" />
       </Link>
       <nav>
         <Link href="/">Vitrine</Link>

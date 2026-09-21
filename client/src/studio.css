@@ -1,22 +1,22 @@
 :root {
-  --s-bg: #f5f6fa;
-  --s-panel: #fff;
-  --s-text: #212535;
-  --s-muted: #626b80;
-  --s-line: #dce0ea;
-  --s-soft: #eceef5;
-  --s-accent: #bd2348;
+  --s-bg: #fcf8f6;
+  --s-panel: #ffffff;
+  --s-text: #231f2b;
+  --s-muted: #6e5d69;
+  --s-line: #eadfe0;
+  --s-soft: #f2e9ea;
+  --s-accent: #7b1f43;
   --s-accent-text: #fff;
 }
 :root.dark {
-  --s-bg: #17191f;
-  --s-panel: #20232c;
-  --s-text: #f4f5f9;
-  --s-muted: #a9b0c1;
-  --s-line: #363b49;
-  --s-soft: #292e3a;
-  --s-accent: #ff6583;
-  --s-accent-text: #17191f;
+  --s-bg: #231f2b;
+  --s-panel: #2e2030;
+  --s-text: #f7e9e6;
+  --s-muted: #d2bfc4;
+  --s-line: #543749;
+  --s-soft: #3b2840;
+  --s-accent: #c84b68;
+  --s-accent-text: #fff;
 }
 .studio {
   min-height: 100vh;
@@ -155,13 +155,18 @@
   font-size: 0.82rem;
 }
 .studio-brand {
-  font-size: 1.35rem;
-  letter-spacing: -0.05em;
-  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
   white-space: nowrap;
 }
-.studio-brand span {
-  color: var(--s-accent);
+.studio-brand-logo {
+  display: block;
+  width: 164px;
+  height: auto;
+}
+:root.dark .studio-brand-logo {
+  content: url("/brand/logo-light.svg");
 }
 .studio-main {
   max-width: 1320px;
@@ -347,7 +352,7 @@
 .studio-hero-art {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(140deg, #7f2945, #cc606f 55%, #eead8e);
+  background: linear-gradient(140deg, #241126, #7b1f43 55%, #e6afa5);
   min-height: 330px;
   border-radius: 26px;
   color: white;
@@ -377,7 +382,7 @@
 }
 .studio-hero-art-overlay em {
   font-style: normal;
-  color: #ffe7c5;
+  color: #e6afa5;
 }
 .studio-hero-art-overlay small {
   color: rgba(255, 255, 255, 0.78);

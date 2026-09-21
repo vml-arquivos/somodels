@@ -211,7 +211,7 @@ export default function AdminDashboard() {
   }
   return (
     <div className="studio">
-      <Seo title="Administração — Só Models" description="Área privada de administração da plataforma." noindex />
+      <Seo title="Administração — Ero Models" description="Área privada de administração da plataforma." noindex />
       <StudioHeader>
         <button onClick={() => logout()}>Sair</button>
       </StudioHeader>

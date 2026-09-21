@@ -50,10 +50,10 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
   const filtered = Boolean(filters.search || (!fixedCity && !fixedCategory && filters.city));
   const canonicalPath = fixedCity ? cityPath(fixedCity) : fixedCategory ? categoryPath(fixedCategory) : "/";
   const title = fixedCity
-    ? `Portfólios profissionais em ${fixedCity} — Só Models`
+    ? `Portfólios profissionais em ${fixedCity} — Ero Models`
     : fixedCategory
-      ? `Portfólios de ${fixedCategory} — Só Models`
-      : "Só Models — Portfólios profissionais";
+      ? `Portfólios de ${fixedCategory} — Ero Models`
+      : "Ero Models — Portfólios profissionais";
   const description = fixedCity
     ? `Descubra portfólios profissionais de modelos e criadores em ${fixedCity}.`
     : fixedCategory
@@ -90,7 +90,7 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
           {
             "@type": "ListItem",
             position: 1,
-            name: "Só Models",
+            name: "Ero Models",
             item: new URL("/", window.location.origin).toString(),
           },
           {
@@ -105,7 +105,7 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
 
   return (
     <div className="studio">
-      <Seo title={title} description={description} path={canonicalPath} noindex={noindex} jsonLd={jsonLd} />
+      <Seo title={title} description={description} path={canonicalPath} image="/images/hero/ero-models-hero.png" noindex={noindex} jsonLd={jsonLd} />
       <StudioHeader>
         <Link href="/login">Entrar</Link>
         <Link href="/admin">Administração</Link>
@@ -135,7 +135,7 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
             </div>
           </div>
           <div className="studio-hero-art">
-            <img src="/images/hero/so-models-hero-640.webp" alt="" />
+            <img src="/images/hero/ero-models-hero.webp" alt="" />
             <div className="studio-hero-art-overlay">
               <span>Perfis<br />que apresentam<br /><em>possibilidades.</em></span>
               <small>Imagem ilustrativa da experiência da vitrine.</small>
@@ -234,7 +234,7 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
           <section className="studio-about"><p className="studio-kicker">Sobre a plataforma</p><h2>Uma vitrine profissional, clara e responsável.</h2><p>{site.about}</p></section>
         )}
         {!fixedCity && !fixedCategory && (
-          <section className="studio-home-grid" aria-label="Como a Só Models funciona">
+          <section className="studio-home-grid" aria-label="Como a Ero Models funciona">
             <article className="studio-panel">
               <p className="studio-kicker">Para titulares</p>
               <h2>Seu trabalho merece uma apresentação profissional</h2>

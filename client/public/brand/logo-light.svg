@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 112" role="img" aria-labelledby="title desc">
+  <title id="title">Ero Models</title>
+  <desc id="desc">Marca Ero Models para fundos escuros.</desc>
+  <g transform="translate(6 6) scale(.98)">
+    <path fill="#F7E9E6" d="M16 56c0-23 19-40 42-40 9 0 17 2 24 7-4 4-9 7-15 9-4-2-8-3-12-3-15 0-27 11-27 27 0 10 5 19 13 24-4 4-8 7-14 9-7-8-11-19-11-33Z"/>
+    <path fill="#C84B68" d="M84 44c0 23-19 40-42 40-9 0-17-2-24-7 4-4 9-7 15-9 4 2 8 3 12 3 15 0 27-11 27-27 0-10-5-19-13-24 4-4 8-7 14-9 7 8 11 19 11 33Z"/>
+    <path fill="#E6AFA5" d="M40 37c10-3 20-9 25-17 5 3 9 8 11 13-4 10-13 17-23 22-8 4-12 10-13 19-5-2-10-5-14-9 0-11 5-22 14-28Z"/>
+  </g>
+  <text x="112" y="57" fill="#F7E9E6" font-family="Manrope, Arial, sans-serif" font-size="39" font-weight="800" letter-spacing="-1.8">Ero</text>
+  <text x="115" y="82" fill="#E6AFA5" font-family="Space Mono, monospace" font-size="12" font-weight="700" letter-spacing="3.6">MODELS</text>
+  <path d="M115 94h164" stroke="#C84B68" stroke-width="2" stroke-linecap="round"/>
+</svg>

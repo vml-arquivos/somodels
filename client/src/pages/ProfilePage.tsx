@@ -125,7 +125,7 @@ export default function ProfilePage() {
         ) : (
           <>
             <Seo
-              title={`${data.profile.stageName} — Só Models`}
+              title={`${data.profile.stageName} — Ero Models`}
               description={data.profile.description || "Portfólio profissional"}
               path={`/perfil/${slug}`}
               image={data.profile.avatarUrl || undefined}
@@ -141,7 +141,7 @@ export default function ProfilePage() {
                   jobTitle: data.profile.categories.join(", "),
                   description: data.profile.description || undefined,
                   image: data.profile.avatarUrl || undefined,
-                  worksFor: { "@type": "Organization", name: "Só Models" },
+                  worksFor: { "@type": "Organization", name: "Ero Models" },
                 },
               }}
               noindex={Boolean(
@@ -216,7 +216,7 @@ export default function ProfilePage() {
                   <section className="studio-panel">
                     <h3>Contato externo controlado</h3>
                     <p className="studio-muted">
-                      A plataforma registra apenas a saída para o canal escolhido. A conversa passa a ocorrer fora da Só Models e não é controlada pela plataforma.
+                      A plataforma registra apenas a saída para o canal escolhido. A conversa passa a ocorrer fora da Ero Models e não é controlada pela plataforma.
                     </p>
                     {availableContactMethods.length ? (
                       <div className="studio-actions">
