@@ -7,6 +7,7 @@ import { defaultSiteSettings, portfolioPolicy } from "@shared/portfolio";
 import { reportCategoryLabels, type ReportCategory } from "@shared/safety";
 import PortfolioEditor from "@/components/PortfolioEditor";
 import StudioHeader from "@/components/StudioHeader";
+import Seo from "@/components/Seo";
 const tabs = {
   overview: "Visão geral",
   users: "Usuários",
@@ -204,6 +205,7 @@ export default function AdminDashboard() {
   }
   return (
     <div className="studio">
+      <Seo title="Administração — Só Models" description="Área privada de administração da plataforma." noindex />
       <StudioHeader>
         <button onClick={() => logout()}>Sair</button>
       </StudioHeader>

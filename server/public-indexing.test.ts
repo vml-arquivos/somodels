@@ -4,6 +4,7 @@ import { isPublicIndexingEnabled } from "./public-indexing";
 const enabled = {
   robotsNoIndex: false,
   publicAccessEnabled: true,
+  publicLaunchEnabled: true,
   requireAgeVerification: false,
   showGallery: true,
 };
@@ -21,6 +22,10 @@ describe("public indexing gate", () => {
     expect(isPublicIndexingEnabled({ ...enabled, publicAccessEnabled: false })).toBe(false);
   });
 
+  it("closes indexing while the formal launch is closed", () => {
+    expect(isPublicIndexingEnabled({ ...enabled, publicLaunchEnabled: false })).toBe(false);
+  });
+
   it("closes indexing while the age gate is required", () => {
     expect(isPublicIndexingEnabled({ ...enabled, requireAgeVerification: true })).toBe(false);
   });
@@ -34,6 +39,7 @@ describe("public indexing gate", () => {
       isPublicIndexingEnabled({
         robotsNoIndex: true,
         publicAccessEnabled: false,
+        publicLaunchEnabled: false,
         requireAgeVerification: true,
         showGallery: false,
       })

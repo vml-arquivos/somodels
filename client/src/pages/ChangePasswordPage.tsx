@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import StudioHeader from "@/components/StudioHeader";
+import Seo from "@/components/Seo";
 export default function ChangePasswordPage() {
   const [, navigate] = useLocation();
   const [currentPassword, setCurrentPassword] = useState(""),
@@ -14,6 +15,7 @@ export default function ChangePasswordPage() {
   });
   return (
     <div className="studio">
+      <Seo title="Alterar senha — Só Models" description="Área privada de alteração de senha." noindex />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">
