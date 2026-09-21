@@ -3,18 +3,18 @@
 @import "tw-animate-css";
 
 :root {
-  --background: #222222;
-  --foreground: #f5f5f0;
-  --card: #292929;
-  --card-foreground: #f5f5f0;
-  --primary: #ff4764;
-  --primary-foreground: #1e1e1e;
-  --secondary: #383838;
-  --muted: #a9a9a3;
-  --muted-foreground: #8d8d88;
-  --accent: #ff765f;
-  --border: rgba(245, 245, 240, 0.14);
-  --ring: rgba(255, 71, 100, 0.55);
+  --background: #231f2b;
+  --foreground: #f7e9e6;
+  --card: #2e2030;
+  --card-foreground: #f7e9e6;
+  --primary: #7b1f43;
+  --primary-foreground: #fff;
+  --secondary: #3b2840;
+  --muted: #d2bfc4;
+  --muted-foreground: #b296a0;
+  --accent: #c84b68;
+  --border: rgba(247, 233, 230, 0.16);
+  --ring: rgba(200, 75, 104, 0.55);
   --radius: 1rem;
 }
 
@@ -32,22 +32,22 @@ body {
   background:
     radial-gradient(
       circle at 12% 0%,
-      rgba(255, 71, 100, 0.08),
+      rgba(200, 75, 104, 0.12),
       transparent 28rem
     ),
     radial-gradient(
       circle at 90% 18%,
-      rgba(255, 118, 95, 0.06),
+      rgba(230, 175, 165, 0.08),
       transparent 24rem
     ),
-    #222222;
+    #231f2b;
   font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 body::selection {
   color: #222;
-  background: #ff9a8d;
+  background: #e6afa5;
 }
 button,
 input,

@@ -13,7 +13,7 @@ export type ServerSeo = {
   jsonLd?: Record<string, unknown>;
 };
 
-const defaultOrigin = "https://somodels.buscarr.com.br";
+const defaultOrigin = "https://eromodels.com.br";
 const privatePrefixes = [
   "/login",
   "/redefinir-senha",
@@ -56,11 +56,13 @@ function staticSeo(pathname: string) {
     return {
       title: `${ENV.siteName} — Encontre talentos e apresente seu trabalho`,
       description: "Uma vitrine de portfólios profissionais para modelos e criadores, organizada por cidade e especialidade, com publicação revisada e respeito à privacidade.",
+      image: "/images/hero/ero-models-hero.png",
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "WebSite",
         name: ENV.siteName,
         url: canonicalUrl("/"),
+        inLanguage: "pt-BR",
       },
     };
   }
@@ -255,6 +257,7 @@ export function renderSeoHead(seo: ServerSeo) {
     `<link rel="canonical" href="${escapeHtml(seo.canonical)}" />`,
     `<meta property="og:title" content="${escapeHtml(seo.title)}" />`,
     `<meta property="og:description" content="${escapeHtml(seo.description)}" />`,
+    `<meta property="og:site_name" content="Ero Models" />`,
     `<meta property="og:type" content="website" />`,
     `<meta property="og:url" content="${escapeHtml(seo.canonical)}" />`,
     `<meta name="twitter:card" content="${seo.image ? "summary_large_image" : "summary"}" />`,

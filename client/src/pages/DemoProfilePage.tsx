@@ -12,7 +12,7 @@ export default function DemoProfilePage() {
     return (
       <div className="studio">
         <Seo
-          title="Prévia demonstrativa indisponível — Só Models"
+          title="Prévia demonstrativa indisponível — Ero Models"
           description="Esta prévia demonstrativa não está disponível."
           path={`/demo/perfil/${slug}`}
           noindex
@@ -34,7 +34,7 @@ export default function DemoProfilePage() {
   return (
     <div className="studio">
       <Seo
-        title={`${profile.stageName} — Prévia demonstrativa | Só Models`}
+        title={`${profile.stageName} — Prévia demonstrativa | Ero Models`}
         description={`${profile.description} Perfil fictício, sem contato real e fora da publicação oficial.`}
         path={`/demo/perfil/${profile.slug}`}
         image={profile.avatarUrl}

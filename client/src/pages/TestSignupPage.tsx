@@ -23,7 +23,7 @@ export default function TestSignupPage() {
   const available = !!config.data?.testMode && !!config.data?.allowTestSignup;
   return (
     <div className="studio">
-      <Seo title="Cadastro de homologação — Só Models" description="Cadastro privado de ambiente de testes." noindex />
+      <Seo title="Cadastro de homologação — Ero Models" description="Cadastro privado de ambiente de testes." noindex />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">

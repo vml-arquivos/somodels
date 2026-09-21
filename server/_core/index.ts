@@ -120,7 +120,7 @@ async function startServer() {
   app.get("/robots.txt", async (_req, res) => {
     const indexingEnabled = await getSitemapIndexingState();
     const body = indexingEnabled
-      ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /titular\nDisallow: /login\nDisallow: /redefinir-senha\nDisallow: /alterar-senha\nDisallow: /cadastro\nDisallow: /cadastro-teste\nDisallow: /api/\nDisallow: /manus-storage/\nSitemap: ${ENV.canonicalOrigin || "https://somodels.buscarr.com.br"}/sitemap.xml\n`
+      ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /titular\nDisallow: /login\nDisallow: /redefinir-senha\nDisallow: /alterar-senha\nDisallow: /cadastro\nDisallow: /cadastro-teste\nDisallow: /api/\nDisallow: /manus-storage/\nSitemap: ${ENV.canonicalOrigin || "https://eromodels.com.br"}/sitemap.xml\n`
       : "User-agent: *\nDisallow: /\n";
     res.type("text/plain").send(body);
   });
@@ -129,7 +129,7 @@ async function startServer() {
       res.type("application/xml").send(emptySitemap());
       return;
     }
-    const origin = ENV.canonicalOrigin || "https://somodels.buscarr.com.br";
+    const origin = ENV.canonicalOrigin || "https://eromodels.com.br";
     res
       .type("application/xml")
       .send(`<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>${escapeXml(`${origin}/sitemap-pages.xml`)}</loc></sitemap><sitemap><loc>${escapeXml(`${origin}/sitemap-profiles.xml`)}</loc></sitemap></sitemapindex>`);
@@ -142,7 +142,7 @@ async function startServer() {
     const published = await listPublishedProfiles({ publicAllowed: true, limit: 60 });
     const cities = Array.from(new Set(published.map(profile => profile.city).filter(Boolean)));
     const categories = Array.from(new Set(published.flatMap(profile => profile.categories).filter(Boolean)));
-    const origin = ENV.canonicalOrigin || "https://somodels.buscarr.com.br";
+    const origin = ENV.canonicalOrigin || "https://eromodels.com.br";
     const pages = ["/", "/termos", "/privacidade", "/seguranca", "/denuncia", "/ajuda", "/contato"];
     const urls = [
       ...pages,
@@ -159,7 +159,7 @@ async function startServer() {
       return;
     }
     const published = await listPublishedProfiles({ publicAllowed: true, limit: 60 });
-    const origin = ENV.canonicalOrigin || "https://somodels.buscarr.com.br";
+    const origin = ENV.canonicalOrigin || "https://eromodels.com.br";
     const urls = published
       .map(profile => sitemapUrl(`${origin}/perfil/${encodeURIComponent(profile.slug)}`, new Date(profile.updatedAt)))
       .join("");
@@ -241,8 +241,8 @@ async function startServer() {
       } catch {
         res.locals.seoHead = renderSeoHead({
           title: ENV.siteName,
-          description: "Só Models",
-          canonical: ENV.canonicalOrigin || "https://somodels.buscarr.com.br",
+          description: "Ero Models",
+          canonical: ENV.canonicalOrigin || "https://eromodels.com.br",
           noindex: true,
         });
       }

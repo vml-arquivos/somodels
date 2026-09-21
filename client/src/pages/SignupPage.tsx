@@ -20,7 +20,7 @@ export default function SignupPage() {
 
   return (
     <div className="studio">
-      <Seo title="Criar conta de titular — Só Models" description="Crie sua conta para preparar um portfólio profissional." noindex />
+      <Seo title="Criar conta de titular — Ero Models" description="Crie sua conta para preparar um portfólio profissional." noindex />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">

@@ -18,7 +18,7 @@ export default function ResetPasswordPage() {
   }, []);
   return (
     <div className="studio">
-      <Seo title="Redefinir senha — Só Models" description="Área privada de redefinição de senha." noindex />
+      <Seo title="Redefinir senha — Ero Models" description="Área privada de redefinição de senha." noindex />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">

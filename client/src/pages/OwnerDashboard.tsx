@@ -29,7 +29,7 @@ export default function OwnerDashboard() {
   }
   return (
     <div className="studio">
-      <Seo title="Meu portfólio — Só Models" description="Área privada do titular do portfólio." noindex />
+      <Seo title="Meu portfólio — Ero Models" description="Área privada do titular do portfólio." noindex />
       <StudioHeader />
       <main className="studio-main">
         <p className="studio-kicker">Área do titular</p>

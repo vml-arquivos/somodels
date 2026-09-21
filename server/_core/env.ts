@@ -26,7 +26,7 @@ export const ENV = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: readInteger(process.env.PORT, 3000),
   trustProxy: readBoolean(process.env.TRUST_PROXY, true),
-  siteName: process.env.SITE_NAME ?? "Só Models",
+  siteName: process.env.SITE_NAME ?? "Ero Models",
   canonicalOrigin,
   release: process.env.APP_RELEASE ?? process.env.GIT_SHA ?? "development",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",

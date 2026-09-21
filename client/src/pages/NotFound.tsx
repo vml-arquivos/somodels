@@ -13,7 +13,7 @@ export default function NotFound() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <Seo title="Página não encontrada — Só Models" description="A rota solicitada não existe." noindex />
+      <Seo title="Página não encontrada — Ero Models" description="A rota solicitada não existe." noindex />
       <Card className="w-full max-w-lg mx-4 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
         <CardContent className="pt-8 pb-8 text-center">
           <div className="flex justify-center mb-6">

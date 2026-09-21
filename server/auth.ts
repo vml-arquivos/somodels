@@ -82,13 +82,13 @@ export async function bootstrapLocalAccounts() {
     {
       email: ENV.bootstrapSuperAdminEmail,
       password: ENV.bootstrapSuperAdminPassword,
-      name: "Só Models — Super Admin",
+      name: "Ero Models — Super Admin",
       role: "super_admin" as const,
     },
     {
       email: ENV.bootstrapDevEmail,
       password: ENV.bootstrapDevPassword,
-      name: "Só Models — Desenvolvimento",
+      name: "Ero Models — Desenvolvimento",
       role: "dev" as const,
     },
   ];
