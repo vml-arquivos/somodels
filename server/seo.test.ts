@@ -40,4 +40,12 @@ describe("server SEO", () => {
     expect(seo.title).toContain("Encontre talentos");
     expect(seo.description).toContain("publicação revisada");
   });
+
+  it("keeps demonstration profiles explicitly noindex", async () => {
+    const seo = await getServerSeo("/demo/perfil/demo-01-luna");
+    expect(seo.noindex).toBe(true);
+    expect(seo.title).toContain("Prévia demonstrativa");
+    expect(seo.description).toContain("Perfil fictício");
+    expect(seo.image).toBe("/demo/demo-01.jpg");
+  });
 });

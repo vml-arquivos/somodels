@@ -9,6 +9,7 @@ import {
 import StudioHeader from "@/components/StudioHeader";
 import PublicFooter from "@/components/PublicFooter";
 import Seo from "@/components/Seo";
+import { demoProfiles } from "@shared/demo-profiles";
 import {
   buildDiscoverySearch,
   categoryPath,
@@ -133,8 +134,12 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
               <Link className="studio-cta studio-cta-secondary" href="/cadastro">Criar meu portfólio</Link>
             </div>
           </div>
-          <div className="studio-hero-art" aria-hidden="true">
-            <span>Seu<br />próximo<br /><em>projeto.</em></span>
+          <div className="studio-hero-art">
+            <img src="/images/hero/so-models-hero-640.webp" alt="" />
+            <div className="studio-hero-art-overlay">
+              <span>Perfis<br />que apresentam<br /><em>possibilidades.</em></span>
+              <small>Imagem ilustrativa da experiência da vitrine.</small>
+            </div>
           </div>
         </section>
         <section id="portfolios">
@@ -147,7 +152,7 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
           {settings.error ? (
             <p className="studio-error">Não foi possível carregar a vitrine. Tente novamente mais tarde.</p>
           ) : !open ? (
-            <div className="studio-panel">
+            <div className="studio-panel studio-launch-panel">
               <p>{site.showGallery ? "A vitrine está temporariamente indisponível. O acesso segue as verificações e configurações de publicação da plataforma." : "A vitrine está temporariamente oculta."}</p>
             </div>
           ) : (
@@ -196,9 +201,37 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
               )}
             </>
           )}
+          {!open && !fixedCity && !fixedCategory && (
+            <section className="studio-demo-preview" aria-labelledby="demo-preview-title">
+              <div className="studio-title">
+                <div>
+                  <p className="studio-kicker">Experiência em demonstração</p>
+                  <h2 id="demo-preview-title">Veja como a vitrine será apresentada</h2>
+                  <p className="studio-muted">Estes seis perfis são fictícios e usam imagens demonstrativas. Eles servem apenas para apresentar navegação, filtros e páginas individuais enquanto a publicação oficial permanece fechada.</p>
+                </div>
+              </div>
+              <div className="studio-cards">
+                {demoProfiles.map(profile => (
+                  <article className="studio-portfolio-card studio-demo-card" key={profile.slug}>
+                    <Link href={`/demo/perfil/${profile.slug}`} className="studio-card-main">
+                      <div className="studio-cover">
+                        <img src={profile.avatarUrl} alt={`Imagem demonstrativa de ${profile.stageName}`} loading="lazy" />
+                        <span className="studio-demo-card-label">Demonstração</span>
+                      </div>
+                      <div>
+                        <small>{profile.categories.join(" · ")}</small>
+                        <h3>{profile.stageName}</h3>
+                        <p className="studio-muted">{profile.city} / {profile.region}</p>
+                      </div>
+                    </Link>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
         </section>
         {site.showAbout && !fixedCity && !fixedCategory && (
-          <section className="studio-about"><p className="studio-kicker">Sobre a plataforma</p><h2>Trabalhos que merecem ser vistos.</h2><p>{site.about}</p></section>
+          <section className="studio-about"><p className="studio-kicker">Sobre a plataforma</p><h2>Uma vitrine profissional, clara e responsável.</h2><p>{site.about}</p></section>
         )}
         {!fixedCity && !fixedCategory && (
           <section className="studio-home-grid" aria-label="Como a Só Models funciona">
