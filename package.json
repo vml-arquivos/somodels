@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && esbuild scripts/seed-demo.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/seed-demo.mjs && node scripts/check-bundle.mjs",
+    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=bundle --external:mysql2 --external:dotenv --external:express --external:axios --external:@aws-sdk/client-s3 --external:@aws-sdk/s3-request-presigner --external:vite --external:@vitejs/plugin-react --external:@tailwindcss/vite --external:vite-plugin-manus-runtime --bundle --splitting --format=esm --outdir=dist && esbuild scripts/seed-demo.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/seed-demo.mjs && esbuild scripts/migrate.ts --platform=node --packages=bundle --external:mysql2 --external:dotenv --bundle --format=esm --outfile=dist/migrate.mjs && node scripts/check-bundle.mjs",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
