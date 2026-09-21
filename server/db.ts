@@ -400,6 +400,7 @@ export async function getProfilePublicationReadiness(profileId: number, executor
   const approvedMedia = media.filter((item: any) => item.status === "approved" && !item.isPremium);
   const gates = getPublicationGateBlockers({
     ownerActive: owner?.accountStatus === "active",
+    profileActive: profile.isActive && !profile.deletedAt,
     identityApproved,
     termsCurrent: terms.current,
     termsReason: terms.reason,
@@ -572,6 +573,8 @@ export async function listPublishedProfiles(input: {
     eq(profiles.status, "approved"),
     eq(profiles.isPublished, true),
     eq(profiles.portfolioReviewed, true),
+    eq(profiles.isActive, true),
+    sql`${profiles.deletedAt} IS NULL`,
     activeProfileOwner(),
   ];
   if (!ENV.allowFakeData)
@@ -624,6 +627,8 @@ export async function getPublicProfile(slug: string, publicAllowed = true) {
     eq(profiles.status, "approved"),
     eq(profiles.isPublished, true),
     eq(profiles.portfolioReviewed, true),
+    eq(profiles.isActive, true),
+    sql`${profiles.deletedAt} IS NULL`,
   ];
   if (!ENV.allowFakeData)
     profileConditions.push(
@@ -651,6 +656,8 @@ export async function getPublicProfile(slug: string, publicAllowed = true) {
     eq(profiles.status, "approved"),
     eq(profiles.isPublished, true),
     eq(profiles.portfolioReviewed, true),
+    eq(profiles.isActive, true),
+    sql`${profiles.deletedAt} IS NULL`,
     ne(profiles.id, rows[0].id),
     eq(profiles.city, rows[0].city),
   ];
@@ -764,7 +771,13 @@ export async function saveProfile(
     const [owned] = await db
       .select({ id: profiles.id })
       .from(profiles)
-      .where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)))
+      .where(
+        and(
+          eq(profiles.id, id),
+          eq(profiles.ownerId, ownerId),
+          sql`${profiles.deletedAt} IS NULL`
+        )
+      )
       .limit(1);
     if (!owned) throw new Error("Perfil não pertence à conta");
     await db
@@ -790,6 +803,8 @@ export async function saveProfile(
       ...values,
       status: submitForReview ? "pending" : "draft",
       isPublished: false,
+      isActive: true,
+      deletedAt: null,
       isTest: ENV.allowFakeData,
       isDemo: ENV.allowFakeData,
       rejectionReason: null,
@@ -821,11 +836,13 @@ export async function createMedia(
     }
   }
   const owned = await db
-    .select({ id: profiles.id })
+    .select({ id: profiles.id, isActive: profiles.isActive, deletedAt: profiles.deletedAt })
     .from(profiles)
     .where(and(eq(profiles.id, input.profileId), eq(profiles.ownerId, ownerId)))
     .limit(1);
   if (!owned[0]) throw new Error("Profile not owned by user");
+  if (!owned[0].isActive || owned[0].deletedAt)
+    throw new Error("O perfil está inativo ou excluído");
   if (
     !input.storageKey.startsWith(`profiles/${ownerId}/${input.profileId}/`) ||
     input.url !== `/manus-storage/${input.storageKey}`
@@ -889,15 +906,173 @@ export async function listPendingProfiles() {
   return rows.map(hydrateProfile);
 }
 
-export async function listAdminProfiles() {
+export async function listAdminProfiles(input?: {
+  search?: string;
+  lifecycle?: "all" | "active" | "inactive" | "deleted";
+}) {
   const db = await getDb();
   if (!db) return [];
+  const conditions: any[] = [];
+  if (input?.search?.trim()) {
+    const search = input.search.trim();
+    conditions.push(
+      or(
+        like(profiles.stageName, `%${search}%`),
+        like(profiles.slug, `%${search}%`),
+        like(profiles.city, `%${search}%`)
+      )
+    );
+  }
+  if (input?.lifecycle === "active") {
+    conditions.push(eq(profiles.isActive, true), sql`${profiles.deletedAt} IS NULL`);
+  } else if (input?.lifecycle === "inactive") {
+    conditions.push(eq(profiles.isActive, false), sql`${profiles.deletedAt} IS NULL`);
+  } else if (input?.lifecycle === "deleted") {
+    conditions.push(sql`${profiles.deletedAt} IS NOT NULL`);
+  }
   const rows = await db
     .select()
     .from(profiles)
+    .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(profiles.updatedAt))
     .limit(200);
   return rows.map(hydrateProfile);
+}
+
+export async function setProfileActive(
+  id: number,
+  isActive: boolean,
+  actorUserId: number,
+  reason?: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.transaction(async tx => {
+    const [profile] = await tx
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, id))
+      .for("update");
+    if (!profile) throw new Error("Perfil não encontrado");
+    if (profile.deletedAt) throw new Error("Restaure o perfil antes de ativá-lo");
+    if (profile.isActive === isActive) return;
+    if (!isActive) {
+      await tx
+        .update(profiles)
+        .set({ isActive: false, isPublished: false, isFeatured: false })
+        .where(eq(profiles.id, id));
+    } else {
+      await tx
+        .update(profiles)
+        .set({ isActive: true })
+        .where(eq(profiles.id, id));
+      const readiness =
+        profile.status === "approved"
+          ? await getProfilePublicationReadiness(id, tx)
+          : null;
+      const canPublish = profile.status === "approved" && Boolean(readiness?.ready);
+      await tx
+        .update(profiles)
+        .set({
+          isActive: true,
+          isPublished: canPublish,
+          isFeatured: canPublish && profile.isFeatured,
+          rejectionReason: canPublish
+            ? null
+            : readiness?.blockers.length
+              ? `Aprovado e oculto: ${readiness.blockers.join("; ")}`
+              : profile.rejectionReason,
+        })
+        .where(eq(profiles.id, id));
+    }
+    await tx.insert(auditLogs).values({
+      actorUserId,
+      action: isActive ? "profile.activated" : "profile.deactivated",
+      entityType: "profile",
+      entityId: id,
+      metadata: JSON.stringify({ reason: reason?.trim() || null }),
+    });
+  });
+  return { success: true as const, isActive };
+}
+
+export async function softDeleteProfile(
+  id: number,
+  confirmation: string,
+  actorUserId: number,
+  reason?: string
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.transaction(async tx => {
+    const [profile] = await tx
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, id))
+      .for("update");
+    if (!profile) throw new Error("Perfil não encontrado");
+    if (profile.deletedAt) throw new Error("Perfil já está excluído");
+    if (confirmation.trim() !== profile.slug)
+      throw new Error("Digite o slug exato do perfil para confirmar a exclusão");
+    await tx
+      .update(profiles)
+      .set({
+        isActive: false,
+        isPublished: false,
+        isFeatured: false,
+        portfolioReviewed: false,
+        status: "suspended",
+        deletedAt: new Date(),
+      })
+      .where(eq(profiles.id, id));
+    await tx.insert(auditLogs).values({
+      actorUserId,
+      action: "profile.deleted",
+      entityType: "profile",
+      entityId: id,
+      metadata: JSON.stringify({
+        slug: profile.slug,
+        stageName: profile.stageName,
+        reason: reason?.trim() || null,
+        deletionMode: "soft",
+      }),
+    });
+  });
+  return { success: true as const };
+}
+
+export async function restoreProfile(id: number, actorUserId: number, reason?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.transaction(async tx => {
+    const [profile] = await tx
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, id))
+      .for("update");
+    if (!profile) throw new Error("Perfil não encontrado");
+    if (!profile.deletedAt) throw new Error("Perfil não está excluído");
+    await tx
+      .update(profiles)
+      .set({
+        deletedAt: null,
+        isActive: true,
+        isPublished: false,
+        isFeatured: false,
+        portfolioReviewed: false,
+        status: "draft",
+        rejectionReason: null,
+      })
+      .where(eq(profiles.id, id));
+    await tx.insert(auditLogs).values({
+      actorUserId,
+      action: "profile.restored",
+      entityType: "profile",
+      entityId: id,
+      metadata: JSON.stringify({ reason: reason?.trim() || null }),
+    });
+  });
+  return { success: true as const };
 }
 
 export async function listAdminUsers(actorRole = "admin") {
@@ -965,6 +1140,7 @@ export async function moderateProfile(
       .where(eq(profiles.id, id))
       .for("update");
     if (!profile) throw new Error("Perfil não encontrado");
+    if (profile.deletedAt) throw new Error("Restaure o perfil antes de moderá-lo");
     let publicationBlockers: string[] = [];
     if (status === "approved") {
       const categories = parseJson(profile.categories);
@@ -1120,6 +1296,8 @@ export async function isMediaProfilePublic(profileId: number) {
         eq(profiles.status, "approved"),
         eq(profiles.isPublished, true),
         eq(profiles.portfolioReviewed, true),
+        eq(profiles.isActive, true),
+        sql`${profiles.deletedAt} IS NULL`,
         eq(users.accountStatus, "active"),
         ...(!ENV.allowFakeData
           ? [eq(profiles.isDemo, false), eq(profiles.isTest, false)]
@@ -1148,6 +1326,8 @@ async function requirePublicInteractionProfile(executor: any, profileId: number)
     eq(profiles.status, "approved"),
     eq(profiles.isPublished, true),
     eq(profiles.portfolioReviewed, true),
+    eq(profiles.isActive, true),
+    sql`${profiles.deletedAt} IS NULL`,
   ];
   if (!ENV.allowFakeData) {
     conditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
@@ -1217,6 +1397,8 @@ export async function listFavoriteProfiles(userId: number) {
     eq(profiles.status, "approved"),
     eq(profiles.isPublished, true),
     eq(profiles.portfolioReviewed, true),
+    eq(profiles.isActive, true),
+    sql`${profiles.deletedAt} IS NULL`,
   ];
   if (!ENV.allowFakeData) {
     conditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));

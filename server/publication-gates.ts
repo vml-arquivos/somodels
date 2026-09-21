@@ -1,5 +1,6 @@
 export type PublicationGateInput = {
   ownerActive: boolean;
+  profileActive: boolean;
   identityApproved: boolean;
   termsCurrent: boolean;
   termsReason?: "never_accepted" | "terms_updated" | "content_changed" | "invalid_acceptance" | null;
@@ -22,6 +23,7 @@ export function getPublicationGateBlockers(input: PublicationGateInput) {
   const approvalBlockers: string[] = [];
   const publicationBlockers: string[] = [];
   if (!input.ownerActive) approvalBlockers.push("Titular inativo");
+  if (!input.profileActive) approvalBlockers.push("Perfil inativo ou excluído");
   if (!input.identityApproved) approvalBlockers.push("Verificação de identidade válida pendente");
   if (!input.termsCurrent) {
     approvalBlockers.push(

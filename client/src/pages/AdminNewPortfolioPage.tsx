@@ -25,19 +25,19 @@ export default function AdminNewPortfolioPage() {
 
   return (
     <div className="studio">
-      <StudioHeader>
+      <StudioHeader minimal>
         <button onClick={() => logout()}>Sair</button>
       </StudioHeader>
       <main className="studio-main">
-        <p className="studio-kicker">Administração · novo portfólio</p>
+        <p className="studio-kicker">Administração · novo perfil profissional</p>
         <div className="studio-title">
           <div>
-            <h1>Criar portfólio para um titular</h1>
+            <h1>Preparar um perfil profissional</h1>
             <p className="studio-muted">
-              O administrador pode preparar os mesmos dados, fotos e vídeos da área do titular. O aceite do termo continua exclusivo do titular antes da aprovação/publicação.
+              Organize a apresentação pública de um modelo ou criador com dados claros, localização aproximada, especialidades e materiais autorizados. O aceite do termo continua exclusivo do titular antes da aprovação e da publicação.
             </p>
             <p className="studio-notice">
-              Rascunho criado pelo administrador. O titular ainda precisa revisar os dados, confirmar maioridade, direitos, responsabilidade e consentimento antes do envio para aprovação.
+              Este fluxo cria apenas um rascunho interno. O titular precisa revisar cada informação, confirmar maioridade, direitos, responsabilidade e consentimento antes de qualquer envio para moderação.
             </p>
           </div>
           <Link href="/admin">Voltar ao painel</Link>
@@ -64,10 +64,10 @@ export default function AdminNewPortfolioPage() {
         ) : (
           <div className="studio-split">
             <aside className="studio-panel">
-              <h2>Escolha o titular</h2>
+              <h2>Titular responsável</h2>
               <input
                 aria-label="Buscar titular"
-                placeholder="Buscar nome ou e-mail"
+                placeholder="Buscar titular ativo por nome ou e-mail"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -94,12 +94,19 @@ export default function AdminNewPortfolioPage() {
               )}
               {!accounts.isLoading &&
                 !accounts.data?.items.some(account => account.role === "user") && (
-                  <p>Nenhum titular encontrado nesta busca.</p>
+                  <p>Nenhum titular ativo encontrado nesta busca.</p>
                 )}
             </aside>
             <section className="studio-panel">
               {!ownerId ? (
-                <p>Selecione um titular para iniciar o portfólio.</p>
+                <div className="studio-notice">
+                  <strong>Comece pelo titular responsável</strong>
+                  <p>
+                    Selecione uma conta ativa ao lado. O formulário será aberto
+                    vazio para evitar que informações de outro perfil sejam
+                    reutilizadas por engano.
+                  </p>
+                </div>
               ) : profileId && detail.isLoading ? (
                 <p>Carregando portfólio criado…</p>
               ) : detail.error ? (

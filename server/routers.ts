@@ -44,6 +44,9 @@ import {
   getUserById,
   hasPremiumAccess,
   listAdminProfiles,
+  setProfileActive,
+  softDeleteProfile,
+  restoreProfile,
   listAdminUsers,
   getAdminProfile,
   favoriteProfile,
@@ -535,13 +538,57 @@ export const appRouter = router({
     pendingProfiles: adminProcedure.query(() => listPendingProfiles()),
     pendingMedia: adminProcedure.query(() => listPendingMedia()),
     users: adminProcedure.query(({ ctx }) => listAdminUsers(ctx.user.role)),
-    profiles: adminProcedure.query(() => listAdminProfiles()),
+    profiles: adminProcedure
+      .input(
+        z
+          .object({
+            search: z.string().trim().max(120).optional(),
+            lifecycle: z.enum(["all", "active", "inactive", "deleted"]).default("all"),
+          })
+          .optional()
+      )
+      .query(({ input }) => listAdminProfiles(input)),
     profileDetail: adminProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => getAdminProfile(input.id)),
     profileReadiness: adminProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => getProfilePublicationReadiness(input.id)),
+    activateProfile: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          reason: z.string().trim().max(500).optional(),
+        })
+      )
+      .mutation(({ ctx, input }) => setProfileActive(input.id, true, ctx.user.id, input.reason)),
+    deactivateProfile: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          reason: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ ctx, input }) => setProfileActive(input.id, false, ctx.user.id, input.reason)),
+    deleteProfile: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          confirmation: z.string().trim().min(2).max(160),
+          reason: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        softDeleteProfile(input.id, input.confirmation, ctx.user.id, input.reason)
+      ),
+    restoreProfile: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          reason: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ ctx, input }) => restoreProfile(input.id, ctx.user.id, input.reason)),
     moderateProfile: adminProcedure
       .input(
         z

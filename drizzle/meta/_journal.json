@@ -43,6 +43,13 @@
       "when": 1789599834223,
       "tag": "0005_portfolio_management",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1789990500000,
+      "tag": "0006_profile_lifecycle",
+      "breakpoints": true
     }
   ]
 }

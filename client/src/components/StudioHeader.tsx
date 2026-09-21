@@ -3,8 +3,10 @@ import { useTheme } from "@/contexts/ThemeContext";
 
 export default function StudioHeader({
   children,
+  minimal = false,
 }: {
   children?: React.ReactNode;
+  minimal?: boolean;
 }) {
   const { theme, toggleTheme } = useTheme();
   return (
@@ -19,12 +21,14 @@ export default function StudioHeader({
         />
       </Link>
       <div className="studio-header-menu">
-        <nav aria-label="Navegação principal">
-          <Link href="/#portfolios">Visualizar todos</Link>
-          <Link href="/#busca">Buscar</Link>
-          <Link href="/#categorias">Categorias</Link>
-          <Link href="/login" className="studio-header-login">Entrar</Link>
-        </nav>
+        {!minimal && (
+          <nav aria-label="Navegação principal">
+            <Link href="/#portfolios">Visualizar todos</Link>
+            <Link href="/#busca">Buscar</Link>
+            <Link href="/#categorias">Categorias</Link>
+            <Link href="/login" className="studio-header-login">Entrar</Link>
+          </nav>
+        )}
         {children ? <div className="studio-header-extra">{children}</div> : null}
         {toggleTheme ? (
           <button

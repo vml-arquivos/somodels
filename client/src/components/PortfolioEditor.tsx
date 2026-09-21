@@ -182,21 +182,22 @@ export default function PortfolioEditor({
     <div className="studio-editor">
       <div className="studio-fields">
         {[
-          ["stageName", "Título / nome profissional"],
-          ["slug", "Endereço do perfil"],
-          ["city", "Cidade"],
-          ["region", "Estado / região"],
-          ["locationNote", "Localização aproximada (sem endereço privado)"],
-          ["languages", "Idiomas, separados por vírgula"],
-          ["phone", "Telefone — DDI e DDD"],
-          ["whatsapp", "WhatsApp (opcional; usa o telefone quando vazio)"],
-          ["availabilityLabel", "Disponibilidade para projetos"],
-          ["attributes", "Especialidades, separadas por vírgula"],
-        ].map(([key, label]) => (
+          ["stageName", "Nome profissional exibido", "Ex.: Marina Alves"],
+          ["slug", "Slug do perfil (URL pública)", "Ex.: marina-alves"],
+          ["city", "Cidade de atuação", "Ex.: Brasília"],
+          ["region", "Estado / região", "Ex.: Distrito Federal"],
+          ["locationNote", "Localização aproximada", "Ex.: Asa Sul e região — nunca informe endereço privado"],
+          ["languages", "Idiomas", "Ex.: Português, Inglês"],
+          ["phone", "Telefone para ligação — DDI e DDD", "Ex.: +55 61 99999-9999"],
+          ["whatsapp", "WhatsApp (opcional)", "Se vazio, usa o telefone informado"],
+          ["availabilityLabel", "Disponibilidade para projetos", "Ex.: Agenda aberta para trabalhos selecionados"],
+          ["attributes", "Especialidades profissionais", "Ex.: Editorial, publicidade, eventos"],
+        ].map(([key, label, placeholder]) => (
           <label key={key}>
             {label}
             <input
               maxLength={key === "stageName" ? 120 : 180}
+              placeholder={placeholder}
               value={(form as any)[key]}
               onChange={e => update(key, e.target.value)}
             />
@@ -204,16 +205,17 @@ export default function PortfolioEditor({
         ))}
       </div>
       <label>
-        Descrição profissional
+        Apresentação profissional
         <textarea
           rows={5}
           maxLength={5000}
+          placeholder="Escreva uma apresentação objetiva: experiência, estilo de trabalho, áreas de atuação, diferenciais e tipos de projeto. Não inclua endereço privado, promessas indevidas ou informações que o titular não autorizou."
           value={form.description}
           onChange={e => update("description", e.target.value)}
         />
       </label>
       <fieldset>
-        <legend>Áreas de atuação</legend>
+        <legend>Áreas profissionais do perfil</legend>
         <div className="studio-actions">
           {portfolioCategories.map(c => (
             <label className="studio-check" key={c}>
@@ -235,7 +237,7 @@ export default function PortfolioEditor({
         </div>
       </fieldset>
       <p className="studio-muted">
-        Os contatos serão públicos apenas após aprovação e publicação.{" "}
+        Os contatos ficam protegidos durante o cadastro e só podem gerar ligação ou WhatsApp pelo fluxo autorizado após aprovação e publicação. {" "}
         {links.tel
           ? "Telefone válido para ligação."
           : "Informe um telefone válido."}{" "}
@@ -254,8 +256,8 @@ export default function PortfolioEditor({
           onChange={e => setConsent(e.target.checked)}
         />
         {admin
-          ? "Confirmo que os dados e arquivos foram fornecidos ou autorizados pelo titular para preparação interna. Isto não substitui o aceite do titular."
-          : "Confirmo que tenho autorização para os dados e arquivos."}{" "}
+          ? "Confirmo que estas informações e arquivos foram fornecidos ou autorizados pelo titular para preparar este perfil. O titular ainda deverá revisar o conteúdo e registrar o aceite do termo."
+          : "Confirmo que tenho autorização para usar estas informações e arquivos neste perfil."}{" "}
         {portfolioPolicy}
       </label>
       <div className="studio-actions">
@@ -276,11 +278,11 @@ export default function PortfolioEditor({
         <h3>{portfolioTermsTitle}</h3>
         {!initial?.id ? (
           <p className="studio-muted">
-            Salve o rascunho primeiro. O aceite é vinculado ao conteúdo atual do perfil e às mídias cadastradas.
+            Salve o rascunho primeiro. O aceite será vinculado ao conteúdo atual do perfil e às mídias cadastradas.
           </p>
         ) : admin ? (
           <p className="studio-muted">
-            O administrador pode preparar o portfólio, mas somente o titular pode registrar o aceite contratual.
+            O administrador prepara o conteúdo, mas somente o titular pode confirmar maioridade, direitos, responsabilidade e aceite contratual.
           </p>
         ) : (
           <>
@@ -347,9 +349,9 @@ export default function PortfolioEditor({
         )}
       </section>
       <section className="studio-panel">
-        <h3>Fotos e vídeos</h3>
+        <h3>Imagens e vídeos do perfil</h3>
         {!initial?.id ? (
-          <p>Salve o rascunho antes de enviar arquivos.</p>
+          <p>Salve o rascunho antes de enviar materiais autorizados.</p>
         ) : (
           <>
             <label>
@@ -365,8 +367,8 @@ export default function PortfolioEditor({
               />
             </label>
             <p className="studio-muted">
-              Fotos até 12 MB. Vídeos até 100 MB. Arquivos novos ficam privados
-              até a revisão. {admin ? "O titular ainda precisa revisar e aceitar o termo." : ""}
+              Imagens até 12 MB e vídeos até 100 MB. Arquivos novos ficam
+              privados até a revisão. {admin ? "O titular ainda precisa revisar o material e aceitar o termo." : ""}
             </p>
             <div className="studio-media">
               {media.map(m => (

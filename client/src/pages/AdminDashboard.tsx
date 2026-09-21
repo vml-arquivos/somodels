@@ -3,7 +3,11 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { defaultSiteSettings, portfolioPolicy } from "@shared/portfolio";
+import {
+  defaultSiteSettings,
+  portfolioPolicy,
+  profileOperationalLabel,
+} from "@shared/portfolio";
 import { reportCategoryLabels, type ReportCategory } from "@shared/safety";
 import PortfolioEditor from "@/components/PortfolioEditor";
 import StudioHeader from "@/components/StudioHeader";
@@ -35,6 +39,10 @@ export default function AdminDashboard() {
   const utils = trpc.useUtils();
   const [tab, setTab] = useState<keyof typeof tabs>("overview"),
     [search, setSearch] = useState(""),
+    [profileSearch, setProfileSearch] = useState(""),
+    [profileLifecycle, setProfileLifecycle] = useState<
+      "all" | "active" | "inactive" | "deleted"
+    >("all"),
     [status, setStatus] = useState<"all" | "active" | "suspended">("all"),
     [page, setPage] = useState(0),
     [auditPage, setAuditPage] = useState(0);
@@ -61,9 +69,10 @@ export default function AdminDashboard() {
     { id: uid || 0 },
     { enabled: allowed && !!uid && tab === "users" }
   );
-  const profiles = trpc.admin.profiles.useQuery(undefined, {
-    enabled: allowed && (tab === "profiles" || tab === "moderation"),
-  });
+  const profiles = trpc.admin.profiles.useQuery(
+    { search: profileSearch || undefined, lifecycle: profileLifecycle },
+    { enabled: allowed && (tab === "profiles" || tab === "moderation") }
+  );
   const profile = trpc.admin.profileDetail.useQuery(
     { id: pid || 0 },
     {
@@ -183,6 +192,37 @@ export default function AdminDashboard() {
     },
     onError: error,
   });
+  const activateProfile = trpc.admin.activateProfile.useMutation({
+    onSuccess: () => {
+      toast.success("Perfil ativado; a publicação continua sujeita aos gates");
+      setReason("");
+      refresh();
+    },
+    onError: error,
+  });
+  const deactivateProfile = trpc.admin.deactivateProfile.useMutation({
+    onSuccess: () => {
+      toast.success("Perfil inativado e removido da publicação");
+      setReason("");
+      refresh();
+    },
+    onError: error,
+  });
+  const deleteProfile = trpc.admin.deleteProfile.useMutation({
+    onSuccess: () => {
+      toast.success("Perfil excluído logicamente; histórico preservado");
+      setEditingProfile(false);
+      refresh();
+    },
+    onError: error,
+  });
+  const restoreProfile = trpc.admin.restoreProfile.useMutation({
+    onSuccess: () => {
+      toast.success("Perfil restaurado como rascunho");
+      refresh();
+    },
+    onError: error,
+  });
   const updateReport = trpc.safety.updateReport.useMutation({
     onSuccess: () => {
       setReportDecision("");
@@ -212,7 +252,7 @@ export default function AdminDashboard() {
   return (
     <div className="studio">
       <Seo title="Administração — Ero Models" description="Área privada de administração da plataforma." noindex />
-      <StudioHeader>
+      <StudioHeader minimal>
         <button onClick={() => logout()}>Sair</button>
       </StudioHeader>
       <main className="studio-main">
@@ -626,6 +666,28 @@ export default function AdminDashboard() {
             )}
             {(tab === "profiles" || tab === "moderation") && (
               <>
+                {tab === "profiles" && (
+                  <div className="studio-toolbar">
+                    <input
+                      aria-label="Buscar perfis"
+                      placeholder="Buscar nome, slug ou cidade"
+                      value={profileSearch}
+                      onChange={event => setProfileSearch(event.target.value)}
+                    />
+                    <select
+                      aria-label="Estado operacional do perfil"
+                      value={profileLifecycle}
+                      onChange={event =>
+                        setProfileLifecycle(event.target.value as typeof profileLifecycle)
+                      }
+                    >
+                      <option value="all">Todos os estados</option>
+                      <option value="active">Ativos</option>
+                      <option value="inactive">Inativos</option>
+                      <option value="deleted">Excluídos</option>
+                    </select>
+                  </div>
+                )}
                 <Failure error={profiles.error} />
                 <div className="studio-split">
                   <section className="studio-panel">
@@ -651,7 +713,7 @@ export default function AdminDashboard() {
                         >
                           <strong>{p.stageName}</strong>
                           <small>
-                            {p.city} · {p.status} ·{" "}
+                            {p.city} · {profileOperationalLabel(p)} · {p.status} ·{" "}
                             {p.isPublished && p.portfolioReviewed
                               ? "Publicado"
                               : "Oculto"}
@@ -713,6 +775,14 @@ export default function AdminDashboard() {
                                   ? "Publicado"
                                   : "Oculto"}
                               </dd>
+                              <dt>Estado operacional</dt>
+                              <dd>{profileOperationalLabel(profile.data.profile)}</dd>
+                              {profile.data.profile.deletedAt && (
+                                <>
+                                  <dt>Excluído em</dt>
+                                  <dd>{date(profile.data.profile.deletedAt)}</dd>
+                                </>
+                              )}
                             </dl>
                             {profileReadiness.data && (
                               <div className="studio-notice">
@@ -727,9 +797,75 @@ export default function AdminDashboard() {
                                 )}
                               </div>
                             )}
-                            <button onClick={() => setEditingProfile(true)}>
-                              Editar informações
-                            </button>
+                            <div className="studio-actions">
+                              <button
+                                disabled={!!profile.data.profile.deletedAt}
+                                onClick={() => setEditingProfile(true)}
+                              >
+                                Editar informações
+                              </button>
+                              {!profile.data.profile.deletedAt &&
+                                (profile.data.profile.isActive ? (
+                                  <button
+                                    disabled={deactivateProfile.isPending || reason.trim().length < 3}
+                                    onClick={() =>
+                                      deactivateProfile.mutate({ id: pid!, reason: reason.trim() })
+                                    }
+                                  >
+                                    Inativar perfil
+                                  </button>
+                                ) : (
+                                  <button
+                                    disabled={activateProfile.isPending}
+                                    onClick={() =>
+                                      activateProfile.mutate({
+                                        id: pid!,
+                                        reason: reason.trim() || undefined,
+                                      })
+                                    }
+                                  >
+                                    Ativar perfil
+                                  </button>
+                                ))}
+                              {profile.data.profile.deletedAt ? (
+                                <button
+                                  disabled={restoreProfile.isPending}
+                                  onClick={() => {
+                                    const restoreReason = window.prompt(
+                                      "Motivo para restaurar este perfil:"
+                                    );
+                                    if (restoreReason?.trim())
+                                      restoreProfile.mutate({
+                                        id: pid!,
+                                        reason: restoreReason.trim(),
+                                      });
+                                  }}
+                                >
+                                  Restaurar perfil
+                                </button>
+                              ) : (
+                                <button
+                                  disabled={deleteProfile.isPending}
+                                  onClick={() => {
+                                    const confirmation = window.prompt(
+                                      `Para excluir, digite exatamente o slug: ${profile.data?.profile.slug || ""}`
+                                    );
+                                    if (confirmation === null) return;
+                                    const deleteReason = window.prompt(
+                                      "Motivo obrigatório para a exclusão lógica:"
+                                    );
+                                    if (!deleteReason?.trim()) return;
+                                    deleteProfile.mutate({
+                                      id: pid!,
+                                      confirmation,
+                                      reason: deleteReason.trim(),
+                                    });
+                                  }}
+                                >
+                                  Excluir perfil
+                                </button>
+                              )}
+                            </div>
                             <div className="studio-media">
                               {profile.data.media.map(m => (
                                 <article key={m.id}>
@@ -782,11 +918,12 @@ export default function AdminDashboard() {
                               {portfolioPolicy}
                             </label>
                             <label>
-                              Motivo da revisão, ajuste ou suspensão
+                              Justificativa da ação administrativa
                               <input
                                 value={reason}
                                 onChange={e => setReason(e.target.value)}
                                 maxLength={500}
+                                placeholder="Obrigatório para inativar, suspender ou solicitar ajustes"
                               />
                             </label>
                             <div className="studio-actions">

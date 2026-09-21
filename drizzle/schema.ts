@@ -181,6 +181,8 @@ export const profiles = mysqlTable(
     status: mysqlEnum("status", ["draft", "pending", "approved", "rejected", "suspended"])
       .default("draft")
       .notNull(),
+    isActive: boolean("isActive").default(true).notNull(),
+    deletedAt: timestamp("deletedAt"),
     isFeatured: boolean("isFeatured").default(false).notNull(),
     isPublished: boolean("isPublished").default(false).notNull(),
     isTest: boolean("isTest").default(false).notNull(),
@@ -193,6 +195,7 @@ export const profiles = mysqlTable(
     ownerIdx: index("profiles_owner_idx").on(table.ownerId),
     cityIdx: index("profiles_city_idx").on(table.city),
     statusIdx: index("profiles_status_idx").on(table.status),
+    lifecycleIdx: index("profiles_lifecycle_idx").on(table.isActive, table.deletedAt),
   }),
 );
 
