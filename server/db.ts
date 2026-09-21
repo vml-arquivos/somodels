@@ -998,7 +998,6 @@ export async function setProfileActive(
 
 export async function softDeleteProfile(
   id: number,
-  confirmation: string,
   actorUserId: number,
   reason?: string
 ) {
@@ -1012,8 +1011,6 @@ export async function softDeleteProfile(
       .for("update");
     if (!profile) throw new Error("Perfil não encontrado");
     if (profile.deletedAt) throw new Error("Perfil já está excluído");
-    if (confirmation.trim() !== profile.slug)
-      throw new Error("Digite o slug exato do perfil para confirmar a exclusão");
     await tx
       .update(profiles)
       .set({
@@ -1033,7 +1030,7 @@ export async function softDeleteProfile(
       metadata: JSON.stringify({
         slug: profile.slug,
         stageName: profile.stageName,
-        reason: reason?.trim() || null,
+        reason: reason?.trim() || "Exclusão lógica direta solicitada no painel administrativo",
         deletionMode: "soft",
       }),
     });

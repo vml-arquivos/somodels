@@ -32,8 +32,9 @@ const paging = z
     page: z.number().int().min(0).default(0),
     search: z.string().trim().max(120).default(""),
     status: z.enum(["all", "active", "suspended"]).default("all"),
+    kind: z.enum(["all", "owners", "system"]).default("all"),
   })
-  .default({ page: 0, search: "", status: "all" });
+  .default({ page: 0, search: "", status: "all", kind: "all" });
 const idSchema = z.object({ id: z.number().int().positive() });
 const userFields = {
   id: users.id,
@@ -123,7 +124,12 @@ export const managementRouter = router({
             like(users.email, `%${input.search}%`)
           )
         : undefined,
-      input.status === "all" ? undefined : eq(users.accountStatus, input.status)
+      input.status === "all" ? undefined : eq(users.accountStatus, input.status),
+      input.kind === "owners"
+        ? eq(users.role, "user")
+        : input.kind === "system"
+          ? sql`${users.role} <> 'user'`
+          : undefined
     );
     const [total] = await db
       .select({ count: sql<number>`count(*)` })
@@ -156,7 +162,7 @@ export const managementRouter = router({
       idSchema.extend({
         name: z.string().trim().min(2).max(120),
         email: z.string().email().max(320),
-        role: z.enum(["user", "admin"]),
+        role: z.enum(["user", "admin", "super_admin"]),
         accountStatus: z.enum(["active", "suspended"]),
       })
     )
@@ -172,7 +178,8 @@ export const managementRouter = router({
           !target ||
           !canManage(ctx.user, target) ||
           target.openId.startsWith("deleted:") ||
-          (ctx.user.role === "admin" && input.role !== "user")
+          (ctx.user.role === "admin" && input.role !== "user") ||
+          (ctx.user.role === "super_admin" && input.role === "super_admin")
         )
           throw new TRPCError({ code: "FORBIDDEN" });
         const email = input.email.trim().toLowerCase();

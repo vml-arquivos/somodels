@@ -14,13 +14,21 @@ import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
 const tabs = {
   overview: "Visão geral",
-  users: "Usuários",
+  users: "Usuários do sistema",
+  owners: "Titulares de perfis",
   profiles: "Portfólios",
   moderation: "Moderação",
   reports: "Denúncias",
   finance: "Financeiro",
   settings: "Página inicial",
   audit: "Auditoria",
+};
+type ManagedRole = "user" | "admin" | "super_admin";
+const roleLabels: Record<string, string> = {
+  user: "Titular de perfil",
+  admin: "Administrador",
+  super_admin: "Superadministrador",
+  dev: "DEV",
 };
 const money = (n: unknown) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -62,12 +70,17 @@ export default function AdminDashboard() {
     enabled: allowed && tab === "overview",
   });
   const accounts = trpc.management.users.useQuery(
-    { page, search, status },
-    { enabled: allowed && tab === "users" }
+    {
+      page,
+      search,
+      status,
+      kind: tab === "owners" ? "owners" : "system",
+    },
+    { enabled: allowed && (tab === "users" || tab === "owners") }
   );
   const detail = trpc.management.userDetail.useQuery(
     { id: uid || 0 },
-    { enabled: allowed && !!uid && tab === "users" }
+    { enabled: allowed && !!uid && (tab === "users" || tab === "owners") }
   );
   const profiles = trpc.admin.profiles.useQuery(
     { search: profileSearch || undefined, lifecycle: profileLifecycle },
@@ -106,7 +119,7 @@ export default function AdminDashboard() {
       name: "",
       email: "",
       password: "",
-      role: "user" as "user" | "admin",
+      role: "user" as ManagedRole,
       accountStatus: "active" as "active" | "suspended",
     });
   const [entry, setEntry] = useState({
@@ -125,7 +138,10 @@ export default function AdminDashboard() {
         name: u.name || "",
         email: u.email || "",
         password: "",
-        role: u.role === "admin" ? "admin" : "user",
+        role:
+          u.role === "user" || u.role === "admin" || u.role === "super_admin"
+            ? u.role
+            : "admin",
         accountStatus: u.accountStatus,
       });
     }
@@ -212,6 +228,8 @@ export default function AdminDashboard() {
     onSuccess: () => {
       toast.success("Perfil excluído logicamente; histórico preservado");
       setEditingProfile(false);
+      setPid(null);
+      setReason("");
       refresh();
     },
     onError: error,
@@ -301,8 +319,14 @@ export default function AdminDashboard() {
                   className={tab === key ? "primary" : ""}
                   key={key}
                   onClick={() => {
-                    setTab(key as any);
+                    const nextTab = key as keyof typeof tabs;
+                    setTab(nextTab);
                     setResetUrl("");
+                    if (nextTab === "users" || nextTab === "owners") {
+                      setUid(null);
+                      setNewUser(false);
+                      setPage(0);
+                    }
                   }}
                 >
                   {label}
@@ -378,7 +402,7 @@ export default function AdminDashboard() {
                 )}
               </>
             )}
-            {tab === "users" && (
+            {(tab === "users" || tab === "owners") && (
               <>
                 <div className="studio-toolbar">
                   <input
@@ -402,29 +426,63 @@ export default function AdminDashboard() {
                     <option value="active">Ativos</option>
                     <option value="suspended">Suspensos</option>
                   </select>
+                  {(tab === "owners" ||
+                    ["dev", "super_admin"].includes(user?.role || "")) && (
+                    <button
+                      className="primary"
+                      onClick={() => {
+                        setNewUser(true);
+                        setUid(null);
+                        setResetUrl("");
+                        setUserForm({
+                          name: "",
+                          email: "",
+                          password: "",
+                          role: tab === "owners" ? "user" : "admin",
+                          accountStatus: "active",
+                        });
+                      }}
+                    >
+                      {tab === "owners"
+                        ? "Criar titular de perfil"
+                        : "Criar usuário do sistema"}
+                    </button>
+                  )}
+                </div>
+                <div className="studio-actions" aria-label="Tipo de conta">
                   <button
-                    className="primary"
+                    className={tab === "users" ? "primary" : ""}
                     onClick={() => {
-                      setNewUser(true);
+                      setTab("users");
                       setUid(null);
-                      setResetUrl("");
-                      setUserForm({
-                        name: "",
-                        email: "",
-                        password: "",
-                        role: "user",
-                        accountStatus: "active",
-                      });
+                      setNewUser(false);
+                      setPage(0);
                     }}
                   >
-                    Criar conta
+                    Usuários do sistema
+                  </button>
+                  <button
+                    className={tab === "owners" ? "primary" : ""}
+                    onClick={() => {
+                      setTab("owners");
+                      setUid(null);
+                      setNewUser(false);
+                      setPage(0);
+                    }}
+                  >
+                    Titulares de perfis
                   </button>
                 </div>
+                <p className="studio-muted">
+                  {tab === "owners"
+                    ? "Titulares de perfis são contas responsáveis pelos dados, mídias, autorizações e aceite dos perfis publicados."
+                    : "Usuários do sistema têm acesso operacional conforme o papel: administrador, superadministrador ou DEV."}
+                </p>
                 <Failure error={accounts.error} />
                 <div className="studio-split">
                   <section className="studio-panel">
                     <h2>
-                      Usuários <small>{accounts.data?.total ?? "—"}</small>
+                      {tab === "owners" ? "Titulares de perfis" : "Usuários do sistema"} <small>{accounts.data?.total ?? "—"}</small>
                     </h2>
                     {accounts.isLoading ? (
                       <p>Carregando…</p>
@@ -442,7 +500,7 @@ export default function AdminDashboard() {
                           <strong>{u.name || "Sem nome"}</strong>
                           <small>{u.email || "Sem e-mail"}</small>
                           <small>
-                            {u.role} · {u.accountStatus}
+                            {roleLabels[u.role] || u.role} · {u.accountStatus}
                           </small>
                         </button>
                       ))
@@ -466,7 +524,15 @@ export default function AdminDashboard() {
                     </div>
                   </section>
                   <section className="studio-panel">
-                    <h2>{newUser ? "Nova conta" : "Ficha do usuário"}</h2>
+                    <h2>
+                      {newUser
+                        ? tab === "owners"
+                          ? "Novo titular de perfil"
+                          : "Novo usuário do sistema"
+                        : tab === "owners"
+                          ? "Ficha do titular de perfil"
+                          : "Ficha do usuário do sistema"}
+                    </h2>
                     <Failure error={detail.error} />
                     {newUser || detail.data ? (
                       <>
@@ -512,6 +578,9 @@ export default function AdminDashboard() {
                             >
                               <option value="user">Titular</option>
                               <option value="admin">Administrador</option>
+                              {detail.data?.user.role === "super_admin" && (
+                                <option value="super_admin">Superadministrador</option>
+                              )}
                             </select>
                           </label>
                           {newUser ? (
@@ -561,7 +630,10 @@ export default function AdminDashboard() {
                             }
                             onClick={() =>
                               newUser
-                                ? create.mutate(userForm)
+                                ? create.mutate({
+                                    ...userForm,
+                                    role: userForm.role === "user" ? "user" : "admin",
+                                  })
                                 : update.mutate({ id: uid!, ...userForm })
                             }
                           >
@@ -846,23 +918,9 @@ export default function AdminDashboard() {
                               ) : (
                                 <button
                                   disabled={deleteProfile.isPending}
-                                  onClick={() => {
-                                    const confirmation = window.prompt(
-                                      `Para excluir, digite exatamente o slug: ${profile.data?.profile.slug || ""}`
-                                    );
-                                    if (confirmation === null) return;
-                                    const deleteReason = window.prompt(
-                                      "Motivo obrigatório para a exclusão lógica:"
-                                    );
-                                    if (!deleteReason?.trim()) return;
-                                    deleteProfile.mutate({
-                                      id: pid!,
-                                      confirmation,
-                                      reason: deleteReason.trim(),
-                                    });
-                                  }}
+                                  onClick={() => deleteProfile.mutate({ id: pid! })}
                                 >
-                                  Excluir perfil
+                                  Excluir perfil (lógico)
                                 </button>
                               )}
                             </div>
