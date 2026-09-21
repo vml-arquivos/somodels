@@ -12,7 +12,7 @@ A frase principal da marca é **“Encontre talentos. Apresente seu trabalho.”
 
 ## Símbolo selecionado
 
-O símbolo oficial deriva do conceito A gerado para a marca: duas fitas curvas interligadas com um detalhe claro. A forma representa conexão, movimento e continuidade. A versão operacional em SVG foi redesenhada de maneira limpa e escalável para preservar legibilidade em favicon, header, cards e materiais de campanha.
+O símbolo oficial usa dois arcos monolineares interligados, com espessura, terminais e junções consistentes. A forma representa conexão, movimento e continuidade sem depender de contornos, sombras ou emendas complexas. A versão operacional em SVG foi redesenhada para preservar legibilidade em favicon, header, cards e materiais de campanha.
 
 | Asset | Uso | Caminho |
 |---|---|---|
@@ -23,7 +23,7 @@ O símbolo oficial deriva do conceito A gerado para a marca: duas fitas curvas i
 | Social card | Open Graph e compartilhamento | `/brand/social-card.svg` |
 | Referência gerada | conceito visual de alta resolução | `/brand/concepts/ero-mark-a.png` |
 
-O lockup deve ser usado preferencialmente com o símbolo à esquerda e a palavra “Ero” em destaque. “MODELS” aparece como descritor em caixa alta com espaçamento amplo. Não adicionar sombras, contornos, efeitos metálicos ou novos gradientes ao símbolo.
+O lockup deve ser usado preferencialmente com o símbolo à esquerda, um divisor vertical discreto e a palavra “Ero” em destaque. “MODELS” aparece como descritor em caixa alta com espaçamento amplo. Não adicionar sombras, contornos, efeitos metálicos ou novos gradientes ao símbolo.
 
 ## Paleta oficial
 
@@ -58,7 +58,7 @@ A imagem hero pode usar recortes, sobreposição de cor e espaço negativo para 
 
 ## Componentes de interface
 
-O header deve usar `logo.svg` em fundo claro e `logo-light.svg` em superfícies escuras. O símbolo isolado pode aparecer em menus compactos. Cards devem usar bordas finas, cantos moderados e movimento mínimo; o hover recomendado é uma elevação de 2–4px e mudança de borda para `--ero-wine`.
+O header deve usar `logo.svg` em fundo claro e `logo-light.svg` em superfícies escuras, escolhidos pelo estado real do tema. O símbolo isolado pode aparecer em menus compactos. Cards devem usar bordas finas, cantos moderados e movimento mínimo; o hover recomendado é uma elevação de 2–4px e mudança de borda para `--ero-wine`.
 
 CTAs primários usam `--ero-wine` com texto claro. CTAs secundários usam fundo transparente, borda `--ero-plum` e texto `--ero-plum`. Estados de foco devem usar uma linha de 2px em `--ero-coral`, com `outline-offset` de 2px. Não usar cor apenas como indicador de estado; mensagens devem ter texto e semântica acessível.
 
