@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import StudioHeader from "@/components/StudioHeader";
+import PublicFooter from "@/components/PublicFooter";
 import Seo from "@/components/Seo";
 import {
   reportCategories,
@@ -129,7 +130,9 @@ export default function ProfilePage() {
               path={`/perfil/${slug}`}
               image={data.profile.avatarUrl || undefined}
               noindex={Boolean(
-                config.data?.robotsNoIndex || config.data?.ageVerificationRequired
+                config.data?.robotsNoIndex ||
+                  config.data?.ageVerificationRequired ||
+                  !config.data?.publicLaunchEnabled
               )}
             />
             <section className="studio-profile-hero">
@@ -291,6 +294,7 @@ export default function ProfilePage() {
           </>
         )}
       </main>
+      <PublicFooter />
     </div>
   );
 }

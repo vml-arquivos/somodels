@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import StudioHeader from "@/components/StudioHeader";
+import Seo from "@/components/Seo";
 export default function TestSignupPage() {
   const [, navigate] = useLocation();
   const config = trpc.system.config.useQuery();
@@ -22,6 +23,7 @@ export default function TestSignupPage() {
   const available = !!config.data?.testMode && !!config.data?.allowTestSignup;
   return (
     <div className="studio">
+      <Seo title="Cadastro de homologação — Só Models" description="Cadastro privado de ambiente de testes." noindex />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">

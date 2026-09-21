@@ -4,6 +4,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import PortfolioEditor from "@/components/PortfolioEditor";
 import StudioHeader from "@/components/StudioHeader";
+import Seo from "@/components/Seo";
 export default function OwnerDashboard() {
   const { user, loading } = useAuth();
   const [id, setId] = useState<number | null>(null);
@@ -23,6 +24,7 @@ export default function OwnerDashboard() {
   }
   return (
     <div className="studio">
+      <Seo title="Meu portfólio — Só Models" description="Área privada do titular do portfólio." noindex />
       <StudioHeader />
       <main className="studio-main">
         <p className="studio-kicker">Área do titular</p>

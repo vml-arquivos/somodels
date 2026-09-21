@@ -12,12 +12,15 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
+import { setupVite } from "./vite";
+import { serveStatic } from "./serve-static";
 import { storagePut } from "../storage";
 import { getIdentityVerification, getOwnerProfile, isDatabaseReady, listPublishedProfiles } from "../db";
 import { assertProductionConfig, ENV } from "./env";
 import { bootstrapLocalAccounts } from "../auth";
 import { isPublicIndexingEnabled } from "../public-indexing";
+import { getServerSeo, renderSeoHead } from "../seo";
+import { createInMemoryRateLimiter, rateLimitMessage, sensitiveRateLimits } from "../rate-limit";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -45,6 +48,46 @@ function hasMagicBytes(buffer: Buffer, kind: "photo" | "video", contentType: str
     if (contentType === "video/mp4" || contentType === "video/quicktime") return buffer.subarray(4, 8).toString("ascii") === "ftyp";
   }
   return false;
+}
+
+function escapeXml(value: string) {
+  return value.replace(/[<>&'\"]/g, character => ({
+    "<": "&lt;",
+    ">": "&gt;",
+    "&": "&amp;",
+    "'": "&apos;",
+    "\"": "&quot;",
+  })[character] ?? character);
+}
+
+function sitemapUrl(loc: string, lastmod?: Date) {
+  const lastmodTag = lastmod ? `<lastmod>${escapeXml(lastmod.toISOString())}</lastmod>` : "";
+  return `<url><loc>${escapeXml(loc)}</loc>${lastmodTag}</url>`;
+}
+
+const uploadRateLimiter = createInMemoryRateLimiter({
+  ...sensitiveRateLimits.upload,
+  maxKeys: 20_000,
+});
+
+async function getSitemapIndexingState() {
+  let showGallery = false;
+  try {
+    showGallery = (await readSiteSettings()).showGallery;
+  } catch {
+    showGallery = false;
+  }
+  return isPublicIndexingEnabled({
+    robotsNoIndex: ENV.robotsNoIndex,
+    publicAccessEnabled: ENV.publicAccessEnabled,
+    publicLaunchEnabled: ENV.publicLaunchEnabled,
+    requireAgeVerification: ENV.requireAgeVerification,
+    showGallery,
+  });
+}
+
+function emptySitemap() {
+  return '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>';
 }
 
 async function startServer() {
@@ -76,53 +119,52 @@ async function startServer() {
   app.get("/health", healthHandler);
   app.get("/api/release", (_req, res) => res.json({ service: "so-models", release: ENV.release }));
   app.get("/robots.txt", async (_req, res) => {
-    let showGallery = false;
-    try {
-      showGallery = (await readSiteSettings()).showGallery;
-    } catch {
-      showGallery = false;
-    }
-    const indexingEnabled = isPublicIndexingEnabled({
-      robotsNoIndex: ENV.robotsNoIndex,
-      publicAccessEnabled: ENV.publicAccessEnabled,
-      requireAgeVerification: ENV.requireAgeVerification,
-      showGallery,
-    });
+    const indexingEnabled = await getSitemapIndexingState();
     const body = indexingEnabled
-      ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /titular\nDisallow: /api/\nSitemap: ${ENV.canonicalOrigin || "https://somodels.buscarr.com.br"}/sitemap.xml\n`
+      ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /titular\nDisallow: /login\nDisallow: /redefinir-senha\nDisallow: /alterar-senha\nDisallow: /cadastro-teste\nDisallow: /api/\nDisallow: /manus-storage/\nSitemap: ${ENV.canonicalOrigin || "https://somodels.buscarr.com.br"}/sitemap.xml\n`
       : "User-agent: *\nDisallow: /\n";
     res.type("text/plain").send(body);
   });
   app.get("/sitemap.xml", async (_req, res) => {
-    let showGallery = false;
-    try {
-      showGallery = (await readSiteSettings()).showGallery;
-    } catch {
-      showGallery = false;
+    if (!(await getSitemapIndexingState())) {
+      res.type("application/xml").send(emptySitemap());
+      return;
     }
-    const indexingEnabled = isPublicIndexingEnabled({
-      robotsNoIndex: ENV.robotsNoIndex,
-      publicAccessEnabled: ENV.publicAccessEnabled,
-      requireAgeVerification: ENV.requireAgeVerification,
-      showGallery,
-    });
-    if (!indexingEnabled) {
-      res
-        .type("application/xml")
-        .send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+    const origin = ENV.canonicalOrigin || "https://somodels.buscarr.com.br";
+    res
+      .type("application/xml")
+      .send(`<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>${escapeXml(`${origin}/sitemap-pages.xml`)}</loc></sitemap><sitemap><loc>${escapeXml(`${origin}/sitemap-profiles.xml`)}</loc></sitemap></sitemapindex>`);
+  });
+  app.get("/sitemap-pages.xml", async (_req, res) => {
+    if (!(await getSitemapIndexingState())) {
+      res.type("application/xml").send(emptySitemap());
+      return;
+    }
+    const published = await listPublishedProfiles({ publicAllowed: true, limit: 60 });
+    const cities = Array.from(new Set(published.map(profile => profile.city).filter(Boolean)));
+    const categories = Array.from(new Set(published.flatMap(profile => profile.categories).filter(Boolean)));
+    const origin = ENV.canonicalOrigin || "https://somodels.buscarr.com.br";
+    const pages = ["/", "/termos", "/privacidade", "/seguranca", "/denuncia", "/ajuda", "/contato"];
+    const urls = [
+      ...pages,
+      ...cities.map(city => `/cidade/${encodeURIComponent(city)}`),
+      ...categories.map(category => `/categoria/${encodeURIComponent(category)}`),
+    ]
+      .map(pathname => sitemapUrl(`${origin}${pathname}`))
+      .join("");
+    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
+  });
+  app.get("/sitemap-profiles.xml", async (_req, res) => {
+    if (!(await getSitemapIndexingState())) {
+      res.type("application/xml").send(emptySitemap());
       return;
     }
     const published = await listPublishedProfiles({ publicAllowed: true, limit: 60 });
     const origin = ENV.canonicalOrigin || "https://somodels.buscarr.com.br";
     const urls = published
-      .map(
-        profile =>
-          `<url><loc>${origin}/perfil/${encodeURIComponent(profile.slug)}</loc><lastmod>${new Date(profile.updatedAt).toISOString()}</lastmod></url>`
-      )
+      .map(profile => sitemapUrl(`${origin}/perfil/${encodeURIComponent(profile.slug)}`, new Date(profile.updatedAt)))
       .join("");
-    res
-      .type("application/xml")
-      .send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
+    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
   });
   app.use(express.json({ limit: "140mb", strict: true }));
   app.use(express.urlencoded({ limit: "140mb", extended: false }));
@@ -146,12 +188,14 @@ async function startServer() {
       const ctx = await createContext({ req, res } as any);
       if (!ctx.user || ctx.user.accountStatus !== "active") return res.status(401).json({ error: "Não autenticado" });
       if (ctx.user.mustChangePassword) return res.status(403).json({ error: "Altere sua senha antes de continuar" });
+      const rate = uploadRateLimiter.consume(`user:${ctx.user.id}`);
+      if (!rate.allowed) {
+        res.setHeader("Retry-After", String(rate.retryAfterSeconds));
+        return res.status(429).json({ error: rateLimitMessage(rate.retryAfterSeconds) });
+      }
       if (ENV.requireIdentityVerification) {
         const identity = await getIdentityVerification(ctx.user.id);
-        if (
-          identity?.status !== "approved" ||
-          (identity.expiresAt && identity.expiresAt <= new Date())
-        )
+        if (identity?.status !== "approved" || (identity.expiresAt && identity.expiresAt <= new Date()))
           return res.status(403).json({ error: "Verificação de identidade obrigatória" });
       }
       const { profileId, kind, filename, contentType, data } = req.body ?? {};
@@ -179,7 +223,26 @@ async function startServer() {
   });
   app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
   if (ENV.nodeEnv === "development") await setupVite(app, server);
-  else serveStatic(app);
+  else {
+    app.use(async (req, res, next) => {
+      if (req.method !== "GET" || req.path.startsWith("/api/") || req.path.startsWith("/manus-storage/")) {
+        next();
+        return;
+      }
+      try {
+        res.locals.seoHead = renderSeoHead(await getServerSeo(req.originalUrl));
+      } catch {
+        res.locals.seoHead = renderSeoHead({
+          title: ENV.siteName,
+          description: "Só Models",
+          canonical: ENV.canonicalOrigin || "https://somodels.buscarr.com.br",
+          noindex: true,
+        });
+      }
+      next();
+    });
+    serveStatic(app);
+  }
   const preferredPort = ENV.port;
   const port = (await isPortAvailable(preferredPort)) ? preferredPort : preferredPort + 1;
   server.listen(port, () => console.log(`[Startup] so-models listening on ${port} release=${ENV.release}`));

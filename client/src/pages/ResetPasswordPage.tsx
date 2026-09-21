@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import StudioHeader from "@/components/StudioHeader";
+import Seo from "@/components/Seo";
 export default function ResetPasswordPage() {
   const [token] = useState(
     () => new URLSearchParams(window.location.hash.slice(1)).get("token") || ""
@@ -17,6 +18,7 @@ export default function ResetPasswordPage() {
   }, []);
   return (
     <div className="studio">
+      <Seo title="Redefinir senha — Só Models" description="Área privada de redefinição de senha." noindex />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">

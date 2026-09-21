@@ -534,3 +534,15 @@
 .studio-city-link {
   padding: 0 18px 18px;
 }
+.studio-footer nav {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  font-size: 0.82rem;
+}
+.studio-about ul {
+  padding-left: 22px;
+  color: var(--s-muted);
+}

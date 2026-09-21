@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import StudioHeader from "@/components/StudioHeader";
+import Seo from "@/components/Seo";
 export default function LoginPage() {
   const [, navigate] = useLocation();
   const [email, setEmail] = useState(""),
@@ -26,6 +27,7 @@ export default function LoginPage() {
   });
   return (
     <div className="studio">
+      <Seo title="Entrar — Só Models" description="Acesso privado à conta Só Models." noindex />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">

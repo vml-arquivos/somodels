@@ -65,8 +65,15 @@ import {
   writeAuditLog,
 } from "./db";
 import { hashToken, createOpaqueToken } from "./auth-crypto";
+import { createInMemoryRateLimiter, rateLimitMessage, sensitiveRateLimits } from "./rate-limit";
 
-const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const loginAttempts = createInMemoryRateLimiter({
+  max: ENV.loginRateLimitMax,
+  windowMs: ENV.loginRateLimitWindowMs,
+  maxKeys: 20_000,
+});
+const reportRateLimiter = createInMemoryRateLimiter({ ...sensitiveRateLimits.report, maxKeys: 20_000 });
+const contactRateLimiter = createInMemoryRateLimiter({ ...sensitiveRateLimits.contact, maxKeys: 20_000 });
 const ageCookie = "so_age_session";
 
 function getClientKey(req: { ip?: string; headers: Record<string, unknown> }) {
@@ -78,20 +85,8 @@ function assertLoginRateLimit(req: {
   ip?: string;
   headers: Record<string, unknown>;
 }) {
-  const key = getClientKey(req);
-  const now = Date.now();
-  const current = loginAttempts.get(key);
-  if (!current || current.resetAt <= now) {
-    loginAttempts.set(key, {
-      count: 1,
-      resetAt: now + ENV.loginRateLimitWindowMs,
-    });
-    return;
-  }
-  if (current.count >= ENV.loginRateLimitMax) {
-    throw new Error("Muitas tentativas de login. Tente novamente mais tarde.");
-  }
-  current.count += 1;
+  const decision = loginAttempts.consume(getClientKey(req));
+  if (!decision.allowed) throw new Error(rateLimitMessage(decision.retryAfterSeconds));
 }
 
 function publicUser(user: User) {
@@ -446,7 +441,11 @@ export const appRouter = router({
     blocks: protectedProcedure.query(({ ctx }) => listBlockedProfiles(ctx.user.id)),
     reportProfile: protectedProcedure
       .input(reportProfileInputSchema)
-      .mutation(({ ctx, input }) => createProfileReport(ctx.user.id, input)),
+      .mutation(({ ctx, input }) => {
+        const decision = reportRateLimiter.consume(`user:${ctx.user.id}`);
+        if (!decision.allowed) throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+        return createProfileReport(ctx.user.id, input);
+      }),
     contactIntent: protectedProcedure
       .input(
         z.object({
@@ -455,6 +454,8 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        const decision = contactRateLimiter.consume(`user:${ctx.user.id}`);
+        if (!decision.allowed) throw new Error(rateLimitMessage(decision.retryAfterSeconds));
         if (!(await readSiteSettings()).showContact) {
           throw new Error("Os contatos estão temporariamente desabilitados");
         }

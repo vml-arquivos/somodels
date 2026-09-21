@@ -13,6 +13,8 @@ const ChangePasswordPage = lazy(() => import("./pages/ChangePasswordPage"));
 const TestSignupPage = lazy(() => import("./pages/TestSignupPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const CityPage = lazy(() => import("./pages/CityPage"));
+const CategoryPage = lazy(() => import("./pages/CategoryPage"));
+const InstitutionalPage = lazy(() => import("./pages/InstitutionalPage"));
 const OwnerDashboard = lazy(() => import("./pages/OwnerDashboard"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -27,6 +29,13 @@ function Router() {
       <Route path="/cadastro-teste" component={TestSignupPage} />
       <Route path="/perfil/:slug" component={ProfilePage} />
       <Route path="/cidade/:city" component={CityPage} />
+      <Route path="/categoria/:category" component={CategoryPage} />
+      <Route path="/termos" component={InstitutionalPage} />
+      <Route path="/privacidade" component={InstitutionalPage} />
+      <Route path="/seguranca" component={InstitutionalPage} />
+      <Route path="/denuncia" component={InstitutionalPage} />
+      <Route path="/ajuda" component={InstitutionalPage} />
+      <Route path="/contato" component={InstitutionalPage} />
       <Route path="/titular" component={OwnerDashboard} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/404" component={NotFound} />

@@ -20,7 +20,7 @@ export default function Seo({
 }: {
   title: string;
   description: string;
-  path: string;
+  path?: string;
   image?: string;
   noindex?: boolean;
   jsonLd?: Record<string, unknown>;
@@ -28,7 +28,7 @@ export default function Seo({
   useEffect(() => {
     document.title = title;
     const origin = window.location.origin;
-    const canonical = new URL(path, origin).toString();
+    const canonical = new URL(path || window.location.pathname, origin).toString();
     upsertMeta("name", "description", description);
     upsertMeta("name", "robots", noindex ? "noindex, nofollow" : "index, follow");
     upsertMeta("property", "og:title", title);
