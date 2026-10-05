@@ -5,6 +5,8 @@ const enabled = {
   robotsNoIndex: false,
   publicAccessEnabled: true,
   publicLaunchEnabled: true,
+  adultMarketplaceEnabled: true,
+  escortListingsEnabled: true,
   requireAgeVerification: false,
   showGallery: true,
 };
@@ -40,6 +42,8 @@ describe("public indexing gate", () => {
         robotsNoIndex: true,
         publicAccessEnabled: false,
         publicLaunchEnabled: false,
+        adultMarketplaceEnabled: false,
+        escortListingsEnabled: false,
         requireAgeVerification: true,
         showGallery: false,
       })

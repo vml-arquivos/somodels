@@ -15,7 +15,7 @@ import Seo from "@/components/Seo";
 const tabs = {
   overview: "Visão geral",
   users: "Usuários",
-  profiles: "Portfólios",
+  profiles: "Anúncios",
   moderation: "Moderação",
   reports: "Denúncias",
   finance: "Financeiro",
@@ -39,6 +39,7 @@ export default function AdminDashboard() {
   const utils = trpc.useUtils();
   const [tab, setTab] = useState<keyof typeof tabs>("overview"),
     [search, setSearch] = useState(""),
+    [accountKind, setAccountKind] = useState<"all" | "owners" | "system">("all"),
     [profileSearch, setProfileSearch] = useState(""),
     [profileLifecycle, setProfileLifecycle] = useState<
       "all" | "active" | "inactive" | "deleted"
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
     enabled: allowed && tab === "overview",
   });
   const accounts = trpc.management.users.useQuery(
-    { page, search, status },
+    { page, search, status, kind: accountKind },
     { enabled: allowed && tab === "users" }
   );
   const detail = trpc.management.userDetail.useQuery(
@@ -194,7 +195,7 @@ export default function AdminDashboard() {
   });
   const activateProfile = trpc.admin.activateProfile.useMutation({
     onSuccess: () => {
-      toast.success("Perfil ativado; a publicação continua sujeita aos gates");
+      toast.success("Anúncio ativado; a publicação continua sujeita aos gates");
       setReason("");
       refresh();
     },
@@ -202,7 +203,7 @@ export default function AdminDashboard() {
   });
   const deactivateProfile = trpc.admin.deactivateProfile.useMutation({
     onSuccess: () => {
-      toast.success("Perfil inativado e removido da publicação");
+      toast.success("Anúncio inativado e removido da publicação");
       setReason("");
       refresh();
     },
@@ -210,7 +211,7 @@ export default function AdminDashboard() {
   });
   const deleteProfile = trpc.admin.deleteProfile.useMutation({
     onSuccess: () => {
-      toast.success("Perfil excluído logicamente; histórico preservado");
+      toast.success("Anúncio excluído logicamente; histórico preservado");
       setEditingProfile(false);
       refresh();
     },
@@ -218,7 +219,7 @@ export default function AdminDashboard() {
   });
   const restoreProfile = trpc.admin.restoreProfile.useMutation({
     onSuccess: () => {
-      toast.success("Perfil restaurado como rascunho");
+      toast.success("Anúncio restaurado como rascunho");
       refresh();
     },
     onError: error,
@@ -263,12 +264,12 @@ export default function AdminDashboard() {
             </p>
             <h1>Visão completa. Controle claro.</h1>
             <p className="studio-muted">
-              Contas, portfólios profissionais e registros da plataforma.
+              Contas, anúncios de acompanhantes e registros da plataforma.
             </p>
           </div>
           <div className="studio-actions">
             <Link className="studio-cta" href="/admin/portfolio/novo">
-              Criar portfólio para um titular
+              Criar anúncio para um titular
             </Link>
             <Link href="/alterar-senha?returnTo=/admin">Alterar minha senha</Link>
           </div>
@@ -322,7 +323,7 @@ export default function AdminDashboard() {
                           ["Contas", overview.data.accounts.total],
                           ["Ativas", overview.data.accounts.active],
                           ["Suspensas", overview.data.accounts.suspended],
-                          ["Portfólios", overview.data.portfolio.total],
+                          ["Anúncios", overview.data.portfolio.total],
                           [
                             "Publicados e revisados",
                             overview.data.portfolio.published,
@@ -349,11 +350,11 @@ export default function AdminDashboard() {
                               </div>
                             ))
                           ) : (
-                            <p>Sem portfólios cadastrados.</p>
+                            <p>Sem anúncios cadastrados.</p>
                           )}
                         </section>
                         <section className="studio-panel">
-                          <h2>Situação dos portfólios</h2>
+                          <h2>Situação dos anúncios</h2>
                           {overview.data.states.map(s => (
                             <div className="studio-row" key={s.label}>
                               <span>{s.label}</span>
@@ -368,8 +369,8 @@ export default function AdminDashboard() {
                             </div>
                           ))}
                           <p className="studio-muted">
-                            Inclui registros legados e de teste. Apenas
-                            portfólios revisados podem aparecer na vitrine.
+                            Registros antigos permanecem auditáveis. Apenas
+                            anúncios revisados podem aparecer na vitrine.
                           </p>
                         </section>
                       </div>
@@ -402,6 +403,18 @@ export default function AdminDashboard() {
                     <option value="active">Ativos</option>
                     <option value="suspended">Suspensos</option>
                   </select>
+                  <select
+                    aria-label="Tipo de conta"
+                    value={accountKind}
+                    onChange={e => {
+                      setAccountKind(e.target.value as typeof accountKind);
+                      setPage(0);
+                    }}
+                  >
+                    <option value="all">Todos os tipos</option>
+                    <option value="owners">Titulares de anúncios</option>
+                    <option value="system">Usuários do sistema</option>
+                  </select>
                   <button
                     className="primary"
                     onClick={() => {
@@ -424,7 +437,12 @@ export default function AdminDashboard() {
                 <div className="studio-split">
                   <section className="studio-panel">
                     <h2>
-                      Usuários <small>{accounts.data?.total ?? "—"}</small>
+                      {accountKind === "owners"
+                        ? "Titulares de anúncios"
+                        : accountKind === "system"
+                          ? "Usuários do sistema"
+                          : "Contas"}{" "}
+                      <small>{accounts.data?.total ?? "—"}</small>
                     </h2>
                     {accounts.isLoading ? (
                       <p>Carregando…</p>
@@ -442,7 +460,9 @@ export default function AdminDashboard() {
                           <strong>{u.name || "Sem nome"}</strong>
                           <small>{u.email || "Sem e-mail"}</small>
                           <small>
-                            {u.role} · {u.accountStatus}
+                            {u.role === "user"
+                              ? "Titular de anúncio"
+                              : "Usuário do sistema"}{" "}· {u.accountStatus}
                           </small>
                         </button>
                       ))
@@ -465,8 +485,14 @@ export default function AdminDashboard() {
                       </button>
                     </div>
                   </section>
-                  <section className="studio-panel">
-                    <h2>{newUser ? "Nova conta" : "Ficha do usuário"}</h2>
+                    <section className="studio-panel">
+                    <h2>
+                      {newUser
+                        ? "Nova conta"
+                        : detail.data?.user.role === "user"
+                          ? "Ficha do titular de anúncio"
+                          : "Ficha do usuário do sistema"}
+                    </h2>
                     <Failure error={detail.error} />
                     {newUser || detail.data ? (
                       <>
@@ -617,7 +643,7 @@ export default function AdminDashboard() {
                               <dt>E-mail confirmado</dt>
                               <dd>{date(detail.data.user.emailVerifiedAt)}</dd>
                             </dl>
-                            <h3>Portfólios vinculados</h3>
+                            <h3>Anúncios vinculados</h3>
                             {detail.data.profiles.map(p => (
                               <button
                                 className="studio-list-item"
@@ -631,7 +657,7 @@ export default function AdminDashboard() {
                               </button>
                             ))}
                             {!detail.data.profiles.length && (
-                              <p>Nenhum portfólio.</p>
+                              <p>Nenhum anúncio.</p>
                             )}
                             <button
                               className="danger"
@@ -669,7 +695,7 @@ export default function AdminDashboard() {
                 {tab === "profiles" && (
                   <div className="studio-toolbar">
                     <input
-                      aria-label="Buscar perfis"
+                      aria-label="Buscar anúncios"
                       placeholder="Buscar nome, slug ou cidade"
                       value={profileSearch}
                       onChange={event => setProfileSearch(event.target.value)}
@@ -693,8 +719,8 @@ export default function AdminDashboard() {
                   <section className="studio-panel">
                     <h2>
                       {tab === "moderation"
-                        ? "Perfis pendentes"
-                        : "Portfólios cadastrados"}
+                          ? "Anúncios pendentes"
+                        : "Anúncios cadastrados"}
                     </h2>
                     <p className="studio-muted">
                       Últimos 200 registros. Nenhum registro novo é publicado
@@ -722,7 +748,7 @@ export default function AdminDashboard() {
                       ))}
                   </section>
                   <section className="studio-panel">
-                    <h2>Ficha do portfólio</h2>
+                    <h2>Ficha do anúncio</h2>
                     <Failure error={profile.error} />
                     {profile.isLoading && pid ? (
                       <p>Carregando…</p>
@@ -812,7 +838,7 @@ export default function AdminDashboard() {
                                       deactivateProfile.mutate({ id: pid!, reason: reason.trim() })
                                     }
                                   >
-                                    Inativar perfil
+                                    Inativar anúncio
                                   </button>
                                 ) : (
                                   <button
@@ -824,7 +850,7 @@ export default function AdminDashboard() {
                                       })
                                     }
                                   >
-                                    Ativar perfil
+                                    Ativar anúncio
                                   </button>
                                 ))}
                               {profile.data.profile.deletedAt ? (
@@ -841,28 +867,14 @@ export default function AdminDashboard() {
                                       });
                                   }}
                                 >
-                                  Restaurar perfil
+                                    Restaurar anúncio
                                 </button>
                               ) : (
                                 <button
                                   disabled={deleteProfile.isPending}
-                                  onClick={() => {
-                                    const confirmation = window.prompt(
-                                      `Para excluir, digite exatamente o slug: ${profile.data?.profile.slug || ""}`
-                                    );
-                                    if (confirmation === null) return;
-                                    const deleteReason = window.prompt(
-                                      "Motivo obrigatório para a exclusão lógica:"
-                                    );
-                                    if (!deleteReason?.trim()) return;
-                                    deleteProfile.mutate({
-                                      id: pid!,
-                                      confirmation,
-                                      reason: deleteReason.trim(),
-                                    });
-                                  }}
+                                  onClick={() => deleteProfile.mutate({ id: pid! })}
                                 >
-                                  Excluir perfil
+                                  Excluir anúncio
                                 </button>
                               )}
                             </div>
@@ -914,7 +926,7 @@ export default function AdminDashboard() {
                                 checked={confirmed}
                                 onChange={e => setConfirmed(e.target.checked)}
                               />
-                              Revisei o portfólio e as autorizações.{" "}
+                              Revisei o anúncio, as mídias e as autorizações.{" "}
                               {portfolioPolicy}
                             </label>
                             <label>
@@ -970,7 +982,7 @@ export default function AdminDashboard() {
                       </>
                     ) : (
                       <p>
-                        Selecione um portfólio para conferir dados e mídias.
+                        Selecione um anúncio para conferir dados e mídias.
                       </p>
                     )}
                   </section>
@@ -1104,12 +1116,22 @@ export default function AdminDashboard() {
               <div className="studio-split">
                 <section className="studio-panel">
                   <h2>Conteúdo da página inicial</h2>
+                  <p className="studio-muted">
+                    Edite somente a apresentação da home. Anúncios, fotos e
+                    vídeos são cadastrados separadamente no painel de anúncios.
+                  </p>
                   <Failure error={settings.error} />
                   {(
                     [
-                      ["title", "Título"],
-                      ["subtitle", "Descrição"],
+                      ["eyebrow", "Chamada curta"],
+                      ["title", "Título principal"],
+                      ["subtitle", "Descrição principal"],
+                      ["heroVisualTitle", "Título do painel visual"],
+                      ["heroVisualSubtitle", "Legenda do painel visual"],
                       ["buttonText", "Texto do botão"],
+                      ["searchPlaceholder", "Placeholder da busca"],
+                      ["emptyTitle", "Título sem anúncios"],
+                      ["emptyText", "Texto sem anúncios"],
                       ["about", "Sobre a plataforma"],
                       ["footer", "Rodapé"],
                     ] as const
@@ -1117,7 +1139,7 @@ export default function AdminDashboard() {
                     <label key={key}>
                       {label}
                       <textarea
-                        rows={key === "about" ? 5 : 2}
+                        rows={key === "about" || key === "emptyText" || key === "subtitle" ? 4 : 2}
                         value={site[key]}
                         onChange={e =>
                           setSite(s => ({ ...s, [key]: e.target.value }))
@@ -1155,10 +1177,16 @@ export default function AdminDashboard() {
                   <p className="studio-kicker">
                     Prévia dos textos — ainda não publicada
                   </p>
-                  <h1>{site.title}</h1>
-                  <p>{site.subtitle}</p>
-                  <button>{site.buttonText}</button>
-                  {site.showAbout && <p>{site.about}</p>}
+                    <p className="studio-kicker">{site.eyebrow}</p>
+                    <h1>{site.title}</h1>
+                    <p>{site.subtitle}</p>
+                    <h3>{site.heroVisualTitle}</h3>
+                    <small>{site.heroVisualSubtitle}</small>
+                    <button>{site.buttonText}</button>
+                    <input readOnly value={site.searchPlaceholder} aria-label="Prévia do placeholder de busca" />
+                    {site.showAbout && <p>{site.about}</p>}
+                    <h3>{site.emptyTitle}</h3>
+                    <p>{site.emptyText}</p>
                   <hr />
                   <small>{site.footer}</small>
                   <p className="studio-muted">

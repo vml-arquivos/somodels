@@ -155,8 +155,12 @@ function sanitizePublicProfileContact<T extends ContactBearingProfile>(profile: 
 }
 
 function ageAccessEnabled() {
+  const productEnabled =
+    (ENV.testMode && ENV.testAccessEnabled) ||
+    (ENV.adultMarketplaceEnabled && ENV.escortListingsEnabled);
   return (
     ENV.publicAccessEnabled &&
+    productEnabled &&
     (!ENV.requireAgeVerification ||
       runtimeConfigStatus().ageVerification ||
       (ENV.testMode && ENV.testAccessEnabled))
@@ -363,8 +367,11 @@ export const appRouter = router({
           .object({
             search: z.string().max(120).optional(),
             city: z.string().max(120).optional(),
+            region: z.string().max(80).optional(),
             category: z.string().max(60).optional(),
             attribute: z.string().max(60).optional(),
+            ageMin: z.number().int().min(18).max(99).optional(),
+            ageMax: z.number().int().min(18).max(99).optional(),
             limit: z.number().int().min(1).max(25).optional(),
             offset: z.number().int().min(0).max(10000).optional(),
           })
@@ -574,13 +581,9 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number().int().positive(),
-          confirmation: z.string().trim().min(2).max(160),
-          reason: z.string().trim().min(3).max(500),
         })
       )
-      .mutation(({ ctx, input }) =>
-        softDeleteProfile(input.id, input.confirmation, ctx.user.id, input.reason)
-      ),
+      .mutation(({ ctx, input }) => softDeleteProfile(input.id, ctx.user.id)),
     restoreProfile: adminProcedure
       .input(
         z.object({

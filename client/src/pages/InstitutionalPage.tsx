@@ -12,12 +12,13 @@ const pages = {
     eyebrow: "Regras da plataforma",
     heading: "Termos de uso e publicação",
     paragraphs: [
-      "A Ero Models é uma plataforma de portfólios profissionais. O titular é responsável pela veracidade, legalidade, autorização e atualização do material que envia.",
-      "Não são permitidos menores, exploração, coerção, violência, fraude, impersonação, mídia sem consentimento, violação de privacidade, conteúdo ilegal ou material que infrinja direitos de terceiros.",
+      "A Ero Models é uma plataforma adulta para anúncios de acompanhantes. O titular é responsável pela veracidade, legalidade, autorização e atualização do material que envia.",
+      "Anúncios adultos legais dependem de maioridade, consentimento, autorização de mídia e conformidade com a legislação e as regras da plataforma.",
+      "Não são permitidos menores, exploração, coerção, violência, fraude, impersonação, mídia sem consentimento, violação de privacidade, atividade ilegal ou material que infrinja direitos de terceiros.",
       "A publicação depende de revisão, aceite vigente e dos controles de identidade e consentimento disponíveis. Uma verificação não é garantia de comportamento, segurança ou resultado de qualquer interação.",
     ],
     bullets: [
-      "Use apenas dados e imagens que você está autorizado a publicar.",
+      "Use apenas dados, fotos e vídeos que você está autorizado a publicar.",
       "Mantenha cidade e disponibilidade atualizadas sem publicar endereço preciso.",
       "Denuncie conteúdo ou comportamento de risco pela jornada contextual.",
     ],
@@ -29,7 +30,7 @@ const pages = {
     eyebrow: "Privacidade",
     heading: "Privacidade e proteção de dados",
     paragraphs: [
-      "A plataforma busca exibir somente o necessário para descoberta de portfólios. Telefone, WhatsApp e Telegram não fazem parte do payload público de descoberta; quando habilitado, o contato externo passa por uma intenção autenticada e controlada.",
+      "A plataforma busca exibir somente o necessário para descoberta de anúncios. Telefone, WhatsApp e Telegram não fazem parte do payload público de descoberta; quando habilitado, o contato externo passa por uma intenção autenticada e controlada.",
       "Documentos, biometria, tokens, chaves e referências internas de armazenamento não devem aparecer em páginas públicas, logs comuns ou dados estruturados.",
       "O canal formal de privacidade, a entidade operadora, as bases legais e os prazos de retenção precisam ser definidos e revisados antes de um lançamento amplo. Esta página não substitui a política jurídica final.",
     ],
@@ -80,14 +81,14 @@ const pages = {
     eyebrow: "Central de ajuda",
     heading: "Como usar a plataforma",
     paragraphs: [
-      "Titulares criam e atualizam um portfólio, aceitam o termo vigente e enviam o conteúdo para revisão. A publicação só ocorre após os gates de moderação e identidade aplicáveis ao ambiente.",
+      "Titulares criam e atualizam um anúncio, aceitam o termo vigente e enviam fotos e vídeos para revisão. A publicação só ocorre após os gates de moderação e identidade aplicáveis ao ambiente.",
       "Visitantes podem pesquisar por cidade e categoria quando a vitrine estiver aberta. Filtros não devem ser usados para inferir localização precisa, atributos sensíveis ou disponibilidade que não tenha sido informada pelo titular.",
       "Se uma mídia, perfil ou contato parecer irregular, interrompa a interação e use o fluxo de denúncia. Não tente contornar age gate, autenticação, bloqueio ou proteção de armazenamento.",
     ],
     bullets: [
       "Login, titular, admin, reset de senha e validações são áreas privadas e não devem ser indexados.",
       "A vitrine pode permanecer fechada até providers e políticas serem homologados.",
-      "Pagamentos e conteúdo de criadores 18+ permanecem desligados até existir módulo e aprovação específicos.",
+      "Pagamentos, assinaturas e intermediação financeira permanecem desligados; o contato e as condições são tratados diretamente entre as partes fora da plataforma.",
     ],
   },
   contact: {
@@ -138,8 +139,8 @@ export default function InstitutionalPage() {
       />
       <StudioHeader />
       <main className="studio-main">
-        <nav className="studio-breadcrumb" aria-label="Navegação estrutural">
-          <Link href="/">Vitrine</Link>
+            <nav className="studio-breadcrumb" aria-label="Navegação estrutural">
+            <Link href="/">Anúncios</Link>
           <span aria-hidden="true">/</span>
           <span>{content.eyebrow}</span>
         </nav>
@@ -154,9 +155,9 @@ export default function InstitutionalPage() {
         <section className="studio-panel">
           <h2>Precisa de ajuda com um perfil?</h2>
           <p>
-            Volte à vitrine, abra o perfil correspondente e use a ação de denúncia quando ela estiver habilitada para o ambiente.
+            Volte aos anúncios, abra o perfil correspondente e use a ação de denúncia quando ela estiver habilitada para o ambiente.
           </p>
-          <Link className="studio-cta" href="/">Voltar à vitrine</Link>
+          <Link className="studio-cta" href="/">Voltar aos anúncios</Link>
         </section>
       </main>
       <PublicFooter />

@@ -20,14 +20,14 @@ export default function SignupPage() {
 
   return (
     <div className="studio">
-      <Seo title="Criar conta de titular — Ero Models" description="Crie sua conta para preparar um portfólio profissional." noindex />
+      <Seo title="Criar conta de anunciante — Ero Models" description="Crie sua conta para preparar um anúncio adulto." noindex />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">
-          <p className="studio-kicker">Comece seu portfólio</p>
-          <h1>Crie sua conta de titular.</h1>
+          <p className="studio-kicker">Anuncie seu perfil</p>
+          <h1>Crie sua conta de anunciante.</h1>
           <p className="studio-muted">
-            O cadastro cria uma conta comum. A publicação do portfólio exige revisão, aceite do termo aplicável e os demais gates de segurança.
+            O cadastro cria uma conta comum. A publicação do anúncio exige maioridade, autorização do conteúdo, revisão, aceite do termo aplicável e os demais gates de segurança.
           </p>
           <form
             onSubmit={event => {

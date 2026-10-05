@@ -11,12 +11,10 @@ const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const SignupPage = lazy(() => import("./pages/SignupPage"));
 const ChangePasswordPage = lazy(() => import("./pages/ChangePasswordPage"));
-const TestSignupPage = lazy(() => import("./pages/TestSignupPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const CityPage = lazy(() => import("./pages/CityPage"));
 const CategoryPage = lazy(() => import("./pages/CategoryPage"));
 const InstitutionalPage = lazy(() => import("./pages/InstitutionalPage"));
-const DemoProfilePage = lazy(() => import("./pages/DemoProfilePage"));
 const OwnerDashboard = lazy(() => import("./pages/OwnerDashboard"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminNewPortfolioPage = lazy(() => import("./pages/AdminNewPortfolioPage"));
@@ -30,9 +28,7 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/cadastro" component={SignupPage} />
       <Route path="/alterar-senha" component={ChangePasswordPage} />
-      <Route path="/cadastro-teste" component={TestSignupPage} />
       <Route path="/perfil/:slug" component={ProfilePage} />
-      <Route path="/demo/perfil/:slug" component={DemoProfilePage} />
       <Route path="/cidade/:city" component={CityPage} />
       <Route path="/categoria/:category" component={CategoryPage} />
       <Route path="/termos" component={InstitutionalPage} />

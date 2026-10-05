@@ -15,6 +15,8 @@ const ready: PublicationGateInput = {
   isTest: false,
   publicAccessEnabled: true,
   publicLaunchEnabled: true,
+  adultMarketplaceEnabled: true,
+  escortListingsEnabled: true,
   robotsNoIndex: false,
   requireAgeVerification: false,
   showGallery: true,
@@ -37,8 +39,8 @@ describe("publication gates", () => {
     ["profileActive", "Perfil inativo ou excluído"],
     ["identityApproved", "Verificação de identidade válida pendente"],
     ["termsCurrent", "Titular ainda não aceitou o termo aplicável"],
-    ["profileComplete", "Complete nome profissional, endereço público, cidade e descrição"],
-    ["categoriesValid", "Escolha pelo menos uma categoria profissional"],
+    ["profileComplete", "Complete nome artístico, cidade e descrição do anúncio"],
+    ["categoriesValid", "Escolha pelo menos uma categoria do anúncio"],
   ] as const)("blocks approval when %s is not ready", (key, message) => {
     const input = { ...ready, [key]: false } as PublicationGateInput;
     expect(getPublicationGateBlockers(input).approvalBlockers).toContain(message);
@@ -55,6 +57,8 @@ describe("publication gates", () => {
   it.each([
     ["publicAccessEnabled", "Acesso público está fechado"],
     ["publicLaunchEnabled", "Lançamento público ainda não foi aberto"],
+    ["adultMarketplaceEnabled", "Marketplace adulto ainda não foi habilitado"],
+    ["escortListingsEnabled", "Classificados de acompanhantes ainda não foram habilitados"],
     ["robotsNoIndex", "Indexação pública está bloqueada"],
     ["requireAgeVerification", "Age assurance real ainda é necessária para abrir a vitrine"],
     ["showGallery", "A galeria está oculta nas configurações"],
@@ -65,11 +69,11 @@ describe("publication gates", () => {
     expect(getPublicationGateBlockers(input).publicationBlockers).toContain(message);
   });
 
-  it("rejects demo and test data from publication", () => {
+  it("rejects non-production data from publication", () => {
     const result = getPublicationGateBlockers({ ...ready, isDemo: true, isTest: true });
     expect(result.ready).toBe(false);
     expect(result.publicationBlockers).toEqual([
-      "Dados de teste ou demonstração não podem ser publicados",
+      "Dados não produtivos não podem ser publicados",
     ]);
   });
 });

@@ -23,7 +23,7 @@ export default function StudioHeader({
       <div className="studio-header-menu">
         {!minimal && (
           <nav aria-label="Navegação principal">
-            <Link href="/#portfolios">Visualizar todos</Link>
+            <Link href="/#anuncios">Visualizar todos</Link>
             <Link href="/#busca">Buscar</Link>
             <Link href="/#categorias">Categorias</Link>
             <Link href="/login" className="studio-header-login">Entrar</Link>

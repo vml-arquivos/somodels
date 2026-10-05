@@ -32,8 +32,9 @@ const paging = z
     page: z.number().int().min(0).default(0),
     search: z.string().trim().max(120).default(""),
     status: z.enum(["all", "active", "suspended"]).default("all"),
+    kind: z.enum(["all", "owners", "system"]).default("all"),
   })
-  .default({ page: 0, search: "", status: "all" });
+  .default({ page: 0, search: "", status: "all", kind: "all" });
 const idSchema = z.object({ id: z.number().int().positive() });
 const userFields = {
   id: users.id,
@@ -123,7 +124,12 @@ export const managementRouter = router({
             like(users.email, `%${input.search}%`)
           )
         : undefined,
-      input.status === "all" ? undefined : eq(users.accountStatus, input.status)
+      input.status === "all" ? undefined : eq(users.accountStatus, input.status),
+      input.kind === "all"
+        ? undefined
+        : input.kind === "owners"
+          ? eq(users.role, "user")
+          : sql`${users.role} <> 'user'`
     );
     const [total] = await db
       .select({ count: sql<number>`count(*)` })
