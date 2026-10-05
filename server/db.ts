@@ -21,7 +21,7 @@ import {
   siteSettings,
   users,
 } from "../drizzle/schema";
-import { ENV } from "./_core/env";
+import { ENV, isAgeVerificationConfigured } from "./_core/env";
 import {
   canActOnProfile,
   decodeReportReason,
@@ -415,7 +415,7 @@ export async function getProfilePublicationReadiness(profileId: number, executor
     adultMarketplaceEnabled: ENV.adultMarketplaceEnabled,
     escortListingsEnabled: ENV.escortListingsEnabled,
     robotsNoIndex: ENV.robotsNoIndex,
-    requireAgeVerification: ENV.requireAgeVerification,
+    requireAgeVerification: ENV.requireAgeVerification && !isAgeVerificationConfigured(),
     showGallery,
     reportsEnabled: ENV.reportsEnabled,
     blockingEnabled: ENV.blockingEnabled,

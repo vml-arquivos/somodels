@@ -5,6 +5,7 @@ export type PublicIndexingInput = {
   adultMarketplaceEnabled: boolean;
   escortListingsEnabled: boolean;
   requireAgeVerification: boolean;
+  ageVerificationConfigured: boolean;
   showGallery: boolean;
 };
 
@@ -15,7 +16,7 @@ export function isPublicIndexingEnabled(input: PublicIndexingInput) {
     input.publicLaunchEnabled &&
     input.adultMarketplaceEnabled &&
     input.escortListingsEnabled &&
-    !input.requireAgeVerification &&
+    (!input.requireAgeVerification || input.ageVerificationConfigured) &&
     input.showGallery
   );
 }

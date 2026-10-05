@@ -10,11 +10,11 @@ A aplicação usa o recurso correto de aplicação no Coolify com build Docker a
 |---|---|---|---|---|
 | `NODE_ENV` | Obrigatória | Seleciona execução de produção | `production` | A aplicação não deve ser publicada como produção |
 | `PORT` | Obrigatória | Porta HTTP do container | `3000` | Usa `3000` |
-| `CANONICAL_ORIGIN` | Obrigatória em produção | Origem canônica, links e sitemap | `https://somodels.buscarr.com.br` | Startup de produção falha |
-| `SITE_NAME` | Recomendada | Nome exibido no produto | `Só Models` | Usa valor padrão |
+| `CANONICAL_ORIGIN` | Obrigatória em produção | Origem canônica, links e sitemap | `https://eromodels.com.br` | Startup de produção falha |
+| `SITE_NAME` | Recomendada | Nome exibido no produto | `Ero Models` | Usa valor padrão |
 | `APP_RELEASE` | Recomendada | SHA ou release exibido no healthcheck | SHA do merge | Usa `development` |
 | `TRUST_PROXY` | Recomendada | Reconhece TLS atrás do proxy | `true` | Usa `true` |
-| `ALLOWED_ORIGIN` | Recomendada | Origem permitida nas mutações | `https://somodels.buscarr.com.br` | Usa origem canônica |
+| `ALLOWED_ORIGIN` | Recomendada | Origem permitida nas mutações | `https://eromodels.com.br` | Usa origem canônica |
 | `DATABASE_URL` | Obrigatória | Conexão MySQL/TiDB privado | `mysql://...` | Healthcheck fica não saudável |
 | `JWT_SECRET` | Obrigatória | Segredo de sessões e OAuth | valor no secret manager | Startup de produção falha se tiver menos de 32 caracteres |
 | `VITE_APP_ID`, `VITE_OAUTH_PORTAL_URL`, `OAUTH_SERVER_URL` | Condicionais | Integração OAuth legada | valores do provedor | OAuth fica indisponível |
@@ -30,8 +30,9 @@ A aplicação usa o recurso correto de aplicação no Coolify com build Docker a
 | `DEMO_CONTACTS_ENABLED` | Obrigatória no QA | Controla contatos demonstrativos | `false` | Contatos ficam desativados |
 | `ROBOTS_NOINDEX` | Obrigatória no QA | Bloqueia indexação e sitemap | `true` | Usa `true` em modo test |
 | `ADMIN_EMAILS` | Obrigatória no QA | Allowlist backend do developer | `authorized-developer@example.com` | Apenas roles persistidas autorizam |
-| `REQUIRE_AGE_VERIFICATION` | `false` somente no QA isolado | Gate de idade real | `false` no QA | Em produção usa `true` |
-| `AGE_VERIFICATION_PROVIDER`, `AGE_VERIFICATION_API_KEY`, `AGE_VERIFICATION_WEBHOOK_SECRET` | Obrigatórias antes do lançamento | Provedor real, segredo e webhook assinado | valores secretos | Idade real indisponível |
+| `AGE_VERIFICATION_MODE` | Obrigatória como decisão | `self_attestation` registra a declaração explícita de 18+; `provider` usa integração externa | `self_attestation` | Usa `provider` |
+| `REQUIRE_AGE_VERIFICATION` | Recomendada | Exige sessão de maioridade antes do conteúdo adulto | `true` | Em produção usa `true` |
+| `AGE_VERIFICATION_PROVIDER`, `AGE_VERIFICATION_API_KEY`, `AGE_VERIFICATION_WEBHOOK_SECRET` | Condicionais ao modo `provider` | Provedor real, segredo e webhook assinado | valores secretos | Não são necessários em `self_attestation` |
 | `REQUIRE_IDENTITY_VERIFICATION` | `false` somente no QA isolado | Gate de identidade/KYC real | `false` no QA | Em produção usa `true` |
 | `KYC_REQUIRED` | Legada | Alias de `REQUIRE_IDENTITY_VERIFICATION` | `true` | Usa `true` |
 | `KYC_PROVIDER`, `KYC_API_KEY`, `KYC_WEBHOOK_SECRET` | Obrigatórias antes do lançamento | Provedor real de identidade | valores secretos | Upload/publicação reais permanecem bloqueados |

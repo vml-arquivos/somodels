@@ -15,7 +15,7 @@ import { createContext } from "./context";
 import { serveStatic } from "./serve-static";
 import { storagePut } from "../storage";
 import { getAdminProfile, getIdentityVerification, getUserById, isDatabaseReady, listPublishedProfiles } from "../db";
-import { assertProductionConfig, ENV } from "./env";
+import { assertProductionConfig, ENV, isAgeVerificationConfigured } from "./env";
 import { bootstrapLocalAccounts } from "../auth";
 import { isPublicIndexingEnabled } from "../public-indexing";
 import { getServerSeo, renderSeoHead } from "../seo";
@@ -83,6 +83,7 @@ async function getSitemapIndexingState() {
     adultMarketplaceEnabled: ENV.adultMarketplaceEnabled,
     escortListingsEnabled: ENV.escortListingsEnabled,
     requireAgeVerification: ENV.requireAgeVerification,
+    ageVerificationConfigured: isAgeVerificationConfigured(),
     showGallery,
   });
 }

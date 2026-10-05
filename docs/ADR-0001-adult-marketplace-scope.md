@@ -18,7 +18,7 @@ São proibidos menores, exploração, tráfico, coerção, violência sexual, ex
 | --- | --- |
 | Entidade jurídica operadora | **PENDENTE DE DECISÃO / COMPLIANCE**. Não codificar nome jurídico inexistente. |
 | Países e jurisdições | **PENDENTE DE DECISÃO / COMPLIANCE**. Nenhuma localidade implica autorização regulatória. |
-| Age assurance | O acesso protegido continua fail-closed. A ativação de `ageAssuranceEnabled` exige provider real configurado, política de retenção e homologação do callback. |
+| Age assurance | O acesso protegido continua atrás de uma sessão de maioridade. O modo padrão pode ser `AGE_VERIFICATION_MODE=self_attestation`, que registra a declaração explícita de 18+ sem API externa; integrações documentais permanecem opcionais e separadas. |
 | Identidade do anunciante | O gate KYC existente permanece separado do age gate e não pode ser artificialmente aprovado. `identityVerificationEnabled` inicia `false`. |
 | Titularidade e publicação | O aceite versionado do titular permanece ligado ao conteúdo atual do perfil/mídias; mudança relevante invalida o aceite. |
 | Mídia | Upload, storage protegido, moderação e autorização do titular permanecem obrigatórios. Evidência documental/biométrica não vai para payload público. |
@@ -27,14 +27,14 @@ São proibidos menores, exploração, tráfico, coerção, violência sexual, ex
 | Recurso | Casos podem ser reabertos/colocados em estado de recurso pela moderação; evidência e justificativas sensíveis permanecem administrativas. |
 | Retenção/deleção | **PENDENTE DE POLÍTICA JURÍDICA**. Aplicar minimização de dados até decisão formal. |
 | DPO/canal de privacidade | **PENDENTE DE DECISÃO / COMPLIANCE**. |
-| Providers externos | Age/KYC/payment providers permanecem **PENDENTES**; flags novas são `false` por padrão. |
+| Providers externos | KYC/payment providers permanecem **PENDENTES**; age provider é opcional no modo `self_attestation`. As flags novas são `false` por padrão. |
 | Pagamentos | `paymentsEnabled=false` por padrão. Nenhum checkout real é liberado sem provider formalmente compatível/aprovado. |
 | Conteúdo de criadores 18+ | Domínio isolado e desligado por `creatorContent18Enabled=false`; não reutilizar automaticamente o fluxo de classificados. |
 
 ## Critérios de lançamento
 
 1. Operadora, jurisdição, DPO/privacidade e políticas públicas aprovadas.
-2. Providers necessários contratados e homologados.
+2. Providers necessários contratados e homologados quando o modo escolhido exigir integração externa.
 3. Backup e restauração comprovados.
 4. `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm test` e `pnpm build` verdes no SHA a publicar.
 5. Smoke tests de auth, age gate, storage, moderação e contato seguro.

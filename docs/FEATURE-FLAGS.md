@@ -6,7 +6,7 @@ Todas as flags abaixo têm default seguro `false` e não devem ser inferidas a p
 | --- | --- | --- | --- |
 | `ADULT_MARKETPLACE_ENABLED` | `adultMarketplaceEnabled` | false | Gate-mestre do novo domínio adulto. |
 | `ESCORT_LISTINGS_ENABLED` | `escortListingsEnabled` | false | Classificados de acompanhantes. |
-| `AGE_ASSURANCE_ENABLED` | `ageAssuranceEnabled` | false | Nova camada/provider de age assurance. |
+| `AGE_ASSURANCE_ENABLED` | `ageAssuranceEnabled` | false | Gate explícito do age gate; pode usar `AGE_VERIFICATION_MODE=self_attestation` sem API externa. |
 | `IDENTITY_VERIFICATION_ENABLED` | `identityVerificationEnabled` | false | Nova experiência de identidade/titularidade. |
 | `SECURE_CONTACT_ENABLED` | `secureContactEnabled` | false | Intenção de contato autenticada/age-gated. |
 | `SPONSORED_LISTINGS_ENABLED` | `sponsoredListingsEnabled` | false | Superfícies patrocinadas, sempre rotuladas. |
@@ -18,7 +18,7 @@ Todas as flags abaixo têm default seguro `false` e não devem ser inferidas a p
 
 ## Dependências de ativação
 
-- `secureContactEnabled`: exige política de contato, `showContact`, age gate real e monitoramento de abuso.
+- `secureContactEnabled`: exige política de contato, `showContact`, sessão de maioridade válida e monitoramento de abuso.
 - `paymentsEnabled`: exige provider compatível, webhook/idempotência, cancelamento/reembolso e aprovação jurídica/comercial.
 - `adultMarketplaceEnabled`/`escortListingsEnabled`: exigem aprovação do ADR, jurisdição e operação de Trust & Safety.
 - `creatorContent18Enabled`: permanece desligada até existir domínio próprio de consentimento, media processing, copyright/NCII e payments compatíveis.
