@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const db = vi.hoisted(() => ({ getApprovedAgeVerification: vi.fn(), getMediaByStorageKey: vi.fn(), hasPremiumAccess: vi.fn(), isMediaProfilePublic: vi.fn() }));
 vi.mock("./db", () => db);
 vi.mock("./_core/context", () => ({ createContext: vi.fn() }));
-vi.mock("./_core/env", () => ({ ENV: { publicAccessEnabled: true }, runtimeConfigStatus: () => ({ ageVerification: true }) }));
+vi.mock("./_core/env", () => ({
+  ENV: { publicAccessEnabled: true, ageAssuranceEnabled: true },
+  isAgeVerificationConfigured: () => true,
+}));
 import { registerStorageProxy } from "./_core/storageProxy";
 let handler: any;
 beforeEach(() => {

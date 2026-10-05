@@ -18,7 +18,7 @@ import {
   publicProcedure,
   router,
 } from "./_core/trpc";
-import { ENV, runtimeConfigStatus } from "./_core/env";
+import { ENV, isAgeVerificationConfigured } from "./_core/env";
 import {
   LOCAL_SESSION_COOKIE,
   assertPasswordPolicy,
@@ -157,12 +157,14 @@ function sanitizePublicProfileContact<T extends ContactBearingProfile>(profile: 
 function ageAccessEnabled() {
   const productEnabled =
     (ENV.testMode && ENV.testAccessEnabled) ||
-    (ENV.adultMarketplaceEnabled && ENV.escortListingsEnabled);
+    (ENV.adultMarketplaceEnabled &&
+      ENV.escortListingsEnabled &&
+      ENV.ageAssuranceEnabled);
   return (
     ENV.publicAccessEnabled &&
     productEnabled &&
     (!ENV.requireAgeVerification ||
-      runtimeConfigStatus().ageVerification ||
+      isAgeVerificationConfigured() ||
       (ENV.testMode && ENV.testAccessEnabled))
   );
 }
@@ -331,16 +333,17 @@ export const appRouter = router({
       };
     }),
     start: publicProcedure.mutation(async ({ ctx }) => {
-      if (!ageAccessEnabled()) {
-        throw new Error(
-          "A verificação de idade ainda não está configurada por um provedor real"
-        );
-      }
+      if (!ageAccessEnabled())
+        throw new Error("A confirmação de maioridade está temporariamente indisponível");
       const token = createOpaqueToken();
+      const selfAttested = ENV.ageVerificationMode === "self_attestation";
       const created = await createAgeVerificationSession(
         hashToken(token),
-        !ENV.requireAgeVerification || (ENV.testMode && ENV.testAccessEnabled)
-          ? { status: "approved", provider: "test" }
+        selfAttested || !ENV.requireAgeVerification || (ENV.testMode && ENV.testAccessEnabled)
+          ? {
+              status: "approved",
+              provider: selfAttested ? "self_attestation" : "test",
+            }
           : undefined
       );
       ctx.res.cookie(ageCookie, token, {
@@ -511,7 +514,7 @@ export const appRouter = router({
           throw new Error("Os contatos estão temporariamente desabilitados");
         }
         if (!(await hasValidAgeSession(ctx.req))) {
-          throw new Error("Conclua a verificação de idade antes de acessar o contato");
+          throw new Error("Confirme que você tem 18 anos ou mais antes de acessar o contato");
         }
         return getSafeExternalContact(ctx.user.id, input.profileId, input.method);
       }),

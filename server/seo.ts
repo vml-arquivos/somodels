@@ -1,4 +1,4 @@
-import { ENV } from "./_core/env";
+import { ENV, isAgeVerificationConfigured } from "./_core/env";
 import { readSiteSettings } from "./site-config";
 import { getPublicProfile } from "./db";
 import { isPublicIndexingEnabled } from "./public-indexing";
@@ -145,6 +145,7 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
     adultMarketplaceEnabled: ENV.adultMarketplaceEnabled,
     escortListingsEnabled: ENV.escortListingsEnabled,
     requireAgeVerification: ENV.requireAgeVerification,
+    ageVerificationConfigured: isAgeVerificationConfigured(),
     showGallery,
   });
 

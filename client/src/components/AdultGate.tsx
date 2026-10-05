@@ -30,12 +30,6 @@ export function useAdultAccess(): AdultAccess {
   const accept = async () => {
     setMessage("");
     setError("");
-    if (ageStatus.data?.status === "unavailable") {
-      setError(
-        "A verificação de idade real ainda não está disponível neste ambiente. O conteúdo adulto permanece bloqueado."
-      );
-      return;
-    }
     try {
       const result = await start.mutateAsync();
       await ageStatus.refetch();
@@ -47,9 +41,7 @@ export function useAdultAccess(): AdultAccess {
         }
         setLocalConsent(true);
       } else {
-        setMessage(
-          "Sua confirmação foi registrada, mas a verificação de idade ainda precisa ser concluída pelo provedor configurado."
-        );
+        setMessage("Sua confirmação foi registrada. Conclua as etapas indicadas para continuar.");
       }
     } catch (cause) {
       setError((cause as Error).message);
@@ -102,12 +94,6 @@ export default function AdultGate({
           Ao continuar, você confirma que tem 18 anos ou mais e está ciente da
           natureza adulta da Ero Models.
         </p>
-        {access.status === "unavailable" && (
-          <p className="studio-adult-gate-warning" role="status">
-            A abertura pública depende da configuração de uma verificação de
-            idade real. Nenhum anúncio adulto é liberado sem esse controle.
-          </p>
-        )}
         {access.message && (
           <p className="studio-notice" role="status">
             {access.message}
@@ -124,16 +110,12 @@ export default function AdultGate({
             disabled={access.accepting || access.status === "loading"}
             onClick={() => void access.accept()}
           >
-            {access.accepting ? "Verificando…" : "Tenho 18 anos ou mais"}
+            {access.accepting ? "Continuando…" : "Eu afirmo ter mais de 18 anos, estou ciente."}
           </button>
           <a href="https://www.google.com/" rel="noreferrer">
             Sair
           </a>
         </div>
-        <small>
-          A confirmação visual não substitui a verificação de idade real exigida
-          para a abertura pública e para o acesso a contatos controlados.
-        </small>
       </main>
     </div>
   );

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
-import { ENV, runtimeConfigStatus } from "./env";
+import { ENV, isAgeVerificationConfigured, runtimeConfigStatus } from "./env";
 
 export const systemRouter = router({
   health: publicProcedure
@@ -20,8 +20,9 @@ export const systemRouter = router({
     allowDemoSeed: ENV.allowDemoSeed,
     demoContactsEnabled: ENV.demoContactsEnabled,
     robotsNoIndex: ENV.robotsNoIndex,
-    ageVerificationRequired: ENV.requireAgeVerification,
-    ageVerificationConfigured: runtimeConfigStatus().ageVerification,
+    ageVerificationRequired: ENV.requireAgeVerification && !isAgeVerificationConfigured(),
+    ageVerificationConfigured: isAgeVerificationConfigured(),
+    ageVerificationMode: ENV.ageVerificationMode,
     kycRequired: ENV.requireIdentityVerification,
     featureFlags: {
       adultMarketplaceEnabled: ENV.adultMarketplaceEnabled,

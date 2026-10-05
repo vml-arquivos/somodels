@@ -1,7 +1,7 @@
 import { readSiteSettings } from "../site-config";
 import type { Express } from "express";
 import { createContext } from "./context";
-import { ENV, runtimeConfigStatus } from "./env";
+import { ENV, isAgeVerificationConfigured } from "./env";
 import { hashToken } from "../auth-crypto";
 import { getApprovedAgeVerification, getMediaByStorageKey, hasPremiumAccess, isMediaProfilePublic } from "../db";
 
@@ -19,7 +19,7 @@ export function registerStorageProxy(app: Express) {
       return;
     }
 
-    if (!ENV.publicAccessEnabled || !runtimeConfigStatus().ageVerification) {
+    if (!ENV.publicAccessEnabled || !ENV.ageAssuranceEnabled || !isAgeVerificationConfigured()) {
       res.status(403).send("Age verification is not available");
       return;
     }

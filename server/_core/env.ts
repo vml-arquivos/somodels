@@ -14,6 +14,7 @@ const configuredTestAccess = readBoolean(process.env.TEST_ACCESS_ENABLED, false)
 const appMode = (process.env.APP_MODE ?? (configuredTestMode && configuredTestAccess ? "test" : "production")).toLowerCase();
 const isTestMode = appMode === "test";
 const adminEmails = (process.env.ADMIN_EMAILS ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+const ageVerificationMode = process.env.AGE_VERIFICATION_MODE === "self_attestation" ? "self_attestation" : "provider";
 
 export const ENV = {
   appId: process.env.VITE_APP_ID ?? "",
@@ -55,6 +56,7 @@ export const ENV = {
   blockingEnabled: readBoolean(process.env.BLOCKING_ENABLED, false),
   reportsEnabled: readBoolean(process.env.REPORTS_ENABLED, false),
   adminEmails,
+  ageVerificationMode,
   ageVerificationProvider: process.env.AGE_VERIFICATION_PROVIDER ?? "",
   ageVerificationApiKey: process.env.AGE_VERIFICATION_API_KEY ?? "",
   ageVerificationWebhookSecret: process.env.AGE_VERIFICATION_WEBHOOK_SECRET ?? "",
@@ -83,11 +85,7 @@ export const runtimeConfigStatus = () => ({
   sessionSecret: Boolean(ENV.cookieSecret),
   oauth: Boolean(ENV.appId && ENV.oAuthServerUrl && ENV.oauthPortalUrl),
   storage: Boolean(ENV.forgeApiUrl && ENV.forgeApiKey),
-  ageVerification: Boolean(
-    ENV.ageVerificationProvider &&
-      ENV.ageVerificationApiKey &&
-      ENV.ageVerificationWebhookSecret,
-  ),
+  ageVerification: isAgeVerificationConfigured(),
   kyc: Boolean(ENV.kycProvider && ENV.kycApiKey && ENV.kycWebhookSecret),
   payments: Boolean(
     ENV.paymentsEnabled &&
@@ -96,6 +94,17 @@ export const runtimeConfigStatus = () => ({
       ENV.paymentWebhookSecret,
   ),
 });
+
+export function isAgeVerificationConfigured() {
+  return (
+    ENV.ageVerificationMode === "self_attestation" ||
+    Boolean(
+      ENV.ageVerificationProvider &&
+        ENV.ageVerificationApiKey &&
+        ENV.ageVerificationWebhookSecret,
+    )
+  );
+}
 
 export function assertProductionConfig() {
   if (!ENV.isProduction) return;
