@@ -80,6 +80,8 @@ async function getSitemapIndexingState() {
     robotsNoIndex: ENV.robotsNoIndex,
     publicAccessEnabled: ENV.publicAccessEnabled,
     publicLaunchEnabled: ENV.publicLaunchEnabled,
+    adultMarketplaceEnabled: ENV.adultMarketplaceEnabled,
+    escortListingsEnabled: ENV.escortListingsEnabled,
     requireAgeVerification: ENV.requireAgeVerification,
     showGallery,
   });
@@ -112,15 +114,15 @@ async function startServer() {
   const healthHandler = async (_req: express.Request, res: express.Response) => {
     const database = await isDatabaseReady();
     const healthy = !ENV.isProduction || (database && Boolean(ENV.cookieSecret));
-    res.status(healthy ? 200 : 503).json({ ok: healthy, service: "so-models", release: ENV.release, database });
+    res.status(healthy ? 200 : 503).json({ ok: healthy, service: "ero-models", release: ENV.release, database });
   };
   app.get("/healthz", healthHandler);
   app.get("/health", healthHandler);
-  app.get("/api/release", (_req, res) => res.json({ service: "so-models", release: ENV.release }));
+  app.get("/api/release", (_req, res) => res.json({ service: "ero-models", release: ENV.release }));
   app.get("/robots.txt", async (_req, res) => {
     const indexingEnabled = await getSitemapIndexingState();
     const body = indexingEnabled
-      ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /titular\nDisallow: /login\nDisallow: /redefinir-senha\nDisallow: /alterar-senha\nDisallow: /cadastro\nDisallow: /cadastro-teste\nDisallow: /api/\nDisallow: /manus-storage/\nSitemap: ${ENV.canonicalOrigin || "https://eromodels.com.br"}/sitemap.xml\n`
+      ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /titular\nDisallow: /login\nDisallow: /redefinir-senha\nDisallow: /alterar-senha\nDisallow: /cadastro\nDisallow: /api/\nDisallow: /manus-storage/\nSitemap: ${ENV.canonicalOrigin || "https://eromodels.com.br"}/sitemap.xml\n`
       : "User-agent: *\nDisallow: /\n";
     res.type("text/plain").send(body);
   });
@@ -254,7 +256,7 @@ async function startServer() {
   }
   const preferredPort = ENV.port;
   const port = (await isPortAvailable(preferredPort)) ? preferredPort : preferredPort + 1;
-  server.listen(port, () => console.log(`[Startup] so-models listening on ${port} release=${ENV.release}`));
+    server.listen(port, () => console.log(`[Startup] ero-models listening on ${port} release=${ENV.release}`));
   if (ENV.databaseUrl) {
     bootstrapLocalAccounts().catch(error => console.error("[Bootstrap] account setup failed:", error instanceof Error ? error.message : "unknown error"));
   }

@@ -7,14 +7,18 @@ import {
 
 describe("discovery URL state", () => {
   it("starts with empty filters on an empty query", () => {
-    expect(parseDiscoverySearch("")).toEqual({ search: "", city: "", category: "", page: 0 });
+    expect(parseDiscoverySearch("")).toEqual({ search: "", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", page: 0 });
   });
 
   it("parses shareable filters", () => {
-    expect(parseDiscoverySearch("?q=editorial&city=Bras%C3%ADlia&category=Modelo&page=3")).toEqual({
+    expect(parseDiscoverySearch("?q=editorial&city=Bras%C3%ADlia&region=DF&category=Acompanhante&attribute=Com%20local&minAge=25&maxAge=35&page=3")).toEqual({
       search: "editorial",
       city: "Brasília",
-      category: "Modelo",
+      region: "DF",
+      category: "Acompanhante",
+      attribute: "Com local",
+      ageMin: "25",
+      ageMax: "35",
       page: 2,
     });
   });
@@ -46,15 +50,15 @@ describe("discovery URL state", () => {
   });
 
   it("omits empty filters when building a URL", () => {
-    expect(buildDiscoverySearch({ search: "", city: "", category: "", page: 0 })).toBe("");
+    expect(buildDiscoverySearch({ search: "", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", page: 0 })).toBe("");
   });
 
   it("builds a stable page number for sharing", () => {
-    expect(buildDiscoverySearch({ search: "ana", city: "", category: "", page: 2 })).toBe("?q=ana&page=3");
+    expect(buildDiscoverySearch({ search: "ana", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", page: 2 })).toBe("?q=ana&page=3");
   });
 
   it("keeps the fixed city out of the query string", () => {
-    expect(buildDiscoverySearch({ search: "", city: "Brasília", category: "Modelo", page: 0 }, "Brasília")).toBe("?category=Modelo");
+    expect(buildDiscoverySearch({ search: "", city: "Brasília", region: "DF", category: "Acompanhante", attribute: "Com local", ageMin: "25", ageMax: "35", page: 0 }, "Brasília")).toBe("?region=DF&category=Acompanhante&attribute=Com+local&minAge=25&maxAge=35");
   });
 
   it("encodes city paths safely", () => {

@@ -412,6 +412,8 @@ export async function getProfilePublicationReadiness(profileId: number, executor
     isTest: Boolean(profile.isTest),
     publicAccessEnabled: ENV.publicAccessEnabled,
     publicLaunchEnabled: ENV.publicLaunchEnabled,
+    adultMarketplaceEnabled: ENV.adultMarketplaceEnabled,
+    escortListingsEnabled: ENV.escortListingsEnabled,
     robotsNoIndex: ENV.robotsNoIndex,
     requireAgeVerification: ENV.requireAgeVerification,
     showGallery,
@@ -512,6 +514,7 @@ export function hydratePublicProfile(row: any) {
   const categories = parseJson(row.categories);
   const attributes = parseJson(row.attributes);
   const contactOptions = parseJson(row.contactOptions);
+  const preferences = parseJson(row.preferences);
   const languages = parseJson(row.languages);
   const contactAllowed = !row.isDemo && !row.isTest && row.portfolioReviewed;
   return {
@@ -519,11 +522,13 @@ export function hydratePublicProfile(row: any) {
     slug: row.slug,
     stageName: row.stageName,
     description: row.description ?? null,
+    age: row.age ?? null,
     city: row.city,
     region: row.region ?? null,
     locationNote: row.locationNote ?? null,
     categories,
     attributes,
+    preferences,
     languages,
     availabilityLabel: row.availabilityLabel ?? null,
     isAvailableNow: Boolean(row.isAvailableNow),
@@ -536,7 +541,7 @@ export function hydratePublicProfile(row: any) {
     contactOptions: contactAllowed
       ? contactOptions
       : row.isDemo
-        ? ["Contato demonstrativo desativado"]
+        ? ["Contato indisponível"]
         : [],
     demoContactDisabled: !contactAllowed,
   };
@@ -561,8 +566,11 @@ function activeProfileOwner() {
 export async function listPublishedProfiles(input: {
   search?: string;
   city?: string;
+  region?: string;
   category?: string;
   attribute?: string;
+  ageMin?: number;
+  ageMax?: number;
   limit?: number;
   offset?: number;
   publicAllowed?: boolean;
@@ -579,7 +587,8 @@ export async function listPublishedProfiles(input: {
   ];
   if (!ENV.allowFakeData)
     conditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
-  if (input.city) conditions.push(eq(profiles.city, input.city));
+  if (input.city) conditions.push(like(profiles.city, `%${input.city}%`));
+  if (input.region) conditions.push(like(profiles.region, `%${input.region}%`));
   if (input.search)
     conditions.push(
       or(
@@ -591,6 +600,10 @@ export async function listPublishedProfiles(input: {
     conditions.push(like(profiles.categories, `%${input.category}%`));
   if (input.attribute)
     conditions.push(like(profiles.attributes, `%${input.attribute}%`));
+  if (input.ageMin !== undefined)
+    conditions.push(sql`${profiles.age} >= ${input.ageMin}`);
+  if (input.ageMax !== undefined)
+    conditions.push(sql`${profiles.age} <= ${input.ageMax}`);
   const rows = await db
     .select()
     .from(profiles)
@@ -998,9 +1011,7 @@ export async function setProfileActive(
 
 export async function softDeleteProfile(
   id: number,
-  confirmation: string,
-  actorUserId: number,
-  reason?: string
+  actorUserId: number
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -1012,8 +1023,6 @@ export async function softDeleteProfile(
       .for("update");
     if (!profile) throw new Error("Perfil não encontrado");
     if (profile.deletedAt) throw new Error("Perfil já está excluído");
-    if (confirmation.trim() !== profile.slug)
-      throw new Error("Digite o slug exato do perfil para confirmar a exclusão");
     await tx
       .update(profiles)
       .set({
@@ -1033,7 +1042,7 @@ export async function softDeleteProfile(
       metadata: JSON.stringify({
         slug: profile.slug,
         stageName: profile.stageName,
-        reason: reason?.trim() || null,
+        reason: "Exclusão lógica administrativa direta",
         deletionMode: "soft",
       }),
     });

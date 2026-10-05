@@ -22,7 +22,7 @@ describe("profile data", () => {
     expect(profile.phone).toBeNull();
     expect(profile.whatsapp).toBeNull();
     expect(profile.telegram).toBeNull();
-    expect(profile.contactOptions).toEqual(["Contato demonstrativo desativado"]);
+    expect(profile.contactOptions).toEqual(["Contato indisponível"]);
     expect(profile.demoContactDisabled).toBe(true);
     expect(profile).not.toHaveProperty("ownerId");
     expect(profile).not.toHaveProperty("status");

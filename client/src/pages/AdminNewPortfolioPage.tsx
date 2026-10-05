@@ -15,7 +15,7 @@ export default function AdminNewPortfolioPage() {
     ["admin", "super_admin", "dev"].includes(user.role) &&
     !user.mustChangePassword;
   const accounts = trpc.management.users.useQuery(
-    { page: 0, search, status: "active" },
+    { page: 0, search, status: "active", kind: "owners" },
     { enabled: allowed }
   );
   const detail = trpc.admin.profileDetail.useQuery(
@@ -29,15 +29,15 @@ export default function AdminNewPortfolioPage() {
         <button onClick={() => logout()}>Sair</button>
       </StudioHeader>
       <main className="studio-main">
-        <p className="studio-kicker">Administração · novo perfil profissional</p>
+        <p className="studio-kicker">Administração · novo anúncio</p>
         <div className="studio-title">
           <div>
-            <h1>Preparar um perfil profissional</h1>
+            <h1>Preparar um anúncio adulto</h1>
             <p className="studio-muted">
-              Organize a apresentação pública de um modelo ou criador com dados claros, localização aproximada, especialidades e materiais autorizados. O aceite do termo continua exclusivo do titular antes da aprovação e da publicação.
+              Cadastre nome artístico, cidade/região, características, fotos, vídeos e canais autorizados do anúncio. O titular continua responsável pelo aceite e pelas autorizações antes da aprovação e da publicação.
             </p>
             <p className="studio-notice">
-              Este fluxo cria apenas um rascunho interno. O titular precisa revisar cada informação, confirmar maioridade, direitos, responsabilidade e consentimento antes de qualquer envio para moderação.
+              Este fluxo prepara o anúncio para o titular responsável. Ele precisa revisar cada informação, confirmar maioridade, direitos, responsabilidade e consentimento antes de qualquer envio para moderação.
             </p>
           </div>
           <Link href="/admin">Voltar ao painel</Link>
@@ -76,9 +76,7 @@ export default function AdminNewPortfolioPage() {
               ) : accounts.error ? (
                 <p role="alert">{accounts.error.message}</p>
               ) : (
-                accounts.data?.items
-                  .filter(account => account.role === "user")
-                  .map(account => (
+                accounts.data?.items.map(account => (
                     <button
                       className={`studio-list-item ${ownerId === account.id ? "selected" : ""}`}
                       key={account.id}
@@ -92,8 +90,7 @@ export default function AdminNewPortfolioPage() {
                     </button>
                   ))
               )}
-              {!accounts.isLoading &&
-                !accounts.data?.items.some(account => account.role === "user") && (
+              {!accounts.isLoading && !accounts.data?.items.length && (
                   <p>Nenhum titular ativo encontrado nesta busca.</p>
                 )}
             </aside>
@@ -108,7 +105,7 @@ export default function AdminNewPortfolioPage() {
                   </p>
                 </div>
               ) : profileId && detail.isLoading ? (
-                <p>Carregando portfólio criado…</p>
+                <p>Carregando anúncio criado…</p>
               ) : detail.error ? (
                 <p role="alert">{detail.error.message}</p>
               ) : (

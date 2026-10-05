@@ -9,7 +9,8 @@ import {
 import StudioHeader from "@/components/StudioHeader";
 import PublicFooter from "@/components/PublicFooter";
 import Seo from "@/components/Seo";
-import { demoProfiles } from "@shared/demo-profiles";
+import AdultGate, { useAdultAccess } from "@/components/AdultGate";
+import ListingCard from "@/components/ListingCard";
 import {
   buildDiscoverySearch,
   categoryPath,
@@ -19,27 +20,37 @@ import {
   type DiscoveryFilters,
 } from "@/lib/discovery";
 
-export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string; fixedCategory?: string }) {
+export function DiscoveryPage({
+  fixedCity,
+  fixedCategory,
+}: {
+  fixedCity?: string;
+  fixedCategory?: string;
+}) {
+  const adultAccess = useAdultAccess();
   const [filters, setFilters] = useState<DiscoveryFilters>(() =>
     parseDiscoverySearch(window.location.search, fixedCity, fixedCategory)
   );
   const settings = trpc.management.settings.useQuery();
   const site = settings.data || defaultSiteSettings;
   const config = trpc.system.config.useQuery();
-  const age = trpc.age.status.useQuery();
+  const activeCity = fixedCity || filters.city;
+  const activeCategory = fixedCategory || filters.category;
   const open =
+    adultAccess.ready &&
     !!settings.data &&
     site.showGallery &&
     !!config.data?.publicAccessEnabled &&
-    !!config.data?.publicLaunchEnabled &&
-    age.data?.status === "approved";
-  const activeCity = fixedCity || filters.city;
-  const activeCategory = fixedCategory || filters.category;
+    !!config.data?.publicLaunchEnabled;
   const list = trpc.profiles.list.useQuery(
     {
       search: filters.search || undefined,
       city: activeCity || undefined,
+      region: filters.region || undefined,
       category: activeCategory || undefined,
+      attribute: filters.attribute || undefined,
+      ageMin: filters.ageMin ? Number(filters.ageMin) : undefined,
+      ageMax: filters.ageMax ? Number(filters.ageMax) : undefined,
       limit: DISCOVERY_PAGE_SIZE + 1,
       offset: filters.page * DISCOVERY_PAGE_SIZE,
     },
@@ -47,17 +58,28 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
   );
   const items = list.data?.slice(0, DISCOVERY_PAGE_SIZE) ?? [];
   const hasNext = (list.data?.length ?? 0) > DISCOVERY_PAGE_SIZE;
-  const filtered = Boolean(filters.search || (!fixedCity && !fixedCategory && filters.city));
-  const canonicalPath = fixedCity ? cityPath(fixedCity) : fixedCategory ? categoryPath(fixedCategory) : "/";
+  const filtered = Boolean(
+    filters.search ||
+    filters.city ||
+    filters.region ||
+    filters.attribute ||
+    filters.ageMin ||
+    filters.ageMax
+  );
+  const canonicalPath = fixedCity
+    ? cityPath(fixedCity)
+    : fixedCategory
+      ? categoryPath(fixedCategory)
+      : "/";
   const title = fixedCity
-    ? `Portfólios profissionais em ${fixedCity} — Ero Models`
+    ? `Anúncios de acompanhantes em ${fixedCity} — Ero Models`
     : fixedCategory
-      ? `Portfólios de ${fixedCategory} — Ero Models`
-      : "Ero Models — Portfólios profissionais";
+      ? `${fixedCategory} — Anúncios Ero Models`
+      : "Ero Models — Anúncios de acompanhantes";
   const description = fixedCity
-    ? `Descubra portfólios profissionais de modelos e criadores em ${fixedCity}.`
+    ? `Encontre anúncios de acompanhantes adultos em ${fixedCity}.`
     : fixedCategory
-      ? `Explore portfólios profissionais na categoria ${fixedCategory}.`
+      ? `Explore anúncios adultos na categoria ${fixedCategory}.`
       : site.subtitle;
   const noindex = Boolean(
     config.data?.robotsNoIndex ||
@@ -68,7 +90,9 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
 
   useEffect(() => {
     const onPopState = () =>
-      setFilters(parseDiscoverySearch(window.location.search, fixedCity, fixedCategory));
+      setFilters(
+        parseDiscoverySearch(window.location.search, fixedCity, fixedCategory)
+      );
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, [fixedCity, fixedCategory]);
@@ -79,7 +103,10 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
     if (next !== current) window.history.replaceState(null, "", next);
   }, [filters, fixedCity, fixedCategory]);
 
-  const updateFilter = (key: "search" | "city" | "category", value: string) =>
+  const updateFilter = (
+    key: keyof Omit<DiscoveryFilters, "page">,
+    value: string
+  ) =>
     setFilters(current => ({ ...current, [key]: value, page: 0 }));
 
   const jsonLd = fixedCity || fixedCategory
@@ -103,9 +130,18 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
       }
     : undefined;
 
+  if (!adultAccess.ready) return <AdultGate access={adultAccess}>{null}</AdultGate>;
+
   return (
     <div className="studio">
-      <Seo title={title} description={description} path={canonicalPath} image="/images/hero/ero-models-hero.webp" noindex={noindex} jsonLd={jsonLd} />
+      <Seo
+        title={title}
+        description={description}
+        path={canonicalPath}
+        image="/images/hero/ero-models-hero.webp"
+        noindex={noindex}
+        jsonLd={jsonLd}
+      />
       <StudioHeader />
       <main className="studio-main">
         {(fixedCity || fixedCategory) && (
@@ -117,159 +153,257 @@ export function DiscoveryPage({ fixedCity, fixedCategory }: { fixedCity?: string
         )}
         <section className="studio-hero">
           <div>
-            <p className="studio-kicker">Modelos · Criadores · Projetos</p>
+            <p className="studio-kicker">{site.eyebrow}</p>
             <h1>
               {fixedCity
-                ? `Talentos em ${fixedCity}`
+                ? `Acompanhantes em ${fixedCity}`
                 : fixedCategory
-                  ? `Talentos de ${fixedCategory}`
+                  ? `Acompanhantes: ${fixedCategory}`
                   : site.title}
             </h1>
             <p>{fixedCity || fixedCategory ? description : site.subtitle}</p>
             <div className="studio-actions">
-              <a className="studio-cta" href="#busca">{site.buttonText}</a>
-              <Link className="studio-cta studio-cta-secondary" href="/cadastro">Publicar meu perfil</Link>
+              <a className="studio-cta" href="#busca">
+                {site.buttonText}
+              </a>
+              <Link className="studio-cta studio-cta-secondary" href="/cadastro">
+                Anunciar meu perfil
+              </Link>
             </div>
           </div>
           <div className="studio-hero-art">
             <img src="/images/hero/ero-models-hero.webp" alt="" />
             <div className="studio-hero-art-overlay">
-              <span>Perfis<br />que apresentam<br /><em>possibilidades.</em></span>
-              <small>Imagem ilustrativa da experiência da vitrine.</small>
+              <span>
+                {site.heroVisualTitle}
+              </span>
+              <small>{site.heroVisualSubtitle}</small>
             </div>
           </div>
         </section>
-        <section id="portfolios">
+
+        <section id="anuncios" aria-labelledby="listing-title">
           <div className="studio-title" id="busca">
             <div>
-              <p className="studio-kicker">Descubra talentos</p>
-              <h2>{fixedCity ? `Portfólios em ${fixedCity}` : fixedCategory ? `Portfólios de ${fixedCategory}` : "Portfólios profissionais"}</h2>
+              <p className="studio-kicker">Encontre seu próximo contato</p>
+              <h2 id="listing-title">
+                {fixedCity
+                  ? `Anúncios em ${fixedCity}`
+                  : fixedCategory
+                    ? `Anúncios: ${fixedCategory}`
+                    : "Anúncios de acompanhantes"}
+              </h2>
             </div>
           </div>
           {settings.error ? (
-            <p className="studio-error">Não foi possível carregar a vitrine. Tente novamente mais tarde.</p>
+            <p className="studio-error">
+              Não foi possível carregar a configuração da vitrine.
+            </p>
           ) : !open ? (
             <div className="studio-panel studio-launch-panel">
-              <p>{site.showGallery ? "A vitrine está temporariamente indisponível. O acesso segue as verificações e configurações de publicação da plataforma." : "A vitrine está temporariamente oculta."}</p>
+              <h3>A vitrine ainda não está aberta</h3>
+              <p>
+                A plataforma está pronta para receber anúncios, mas a publicação
+                pública depende das configurações de lançamento, age assurance,
+                moderação e segurança do ambiente.
+              </p>
             </div>
           ) : (
             <>
               <div className="studio-toolbar">
-                <input aria-label="Buscar portfólio" placeholder="Nome ou especialidade" value={filters.search} onChange={e => updateFilter("search", e.target.value)} />
+                <input
+                  aria-label="Buscar anúncios"
+                  placeholder={site.searchPlaceholder}
+                  value={filters.search}
+                  onChange={e => updateFilter("search", e.target.value)}
+                />
                 {!fixedCity && !fixedCategory && (
-                  <input aria-label="Cidade" placeholder="Cidade" value={filters.city} onChange={e => updateFilter("city", e.target.value)} />
+                  <input
+                    aria-label="Cidade"
+                    placeholder="Cidade"
+                    value={filters.city}
+                    onChange={e => updateFilter("city", e.target.value)}
+                  />
                 )}
-                <select aria-label="Categoria" disabled={Boolean(fixedCategory)} value={filters.category} onChange={e => updateFilter("category", e.target.value)}>
+                <select
+                  aria-label="Categoria do anúncio"
+                  disabled={Boolean(fixedCategory)}
+                  value={filters.category}
+                  onChange={e => updateFilter("category", e.target.value)}
+                >
                   <option value="">Todas as categorias</option>
-                  {portfolioCategories.map(c => <option key={c}>{c}</option>)}
+                  {portfolioCategories.map(category => (
+                    <option key={category}>{category}</option>
+                  ))}
                 </select>
-                <button onClick={() => setFilters({ search: "", city: fixedCity || "", category: fixedCategory || "", page: 0 })}>Limpar</button>
+                <input
+                  aria-label="Estado ou região"
+                  placeholder="Estado / região"
+                  value={filters.region}
+                  onChange={e => updateFilter("region", e.target.value)}
+                />
+                <select
+                  aria-label="Característica do anúncio"
+                  value={filters.attribute}
+                  onChange={e => updateFilter("attribute", e.target.value)}
+                >
+                  <option value="">Qualquer característica</option>
+                  <option value="Com local">Com local</option>
+                  <option value="Atende externo">Atende externo</option>
+                  <option value="Virtual">Virtual</option>
+                  <option value="Casal ou dupla">Casal ou dupla</option>
+                  <option value="Viagens">Viagens</option>
+                  <option value="Bilíngue">Bilíngue</option>
+                </select>
+                <input
+                  aria-label="Idade mínima"
+                  placeholder="Idade mín."
+                  inputMode="numeric"
+                  maxLength={2}
+                  value={filters.ageMin}
+                  onChange={e => updateFilter("ageMin", e.target.value)}
+                />
+                <input
+                  aria-label="Idade máxima"
+                  placeholder="Idade máx."
+                  inputMode="numeric"
+                  maxLength={2}
+                  value={filters.ageMax}
+                  onChange={e => updateFilter("ageMax", e.target.value)}
+                />
+                <button
+                  onClick={() =>
+                    setFilters({
+                      search: "",
+                      city: fixedCity || "",
+                      region: "",
+                      category: fixedCategory || "",
+                      attribute: "",
+                      ageMin: "",
+                      ageMax: "",
+                      page: 0,
+                    })
+                  }
+                >
+                  Limpar
+                </button>
               </div>
               {list.isLoading ? (
-                <p>Carregando portfólios…</p>
+                <p>Carregando anúncios…</p>
               ) : list.error ? (
-                <p role="alert">Não foi possível carregar os portfólios.</p>
+                <p role="alert">Não foi possível carregar os anúncios.</p>
               ) : items.length ? (
                 <>
                   <div className="studio-cards">
-                    {items.map((p: any) => (
-                      <article className="studio-portfolio-card" key={p.id}>
-                        <Link href={`/perfil/${p.slug}`} className="studio-card-main">
-                          <div className="studio-cover">
-                            {p.avatarUrl ? <img src={p.avatarUrl} alt={`Portfólio de ${p.stageName}`} loading="lazy" /> : <span>{p.stageName.slice(0, 1)}</span>}
-                          </div>
-                          <div>
-                            <small>{p.categories.join(" · ")}</small>
-                            <h3>{p.stageName}</h3>
-                          </div>
-                        </Link>
-                        <Link href={cityPath(p.city)} className="studio-city-link">{p.city}{p.region ? ` / ${p.region}` : ""}</Link>
-                      </article>
+                    {items.map(profile => (
+                      <ListingCard key={profile.id} profile={profile} />
                     ))}
                   </div>
-                  <nav className="studio-pagination" aria-label="Paginação de portfólios">
-                    <button disabled={filters.page === 0 || list.isFetching} onClick={() => setFilters(current => ({ ...current, page: Math.max(0, current.page - 1) }))}>Anterior</button>
+                  <nav className="studio-pagination" aria-label="Paginação de anúncios">
+                    <button
+                      disabled={filters.page === 0 || list.isFetching}
+                      onClick={() =>
+                        setFilters(current => ({
+                          ...current,
+                          page: Math.max(0, current.page - 1),
+                        }))
+                      }
+                    >
+                      Anterior
+                    </button>
                     <span>Página {filters.page + 1}</span>
-                    <button disabled={!hasNext || list.isFetching} onClick={() => setFilters(current => ({ ...current, page: current.page + 1 }))}>Próxima</button>
+                    <button
+                      disabled={!hasNext || list.isFetching}
+                      onClick={() =>
+                        setFilters(current => ({
+                          ...current,
+                          page: current.page + 1,
+                        }))
+                      }
+                    >
+                      Próxima
+                    </button>
                   </nav>
                 </>
               ) : (
-                <div className="studio-panel"><h3>Nenhum portfólio encontrado</h3><p>Altere os filtros ou volte em outro momento.</p></div>
+                <div className="studio-panel">
+                  <h3>{site.emptyTitle}</h3>
+                  <p>{site.emptyText}</p>
+                </div>
               )}
             </>
           )}
-          {!open && !fixedCity && !fixedCategory && (
-            <section className="studio-demo-preview" aria-labelledby="demo-preview-title">
-              <div className="studio-title">
-                <div>
-                  <p className="studio-kicker">Experiência em demonstração</p>
-                  <h2 id="demo-preview-title">Veja como a vitrine será apresentada</h2>
-                  <p className="studio-muted">Estes seis perfis são fictícios e usam imagens demonstrativas. Eles servem apenas para apresentar navegação, filtros e páginas individuais enquanto a publicação oficial permanece fechada.</p>
-                </div>
-              </div>
-              <div className="studio-cards">
-                {demoProfiles.map(profile => (
-                  <article className="studio-portfolio-card studio-demo-card" key={profile.slug}>
-                    <Link href={`/demo/perfil/${profile.slug}`} className="studio-card-main">
-                      <div className="studio-cover">
-                        <img src={profile.avatarUrl} alt={`Imagem demonstrativa de ${profile.stageName}`} loading="lazy" />
-                        <span className="studio-demo-card-label">Demonstração</span>
-                      </div>
-                      <div>
-                        <small>{profile.categories.join(" · ")}</small>
-                        <h3>{profile.stageName}</h3>
-                        <p className="studio-muted">{profile.city} / {profile.region}</p>
-                      </div>
-                    </Link>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )}
         </section>
+
         {!fixedCity && !fixedCategory && (
           <section id="categorias" className="studio-category-strip" aria-labelledby="category-title">
             <div>
-              <p className="studio-kicker">Explorar por especialidade</p>
-              <h2 id="category-title">Comece por uma categoria</h2>
-              <p className="studio-muted">Encontre portfólios por área de atuação e refine a busca quando quiser.</p>
+              <p className="studio-kicker">Navegue por categoria</p>
+              <h2 id="category-title">Encontre o tipo de anúncio</h2>
+              <p className="studio-muted">
+                Use as categorias e a cidade para chegar aos anúncios publicados.
+              </p>
             </div>
             <div className="studio-category-links">
               {portfolioCategories.map(category => (
-                <Link key={category} href={categoryPath(category)}>{category}</Link>
+                <Link key={category} href={categoryPath(category)}>
+                  {category}
+                </Link>
               ))}
             </div>
           </section>
         )}
+
         {site.showAbout && !fixedCity && !fixedCategory && (
-          <section className="studio-about"><p className="studio-kicker">Sobre a plataforma</p><h2>Uma vitrine profissional, clara e responsável.</h2><p>{site.about}</p></section>
+          <section className="studio-about">
+            <p className="studio-kicker">Sobre a Ero Models</p>
+            <h2>Uma plataforma adulta para anúncios de acompanhantes.</h2>
+            <p>{site.about}</p>
+          </section>
         )}
+
         {!fixedCity && !fixedCategory && (
           <section className="studio-home-grid" aria-label="Como a Ero Models funciona">
             <article className="studio-panel">
-              <p className="studio-kicker">Para titulares</p>
-              <h2>Seu trabalho merece uma apresentação profissional</h2>
-              <p>Crie seu portfólio, organize fotos e vídeos autorizados, informe suas especialidades e acompanhe cada etapa da revisão.</p>
-              <Link href="/cadastro">Começar meu portfólio</Link>
+              <p className="studio-kicker">Para anunciantes</p>
+              <h2>Crie e controle o seu anúncio</h2>
+              <p>
+                Cadastre nome artístico, fotos, vídeos, localização aproximada,
+                disponibilidade e canais de contato. O painel mantém o controle
+                do titular e o conteúdo passa por revisão.
+              </p>
+              <Link href="/cadastro">Criar meu anúncio</Link>
             </article>
             <article className="studio-panel">
               <p className="studio-kicker">Para quem busca</p>
-              <h2>Pesquise por cidade e especialidade</h2>
-              <p>Encontre portfólios ativos em localidades e categorias disponíveis. A vitrine mostra somente perfis aprovados e publicados.</p>
-              <a href="#portfolios">Ver portfólios</a>
+              <h2>Veja informações antes de entrar em contato</h2>
+              <p>
+                Abra a página individual, consulte as especificações públicas,
+                percorra a galeria e use WhatsApp ou telefone somente quando o
+                canal estiver autorizado.
+              </p>
+              <a href="#anuncios">Ver anúncios</a>
             </article>
             <article className="studio-panel">
-              <p className="studio-kicker">Publicação responsável</p>
-              <h2>Confiança começa com informação clara</h2>
-              <p>Leia as regras de publicação, conheça os canais de denúncia e não compartilhe dados sensíveis desnecessariamente.</p>
-              <Link href="/seguranca">Conhecer os controles de segurança</Link>
+              <p className="studio-kicker">Segurança adulta</p>
+              <h2>Maioridade, privacidade e denúncia</h2>
+              <p>
+                Acesso adulto com age gate, publicação moderada, preservação de
+                dados sensíveis e ferramentas de denúncia e bloqueio.
+              </p>
+              <Link href="/seguranca">Conhecer a segurança</Link>
             </article>
           </section>
         )}
+
         <section className="studio-panel">
-          <h3>Publicação responsável</h3>
+          <h3>Publicação adulta responsável</h3>
           <p>{portfolioPolicy}</p>
-          <p className="studio-muted">Dados de contato não são publicados na vitrine. Quando o contato seguro estiver habilitado, a saída para um canal externo exige conta autenticada, age gate válido, ausência de bloqueio e autorização vigente do titular. Documentos de identidade não fazem parte da vitrine.</p>
+          <p className="studio-muted">
+            O telefone bruto não aparece na listagem. Quando o contato estiver
+            habilitado, a saída para WhatsApp ou ligação passa pelos controles do
+            ambiente e pela autorização vigente do titular.
+          </p>
         </section>
       </main>
       <PublicFooter />

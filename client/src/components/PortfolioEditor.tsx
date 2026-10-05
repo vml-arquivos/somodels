@@ -28,6 +28,7 @@ export default function PortfolioEditor({
     stageName: initial?.stageName || "",
     slug: initial?.slug || "",
     description: initial?.description || "",
+    age: initial?.age ? String(initial.age) : "",
     city: initial?.city || "",
     region: initial?.region || "",
     locationNote: initial?.locationNote || "",
@@ -39,6 +40,9 @@ export default function PortfolioEditor({
     languages: (initial?.languages || []).join(", "),
     availabilityLabel: initial?.availabilityLabel || "",
     attributes: (initial?.attributes || []).join(", "),
+    preferences: (initial?.preferences || []).join(", "),
+    contactOptions: (initial?.contactOptions || []).join(", "),
+    isAvailableNow: Boolean(initial?.isAvailableNow),
   });
   const [busy, setBusy] = useState(false);
   const [consent, setConsent] = useState(false);
@@ -66,7 +70,7 @@ export default function PortfolioEditor({
       toast.error(
         admin
           ? "Confirme que os dados foram fornecidos ou autorizados pelo titular"
-          : "Confirme a autorização do conteúdo e a política de portfólios"
+          : "Confirme a maioridade, a responsabilidade pelo anúncio e a autorização do conteúdo"
       );
       return;
     }
@@ -84,6 +88,7 @@ export default function PortfolioEditor({
             .replace(/[^a-z0-9]+/g, "-")
             .replace(/^-|-$/g, ""),
         categories: form.categories,
+        age: form.age ? Number(form.age) : undefined,
         attributes: form.attributes
           .split(",")
           .map((s: string) => s.trim())
@@ -92,13 +97,19 @@ export default function PortfolioEditor({
           .split(",")
           .map((s: string) => s.trim())
           .filter(Boolean),
-        preferences: [],
-        contactOptions: [],
-        isAvailableNow: false,
+        preferences: form.preferences
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean),
+        contactOptions: form.contactOptions
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean),
+        isAvailableNow: form.isAvailableNow,
       };
       if (admin) {
         const id = await adminSave.mutateAsync({ ...payload, ownerId: ownerId! });
-        toast.success("Portfólio salvo para revisão do titular e da moderação");
+        toast.success("Anúncio salvo para revisão do titular e da moderação");
         onSaved(Number(id));
         return;
       }
@@ -182,21 +193,27 @@ export default function PortfolioEditor({
     <div className="studio-editor">
       <div className="studio-fields">
         {[
-          ["stageName", "Nome profissional exibido", "Ex.: Marina Alves"],
+          ["stageName", "Nome artístico exibido", "Ex.: Marina Alves"],
           ["slug", "Slug do perfil (URL pública)", "Ex.: marina-alves"],
-          ["city", "Cidade de atuação", "Ex.: Brasília"],
+          ["city", "Cidade de atendimento", "Ex.: Brasília"],
           ["region", "Estado / região", "Ex.: Distrito Federal"],
           ["locationNote", "Localização aproximada", "Ex.: Asa Sul e região — nunca informe endereço privado"],
+          ["age", "Idade pública", "Ex.: 28"],
           ["languages", "Idiomas", "Ex.: Português, Inglês"],
           ["phone", "Telefone para ligação — DDI e DDD", "Ex.: +55 61 99999-9999"],
           ["whatsapp", "WhatsApp (opcional)", "Se vazio, usa o telefone informado"],
-          ["availabilityLabel", "Disponibilidade para projetos", "Ex.: Agenda aberta para trabalhos selecionados"],
-          ["attributes", "Especialidades profissionais", "Ex.: Editorial, publicidade, eventos"],
+          ["availabilityLabel", "Horários e disponibilidade", "Ex.: Todos os dias, das 10h às 22h"],
+          ["attributes", "Características do anúncio", "Ex.: Com local, externo, discreta"],
+          ["preferences", "Preferências / modalidades", "Ex.: Virtual, casal, viagens"],
+          ["contactOptions", "Formas de contato autorizadas", "Ex.: WhatsApp, ligação"],
         ].map(([key, label, placeholder]) => (
           <label key={key}>
             {label}
             <input
               maxLength={key === "stageName" ? 120 : 180}
+              type={key === "age" ? "number" : "text"}
+              min={key === "age" ? 18 : undefined}
+              max={key === "age" ? 99 : undefined}
               placeholder={placeholder}
               value={(form as any)[key]}
               onChange={e => update(key, e.target.value)}
@@ -205,17 +222,17 @@ export default function PortfolioEditor({
         ))}
       </div>
       <label>
-        Apresentação profissional
+        Descrição do anúncio
         <textarea
           rows={5}
           maxLength={5000}
-          placeholder="Escreva uma apresentação objetiva: experiência, estilo de trabalho, áreas de atuação, diferenciais e tipos de projeto. Não inclua endereço privado, promessas indevidas ou informações que o titular não autorizou."
+          placeholder="Escreva uma descrição objetiva do anúncio, atendimento, disponibilidade e diferenciais. Não inclua endereço privado, promessas indevidas ou informações que o titular não autorizou."
           value={form.description}
           onChange={e => update("description", e.target.value)}
         />
       </label>
       <fieldset>
-        <legend>Áreas profissionais do perfil</legend>
+        <legend>Tipo e categoria do anúncio</legend>
         <div className="studio-actions">
           {portfolioCategories.map(c => (
             <label className="studio-check" key={c}>
@@ -245,10 +262,18 @@ export default function PortfolioEditor({
       </p>
       {(links.tel || links.whatsapp) && (
         <div className="studio-actions" aria-label="Prévia privada dos links de contato">
-          {links.tel && <a className="studio-cta" href={links.tel}>Testar link de ligação</a>}
-          {links.whatsapp && <a className="studio-cta" href={links.whatsapp} target="_blank" rel="noreferrer">Testar link de WhatsApp</a>}
+          {links.tel && <a className="studio-cta" href={links.tel}>Pré-visualizar ligação</a>}
+          {links.whatsapp && <a className="studio-cta" href={links.whatsapp} target="_blank" rel="noreferrer">Pré-visualizar WhatsApp</a>}
         </div>
       )}
+      <label className="studio-check">
+        <input
+          type="checkbox"
+          checked={form.isAvailableNow}
+          onChange={e => update("isAvailableNow", e.target.checked)}
+        />
+        Exibir o anúncio como disponível agora
+      </label>
       <label className="studio-check">
         <input
           type="checkbox"
@@ -257,7 +282,7 @@ export default function PortfolioEditor({
         />
         {admin
           ? "Confirmo que estas informações e arquivos foram fornecidos ou autorizados pelo titular para preparar este perfil. O titular ainda deverá revisar o conteúdo e registrar o aceite do termo."
-          : "Confirmo que tenho autorização para usar estas informações e arquivos neste perfil."}{" "}
+          : "Confirmo que tenho 18 anos ou mais, sou responsável por este anúncio e tenho autorização para usar estas informações e arquivos."}{" "}
         {portfolioPolicy}
       </label>
       <div className="studio-actions">
@@ -289,7 +314,7 @@ export default function PortfolioEditor({
             <p className={ownerTerms.data?.current ? "studio-notice" : "studio-muted"}>
               {ownerTerms.data?.current
                 ? `Aceite vigente registrado em ${new Date(ownerTerms.data.acceptedAt!).toLocaleString("pt-BR")}.`
-                : "Leia e confirme o termo para o conteúdo atual deste portfólio."}
+                : "Leia e confirme o termo para o conteúdo atual deste anúncio."}
             </p>
             <ol className="studio-terms">
               {portfolioTermsClauses.map(clause => <li key={clause}>{clause}</li>)}
@@ -349,7 +374,7 @@ export default function PortfolioEditor({
         )}
       </section>
       <section className="studio-panel">
-        <h3>Imagens e vídeos do perfil</h3>
+        <h3>Fotos e vídeos do anúncio</h3>
         {!initial?.id ? (
           <p>Salve o rascunho antes de enviar materiais autorizados.</p>
         ) : (
@@ -376,7 +401,7 @@ export default function PortfolioEditor({
                   {m.kind === "photo" ? (
                     <img
                       src={`/api/media-preview/${m.id}`}
-                      alt={m.title || "Foto do portfólio"}
+                        alt={m.title || "Foto do anúncio"}
                     />
                   ) : (
                     <video

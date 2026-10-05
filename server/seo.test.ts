@@ -32,20 +32,12 @@ describe("server SEO", () => {
     const signup = await getServerSeo("/cadastro");
     const adminPortfolio = await getServerSeo("/admin/portfolio/novo");
     expect(signup).toMatchObject({ noindex: true, title: "Criar conta de titular — Ero Models" });
-    expect(adminPortfolio).toMatchObject({ noindex: true, title: "Novo portfólio administrativo — Ero Models" });
+    expect(adminPortfolio).toMatchObject({ noindex: true, title: "Novo anúncio administrativo — Ero Models" });
   });
 
   it("uses the responsible home positioning in the initial head", async () => {
     const seo = await getServerSeo("/");
-    expect(seo.title).toContain("Encontre talentos");
-    expect(seo.description).toContain("publicação revisada");
-  });
-
-  it("keeps demonstration profiles explicitly noindex", async () => {
-    const seo = await getServerSeo("/demo/perfil/demo-01-luna");
-    expect(seo.noindex).toBe(true);
-    expect(seo.title).toContain("Prévia demonstrativa");
-    expect(seo.description).toContain("Perfil fictício");
-    expect(seo.image).toBe("/demo/demo-01.jpg");
+    expect(seo.title).toContain("Anúncios de acompanhantes adultos");
+    expect(seo.description).toContain("age gate");
   });
 });

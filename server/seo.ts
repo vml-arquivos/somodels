@@ -2,7 +2,6 @@ import { ENV } from "./_core/env";
 import { readSiteSettings } from "./site-config";
 import { getPublicProfile } from "./db";
 import { isPublicIndexingEnabled } from "./public-indexing";
-import { getDemoProfileBySlug } from "../shared/demo-profiles";
 
 export type ServerSeo = {
   title: string;
@@ -19,7 +18,6 @@ const privatePrefixes = [
   "/redefinir-senha",
   "/alterar-senha",
   "/cadastro",
-  "/cadastro-teste",
   "/titular",
   "/admin",
   "/admin/portfolio/novo",
@@ -54,9 +52,9 @@ function canonicalUrl(pathname: string) {
 function staticSeo(pathname: string) {
   if (pathname === "/") {
     return {
-      title: `${ENV.siteName} — Encontre talentos e apresente seu trabalho`,
-      description: "Uma vitrine de portfólios profissionais para modelos e criadores, organizada por cidade e especialidade, com publicação revisada e respeito à privacidade.",
-      image: "/images/hero/ero-models-hero.png",
+      title: `${ENV.siteName} — Anúncios de acompanhantes adultos`,
+      description: "Portal adulto de anúncios de acompanhantes por cidade, região e características, com age gate, moderação e contato controlado.",
+      image: "/images/hero/ero-models-hero.webp",
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "WebSite",
@@ -79,25 +77,21 @@ function staticSeo(pathname: string) {
       title: `Alterar senha — ${ENV.siteName}`,
       description: "Área privada de alteração de senha.",
     },
-    "/cadastro-teste": {
-      title: `Cadastro de homologação — ${ENV.siteName}`,
-      description: "Cadastro privado de ambiente de testes.",
-    },
     "/cadastro": {
       title: `Criar conta de titular — ${ENV.siteName}`,
-      description: "Crie sua conta para preparar um portfólio profissional.",
+      description: "Crie sua conta para preparar um anúncio adulto.",
     },
     "/titular": {
-      title: `Meu portfólio — ${ENV.siteName}`,
-      description: "Área privada do titular do portfólio.",
+      title: `Meus anúncios — ${ENV.siteName}`,
+      description: "Área privada do titular dos anúncios.",
     },
     "/admin": {
       title: `Administração — ${ENV.siteName}`,
       description: "Área privada de administração da plataforma.",
     },
     "/admin/portfolio/novo": {
-      title: `Novo portfólio administrativo — ${ENV.siteName}`,
-      description: "Área privada para preparar um portfólio para um titular.",
+      title: `Novo anúncio administrativo — ${ENV.siteName}`,
+      description: "Área privada para preparar um anúncio para um titular.",
     },
     "/404": {
       title: `Página não encontrada — ${ENV.siteName}`,
@@ -148,6 +142,8 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
     robotsNoIndex: ENV.robotsNoIndex,
     publicAccessEnabled: ENV.publicAccessEnabled,
     publicLaunchEnabled: ENV.publicLaunchEnabled,
+    adultMarketplaceEnabled: ENV.adultMarketplaceEnabled,
+    escortListingsEnabled: ENV.escortListingsEnabled,
     requireAgeVerification: ENV.requireAgeVerification,
     showGallery,
   });
@@ -163,14 +159,14 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
   if (cleanPath.startsWith("/cidade/")) {
     const city = decodeSegment(cleanPath.slice("/cidade/".length), 120);
     return {
-      title: `Portfólios profissionais em ${city} — ${ENV.siteName}`,
-      description: `Descubra portfólios profissionais de modelos e criadores em ${city}.`,
+      title: `Anúncios de acompanhantes em ${city} — ${ENV.siteName}`,
+      description: `Encontre anúncios de acompanhantes adultos em ${city}.`,
       canonical,
       noindex: !city || hasQuery || !indexable,
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "CollectionPage",
-        name: `Portfólios em ${city}`,
+        name: `Anúncios em ${city}`,
         url: canonical,
       },
     };
@@ -179,32 +175,16 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
   if (cleanPath.startsWith("/categoria/")) {
     const category = decodeSegment(cleanPath.slice("/categoria/".length), 60);
     return {
-      title: `Portfólios de ${category} — ${ENV.siteName}`,
-      description: `Explore portfólios profissionais na categoria ${category}.`,
+      title: `Anúncios ${category} — ${ENV.siteName}`,
+      description: `Explore anúncios adultos na categoria ${category}.`,
       canonical,
       noindex: !category || hasQuery || !indexable,
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "CollectionPage",
-        name: `Portfólios de ${category}`,
+        name: `Anúncios ${category}`,
         url: canonical,
       },
-    };
-  }
-
-  if (cleanPath.startsWith("/demo/perfil/")) {
-    const slug = decodeSegment(cleanPath.slice("/demo/perfil/".length), 160);
-    const demo = getDemoProfileBySlug(slug);
-    return {
-      title: demo
-        ? `${demo.stageName} — Prévia demonstrativa | ${ENV.siteName}`
-        : `Prévia demonstrativa indisponível — ${ENV.siteName}`,
-      description: demo
-        ? `${demo.description} Perfil fictício, sem contato real e fora da publicação oficial.`
-        : "Esta prévia demonstrativa não está disponível.",
-      canonical,
-      noindex: true,
-      image: demo?.avatarUrl,
     };
   }
 
@@ -216,7 +196,7 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
         if (profile) {
           return {
             title: `${profile.profile.stageName} — ${ENV.siteName}`,
-            description: profile.profile.description || "Portfólio profissional",
+            description: profile.profile.description || "Anúncio adulto de acompanhante",
             canonical,
             noindex: hasQuery,
             image: profile.profile.avatarUrl || undefined,
@@ -234,8 +214,8 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
       }
     }
     return {
-      title: `Portfólio — ${ENV.siteName}`,
-      description: "Portfólio profissional indisponível ou em revisão.",
+      title: `Anúncio — ${ENV.siteName}`,
+      description: "Anúncio adulto indisponível ou em revisão.",
       canonical,
       noindex: true,
     };

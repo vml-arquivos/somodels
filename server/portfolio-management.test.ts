@@ -30,18 +30,15 @@ describe("portfolios and contacts", () => {
       whatsapp: null,
     });
   });
-  it("accepts professional categories and rejects legacy service categories", () => {
+  it("accepts adult listing categories and rejects empty categories", () => {
     const base = {
       stageName: "Portfolio",
       slug: "portfolio",
       city: "Brasília",
-      categories: ["Modelo"],
+      categories: ["Acompanhante"],
     };
     expect(profileInputSchema.safeParse(base).success).toBe(true);
-    expect(
-      profileInputSchema.safeParse({ ...base, categories: ["Acompanhante"] })
-        .success
-    ).toBe(false);
+    expect(profileInputSchema.safeParse({ ...base, categories: ["Virtual"] }).success).toBe(true);
     expect(
       profileInputSchema.safeParse({ ...base, categories: [] }).success
     ).toBe(false);

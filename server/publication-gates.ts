@@ -12,6 +12,8 @@ export type PublicationGateInput = {
   isTest: boolean;
   publicAccessEnabled: boolean;
   publicLaunchEnabled: boolean;
+  adultMarketplaceEnabled: boolean;
+  escortListingsEnabled: boolean;
   robotsNoIndex: boolean;
   requireAgeVerification: boolean;
   showGallery: boolean;
@@ -33,15 +35,17 @@ export function getPublicationGateBlockers(input: PublicationGateInput) {
     );
   }
   if (!input.profileComplete)
-    approvalBlockers.push("Complete nome profissional, endereço público, cidade e descrição");
+    approvalBlockers.push("Complete nome artístico, cidade e descrição do anúncio");
   if (!input.categoriesValid)
-    approvalBlockers.push("Escolha pelo menos uma categoria profissional");
+    approvalBlockers.push("Escolha pelo menos uma categoria do anúncio");
   if (input.approvedMediaCount < 1) approvalBlockers.push("Aprove pelo menos uma mídia pública");
   if (input.pendingMediaCount > 0) approvalBlockers.push("Ainda há mídia aguardando moderação");
   if (input.isDemo || input.isTest)
-    publicationBlockers.push("Dados de teste ou demonstração não podem ser publicados");
+    publicationBlockers.push("Dados não produtivos não podem ser publicados");
   if (!input.publicAccessEnabled) publicationBlockers.push("Acesso público está fechado");
   if (!input.publicLaunchEnabled) publicationBlockers.push("Lançamento público ainda não foi aberto");
+  if (!input.adultMarketplaceEnabled) publicationBlockers.push("Marketplace adulto ainda não foi habilitado");
+  if (!input.escortListingsEnabled) publicationBlockers.push("Classificados de acompanhantes ainda não foram habilitados");
   if (input.robotsNoIndex) publicationBlockers.push("Indexação pública está bloqueada");
   if (input.requireAgeVerification)
     publicationBlockers.push("Age assurance real ainda é necessária para abrir a vitrine");

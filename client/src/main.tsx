@@ -18,7 +18,7 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  const localAuthPaths = ["/admin", "/titular", "/alterar-senha", "/cadastro-teste", "/login"];
+  const localAuthPaths = ["/admin", "/titular", "/alterar-senha", "/login"];
   const isLocalAuthFlow = localAuthPaths.some(path => window.location.pathname.startsWith(path));
   if (isLocalAuthFlow) {
     if (window.location.pathname !== "/login" && window.location.pathname !== "/alterar-senha") {

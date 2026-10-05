@@ -29,14 +29,14 @@ export default function OwnerDashboard() {
   }
   return (
     <div className="studio">
-      <Seo title="Meu portfólio — Ero Models" description="Área privada do titular do portfólio." noindex />
+      <Seo title="Meus anúncios — Ero Models" description="Área privada do titular dos anúncios." noindex />
       <StudioHeader />
       <main className="studio-main">
         <p className="studio-kicker">Área do titular</p>
-        <h1>Seu trabalho em destaque.</h1>
+        <h1>Seu anúncio, sob seu controle.</h1>
         <p className="studio-muted">
-          Prepare seu portfólio profissional. Você controla as informações; a
-          publicação passa por revisão.
+          Prepare seu anúncio adulto. Você controla as informações, fotos e vídeos;
+          a publicação passa por revisão.
         </p>
         {loading ? (
           <p>Carregando…</p>
@@ -55,13 +55,13 @@ export default function OwnerDashboard() {
                   setVersion(v => v + 1);
                 }}
               >
-                Novo portfólio
+                Novo anúncio
               </button>
               <Link href="/alterar-senha?returnTo=/titular">Alterar senha</Link>
             </div>
             <div className="studio-split">
               <aside className="studio-panel">
-                <h2>Meus portfólios</h2>
+                <h2>Meus anúncios</h2>
                 {mine.error ? (
                   <p role="alert">{mine.error.message}</p>
                 ) : mine.isLoading ? (
@@ -81,7 +81,7 @@ export default function OwnerDashboard() {
                     </button>
                   ))
                 ) : (
-                  <p>Nenhum portfólio cadastrado.</p>
+                  <p>Nenhum anúncio cadastrado.</p>
                 )}
               </aside>
               <section className="studio-panel">

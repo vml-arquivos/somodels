@@ -1,10 +1,10 @@
-# Só Models
+# Ero Models
 
-Só Models é uma plataforma de portfólios profissionais de modelos e criadores construída com React, Vite, Express, tRPC, Drizzle ORM e MySQL/TiDB. O código mantém a vitrine pública, perfis, área do titular, moderação, storage e primitives de monetização desacopladas, sem ativar cobrança fictícia.
+Ero Models é um portal adulto de anúncios de acompanhantes construído com React, Vite, Express, tRPC, Drizzle ORM e MySQL/TiDB. O produto mantém a vitrine por cidade/região, páginas individuais, cadastro de fotos e vídeos, área do titular, painel administrativo, moderação, storage e contato externo controlado, sem intermediar pagamentos.
 
 ## Postura de lançamento
 
-A aplicação **falha fechada**. A vitrine, as URLs de mídia e os contatos públicos somente ficam disponíveis quando `PUBLIC_ACCESS_ENABLED=true` e um provedor real de verificação de idade estiver configurado e testado. Enquanto `KYC_REQUIRED=true`, o anunciante também precisa de verificação de identidade aprovada para enviar perfil para revisão ou fazer upload. Pagamentos permanecem desligados até existir aprovação formal do processador e as variáveis correspondentes.
+A aplicação **falha fechada**. A experiência adulta começa com age gate explícito para maiores de 18 anos; a vitrine, as URLs de mídia e os contatos públicos somente ficam disponíveis quando `PUBLIC_ACCESS_ENABLED=true`, o lançamento estiver aberto e a verificação de idade real estiver configurada e testada. Enquanto `KYC_REQUIRED=true`, o anunciante também precisa de verificação de identidade aprovada para enviar perfil para revisão ou fazer upload. Pagamentos permanecem desligados até existir aprovação formal do processador e as variáveis correspondentes.
 
 O banco esperado é MySQL 8 ou TiDB. O ORM atual usa `drizzle-orm/mysql2`; um recurso PostgreSQL não é compatível com as migrations deste projeto. O processo de produção expõe `/healthz`, `/api/release`, `/robots.txt` e `/sitemap.xml`, escuta na porta `3000` por padrão e serve o frontend compilado pelo próprio Express.
 
@@ -26,19 +26,19 @@ A estratégia de reconciliação está em [`docs/RECONCILIATION_REPORT.md`](docs
 
 Este pacote inclui correções de autorização e proteção de dados. Não constitui liberação para cadastros reais ou produção. Consulte `docs/SECURITY-HARDENING-2026-09-16.md` e os resultados de validação associados antes de implantar. Contas existentes não são reativadas ou promovidas pelo bootstrap, e a troca obrigatória de senha passa a ser exigida pela API.
 
-## Portfólios profissionais — atualização administrativa
+## Anúncios adultos — atualização da plataforma
 
-Esta versão adapta as páginas e categorias a portfólios profissionais, sem oferta de serviços sexuais. Não cria contas, perfis, imagens ou lançamentos de exemplo. O seed demonstrativo está desativado. Registros existentes são preservados, mas precisam de revisão de adequação antes de voltar à vitrine.
+Esta versão adapta as páginas e categorias a anúncios adultos legais de acompanhantes, sem inserir perfis, imagens ou contatos fictícios. A home é configurável pelo painel e permanece vazia até que titulares/admins cadastrem anúncios reais, mídias autorizadas e dados revisados. Registros existentes são preservados, mas precisam de revisão de adequação antes de voltar à vitrine.
 
-A migration `0005_portfolio_management.sql` deve ser aplicada após backup e antes de iniciar a nova versão. Use `pnpm db:migrate`; não use `db:push` em produção. O deploy não aplica migrations automaticamente. A migração cria duas tabelas vazias e uma coluna de controle; não publica registros. Consulte `docs/PORTFOLIOS-ENTREGA.md`.
+A migration `0006_profile_lifecycle.sql` faz parte do schema atual e deve ser aplicada após backup antes de iniciar a nova versão. Use `pnpm db:migrate`; não use `db:push` em produção. O deploy não publica anúncios automaticamente. Consulte `docs/PROFILE-LIFECYCLE-2026-09-21.md`.
 
 ## Hotfix de compatibilidade de schema — 16/09/2026
 
-O container de produção executa `pnpm db:migrate` antes de iniciar `dist/index.js`. O healthcheck valida também os objetos de banco exigidos pela migration `0005_portfolio_management.sql`. Assim, um deploy não é considerado saudável quando o código está à frente do schema.
+O container de produção executa `pnpm db:migrate` antes de iniciar `dist/index.js`. O healthcheck valida também os objetos de banco exigidos pela migration `0006_profile_lifecycle.sql`. Assim, um deploy não é considerado saudável quando o código está à frente do schema.
 
-## Fundação de marketplace adulto — 17/09/2026
+## Fundação de marketplace adulto
 
-Este repositório agora contém uma **fundação técnica desligada por padrão** para evolução controlada a um marketplace adulto legal. A experiência pública existente continua como fallback até a aprovação/ativação das flags descritas em [`docs/FEATURE-FLAGS.md`](docs/FEATURE-FLAGS.md). A decisão técnica e os bloqueios de compliance estão em [`docs/ADR-0001-adult-marketplace-scope.md`](docs/ADR-0001-adult-marketplace-scope.md).
+Este repositório contém a experiência de portal adulto e uma **fundação técnica controlada** para publicação legal. As flags e providers continuam explícitos: não são substituídos por dados sintéticos nem por bypass de idade, identidade, moderação ou privacidade. A decisão técnica e os bloqueios de compliance estão em [`docs/ADR-0001-adult-marketplace-scope.md`](docs/ADR-0001-adult-marketplace-scope.md).
 
 O incremento adiciona favoritos, bloqueios, denúncias e contato externo controlado reutilizando as tabelas já existentes no baseline. Telefones, WhatsApp e Telegram não são mais enviados em payload público de descoberta/perfil; o href de saída só é retornado por um procedimento autenticado e age-gated quando o recurso estiver habilitado e a autorização do titular estiver vigente.
 
