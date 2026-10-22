@@ -1,6 +1,12 @@
 import { Link } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useEffect, useState } from "react";
+
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
 
 export default function StudioHeader({
   children,
@@ -11,6 +17,28 @@ export default function StudioHeader({
 }) {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as InstallPromptEvent);
+    };
+    const onAppInstalled = () => setInstallPrompt(null);
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", onAppInstalled);
+    };
+  }, []);
+
+  async function installApp() {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+    if (choice.outcome === "accepted") setInstallPrompt(null);
+  }
   return (
     <header className="studio-header">
       <Link href="/" className="studio-brand" aria-label="Ero Models — início">
@@ -39,6 +67,11 @@ export default function StudioHeader({
           </nav>
         )}
         {children ? <div className="studio-header-extra">{children}</div> : null}
+        {installPrompt ? (
+          <button className="studio-install-button" onClick={() => void installApp()}>
+            Instalar app
+          </button>
+        ) : null}
         {toggleTheme ? (
           <button
             className="studio-theme-toggle"

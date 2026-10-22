@@ -7,7 +7,7 @@ import {
 
 describe("discovery URL state", () => {
   it("starts with empty filters on an empty query", () => {
-    expect(parseDiscoverySearch("")).toEqual({ search: "", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", page: 0 });
+    expect(parseDiscoverySearch("")).toEqual({ search: "", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", availableNow: false, sort: "featured", page: 0 });
   });
 
   it("parses shareable filters", () => {
@@ -19,6 +19,8 @@ describe("discovery URL state", () => {
       attribute: "Com local",
       ageMin: "25",
       ageMax: "35",
+      availableNow: false,
+      sort: "featured",
       page: 2,
     });
   });
@@ -50,15 +52,22 @@ describe("discovery URL state", () => {
   });
 
   it("omits empty filters when building a URL", () => {
-    expect(buildDiscoverySearch({ search: "", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", page: 0 })).toBe("");
+    expect(buildDiscoverySearch({ search: "", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", availableNow: false, sort: "featured", page: 0 })).toBe("");
   });
 
   it("builds a stable page number for sharing", () => {
-    expect(buildDiscoverySearch({ search: "ana", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", page: 2 })).toBe("?q=ana&page=3");
+    expect(buildDiscoverySearch({ search: "ana", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", availableNow: false, sort: "featured", page: 2 })).toBe("?q=ana&page=3");
   });
 
   it("keeps the fixed city out of the query string", () => {
-    expect(buildDiscoverySearch({ search: "", city: "Brasília", region: "DF", category: "Acompanhante", attribute: "Com local", ageMin: "25", ageMax: "35", page: 0 }, "Brasília")).toBe("?region=DF&category=Acompanhante&attribute=Com+local&minAge=25&maxAge=35");
+    expect(buildDiscoverySearch({ search: "", city: "Brasília", region: "DF", category: "Acompanhante", attribute: "Com local", ageMin: "25", ageMax: "35", availableNow: false, sort: "featured", page: 0 }, "Brasília")).toBe("?region=DF&category=Acompanhante&attribute=Com+local&minAge=25&maxAge=35");
+  });
+
+  it("keeps availability and sort in the shareable URL", () => {
+    const filters = parseDiscoverySearch("?available=now&sort=recent");
+    expect(filters.availableNow).toBe(true);
+    expect(filters.sort).toBe("recent");
+    expect(buildDiscoverySearch(filters)).toBe("?available=now&sort=recent");
   });
 
   it("encodes city paths safely", () => {

@@ -1,5 +1,7 @@
 export const DISCOVERY_PAGE_SIZE = 12;
 
+export type DiscoverySort = "featured" | "recent" | "available";
+
 export type DiscoveryFilters = {
   search: string;
   city: string;
@@ -8,6 +10,8 @@ export type DiscoveryFilters = {
   attribute: string;
   ageMin: string;
   ageMax: string;
+  availableNow: boolean;
+  sort: DiscoverySort;
   page: number;
 };
 
@@ -20,6 +24,10 @@ function cleanAge(value: string | null) {
   if (!normalized) return "";
   const age = Number(normalized);
   return Number.isInteger(age) && age >= 18 && age <= 99 ? String(age) : "";
+}
+
+function cleanSort(value: string | null): DiscoverySort {
+  return value === "recent" || value === "available" ? value : "featured";
 }
 
 export function parseDiscoverySearch(
@@ -44,6 +52,8 @@ export function parseDiscoverySearch(
     attribute: clean(params.get("attribute"), 60),
     ageMin: cleanAge(params.get("minAge")),
     ageMax: cleanAge(params.get("maxAge")),
+    availableNow: params.get("available") === "now",
+    sort: cleanSort(params.get("sort")),
     page,
   };
 }
@@ -61,6 +71,7 @@ export function buildDiscoverySearch(
   const attribute = clean(filters.attribute, 60);
   const ageMin = cleanAge(filters.ageMin);
   const ageMax = cleanAge(filters.ageMax);
+  const sort = cleanSort(filters.sort);
   if (search) params.set("q", search);
   if (city) params.set("city", city);
   if (region) params.set("region", region);
@@ -68,6 +79,8 @@ export function buildDiscoverySearch(
   if (attribute) params.set("attribute", attribute);
   if (ageMin) params.set("minAge", ageMin);
   if (ageMax) params.set("maxAge", ageMax);
+  if (filters.availableNow) params.set("available", "now");
+  if (sort !== "featured") params.set("sort", sort);
   if (filters.page > 0) params.set("page", String(filters.page + 1));
   const query = params.toString();
   return query ? `?${query}` : "";
