@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-22 — roteamento privado por hostname e deploy controlado
+
+- o servidor passou a redirecionar `/` de `conta.eromodels.com.br` para `/conta` e de `admin.eromodels.com.br` para `/admin`, mantendo RBAC backend e sem compartilhar cookie entre hosts;
+- `robots.txt` e `sitemap.xml` ficam fail-closed nos hosts privados para evitar indexação ou canonical incorreto;
+- DNS/Cloudflare dos dois hosts foi observado como resolvido, mas a associação dos domínios ainda não foi feita no Coolify nesta branch;
+- `pnpm check`, suíte completa (`84 testes`), build e testes de host routing passaram; o deploy anterior de `2a9a43e2ee9cfe837a77afdfa141bb249c3a4f98` terminou `Success`, com `database: true` e `/api/release` alinhado ao SHA;
+- nenhuma variável adicional, secret, migration, flag ou provider foi criado para esta fatia.
+
 ## 2026-10-21 — preflight e conta do cliente
 
 - registrada a fotografia da Etapa A em `docs/PREFLIGHT-2026-10-21.md`, incluindo a divergência entre `main` (`95a7ab1`) e o release público (`a8e5a8e`), o alvo Coolify de produção e os gates ainda pendentes;

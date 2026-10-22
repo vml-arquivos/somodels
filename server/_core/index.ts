@@ -20,6 +20,7 @@ import { bootstrapLocalAccounts } from "../auth";
 import { isPublicIndexingEnabled } from "../public-indexing";
 import { getServerSeo, renderSeoHead } from "../seo";
 import { createInMemoryRateLimiter, rateLimitMessage, sensitiveRateLimits } from "../rate-limit";
+import { getPrivateHostLanding, isPrivateHost } from "./host-routing";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -127,6 +128,16 @@ async function startServer() {
     }
     next();
   });
+  app.use((req, res, next) => {
+    if (req.method === "GET" && req.path === "/") {
+      const privateLanding = getPrivateHostLanding(req.hostname);
+      if (privateLanding) {
+        res.redirect(302, privateLanding);
+        return;
+      }
+    }
+    next();
+  });
   const healthHandler = async (_req: express.Request, res: express.Response) => {
     const database = await isDatabaseReady();
     const healthy = !ENV.isProduction || (database && Boolean(ENV.cookieSecret));
@@ -135,14 +146,22 @@ async function startServer() {
   app.get("/healthz", healthHandler);
   app.get("/health", healthHandler);
   app.get("/api/release", (_req, res) => res.json({ service: "ero-models", release: ENV.release }));
-  app.get("/robots.txt", async (_req, res) => {
+  app.get("/robots.txt", async (req, res) => {
+    if (isPrivateHost(req.hostname)) {
+      res.type("text/plain").send("User-agent: *\nDisallow: /\n");
+      return;
+    }
     const indexingEnabled = await getSitemapIndexingState();
     const body = indexingEnabled
       ? `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /titular\nDisallow: /login\nDisallow: /redefinir-senha\nDisallow: /alterar-senha\nDisallow: /cadastro\nDisallow: /api/\nDisallow: /manus-storage/\nSitemap: ${ENV.canonicalOrigin || "https://eromodels.com.br"}/sitemap.xml\n`
       : "User-agent: *\nDisallow: /\n";
     res.type("text/plain").send(body);
   });
-  app.get("/sitemap.xml", async (_req, res) => {
+  app.get("/sitemap.xml", async (req, res) => {
+    if (isPrivateHost(req.hostname)) {
+      res.type("application/xml").send(emptySitemap());
+      return;
+    }
     if (!(await getSitemapIndexingState())) {
       res.type("application/xml").send(emptySitemap());
       return;

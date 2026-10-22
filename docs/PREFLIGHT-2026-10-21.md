@@ -45,6 +45,12 @@ O painel acessado foi `https://coolifycar.casadf.com.br/`, no caminho fornecido 
 - A tela de variáveis mostrou 60 entradas e nenhum valor foi copiado para logs, relatório ou chat. Não foi feita alteração de variável, segredo, domínio, source, healthcheck ou deploy.
 - O painel informou que não há tokens de secret manager cadastrados e que não há canais de notificação habilitados. Isso é risco operacional para lançamento, não motivo para criar integração unilateralmente.
 
+### Atualização operacional observada em 22/10/2026
+
+- `conta.eromodels.com.br` e `admin.eromodels.com.br` resolvem publicamente via DNS/Cloudflare, mas retornaram `503` em HTTPS porque ainda não estavam associados a nenhum domínio da aplicação no Coolify.
+- O código da branch de host routing redireciona a landing `/` desses hosts para `/conta` e `/admin` e devolve `Disallow: /` em `robots.txt`; a associação no Coolify só deve ocorrer após os gates dessa branch.
+- O deploy `aadp2chj3xf1vt0huwemyb7o` terminou `Success` no commit `2a9a43e2ee9cfe837a77afdfa141bb249c3a4f98`; `/healthz` retornou 200 com `database: true` e `/api/release` retornou o mesmo SHA.
+
 Pelo nome do ambiente (`production`), domínio público e aplicação ativa, este alvo deve ser tratado como **produção**. Portanto, qualquer deploy, migration, mudança de flag, domínio ou source permanece sujeito a gate final explícito.
 
 ## 4. Instalação e gates locais
