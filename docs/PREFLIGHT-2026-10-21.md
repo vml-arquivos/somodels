@@ -48,7 +48,8 @@ O painel acessado foi `https://coolifycar.casadf.com.br/`, no caminho fornecido 
 ### Atualização operacional observada em 22/10/2026
 
 - `conta.eromodels.com.br` e `admin.eromodels.com.br` resolvem via DNS/Cloudflare e estão associados no Coolify; a aplicação mostra exatamente os três domínios (`eromodels.com.br`, `conta.eromodels.com.br`, `admin.eromodels.com.br`), todos com `DNS matches` e HTTP → HTTPS habilitado.
-- O deploy `nd415rf8z5i6irutfozsdvjc` terminou `Success` no commit `176f80576bcff79ad576ddf7dec1330b03db1e38`; `/healthz` retornou 200 com `database: true` e `/api/release` retornou o mesmo SHA.
+- O deploy `nd415rf8z5i6irutfozsdvjc` terminou `Success` no commit `176f80576bcff79ad576ddf7dec1330b03db1e38`; `/healthz` retornou 200 com `database: true`.
+- `/api/release` ainda retorna `2a9a43e2ee9cfe837a77afdfa141bb249c3a4f98`, porque `APP_RELEASE` permanece nesse metadata antigo. Foi tentada uma alteração exclusiva dessa variável no editor do Coolify, mas o Livewire respondeu 500; a página foi recarregada, o recurso continuou `Running` e nenhuma mudança parcial foi observada. Isso é uma divergência de rastreabilidade, não uma falha do código/healthcheck.
 - Smoke final: `/` redireciona para `/conta` no host de conta e para `/admin` no host administrativo; ambas as rotas retornam 200, `robots.txt` retorna `Disallow: /` e `sitemap.xml` é vazio.
 
 Pelo nome do ambiente (`production`), domínio público e aplicação ativa, este alvo deve ser tratado como **produção**. Portanto, qualquer deploy, migration, mudança de flag, domínio ou source permanece sujeito a gate final explícito.
