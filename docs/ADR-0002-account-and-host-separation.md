@@ -25,7 +25,7 @@ Cada host privado devolve `Disallow: /` em `robots.txt` e sitemap vazio. O cooki
 
 - Positivas: rollout gradual, uma migração de código menor, superfícies privadas claras e possibilidade de manter admin isolado.
 - Negativas: o mesmo recurso Coolify atende os três hosts; isolamento de sessão e callbacks não deve ser presumido como SSO.
-- O smoke de produção confirmou DNS, TLS, redirects, healthcheck, release alinhado e bloqueio de indexação nos hosts privados; E2E autenticado multi-host ainda é um item de evolução.
+- O smoke de produção confirmou DNS, TLS, redirects, healthcheck, `database: true` e bloqueio de indexação nos hosts privados; o endpoint de release ainda reporta metadata `APP_RELEASE` antigo e isso permanece rastreado no preflight; E2E autenticado multi-host ainda é um item de evolução.
 
 ## Critérios de evolução
 
