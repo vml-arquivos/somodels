@@ -7,7 +7,10 @@
 - adicionados manifest, ícones 192/512, registro de service worker, atalhos de instalação e fallback offline sem cachear respostas `/api/` ou dados privados;
 - a conta do cliente agora permite atualizar nome, encerrar a própria conta com senha e confirmação `EXCLUIR`, apagar preferências privadas e despublicar anúncios; o titular pode arquivar logicamente seus próprios anúncios, sempre com ownership backend;
 - pesquisa de referências registrada em `docs/UX-PWA-RESEARCH-2026-10-22.md`; foram adotados padrões funcionais de localização/filtros e requisitos oficiais de PWA, sem copiar marca, textos, imagens ou identidade de terceiros;
-- validação local: `pnpm check`, suíte completa com `99 testes`, `pnpm build` e `git diff --check` passaram; esta fatia ainda não foi redeployada.
+- validação local: `pnpm check`, suíte completa com `99 testes`, `pnpm build` e `git diff --check` passaram; o PR #25 foi mesclado no commit `52601e8f8c22f036d3c4df900a600762b5756191`;
+- o deployment `ixhkta5tyocwfaii98sdjyfn` terminou `Success` no Coolify, com healthcheck saudável e `database: true`; os três hosts retornaram manifest PWA, `auth.me` e `profiles.locations` em envelope tRPC válido;
+- smoke final confirmou `eromodels.com.br` 200, `conta.eromodels.com.br/` → `/conta`, `admin.eromodels.com.br/` → `/admin`, `manifest.webmanifest` com ícones 192/512 e `sw.js` servido como JavaScript;
+- `/api/release` continua reportando `2a9a43e2ee9cfe837a77afdfa141bb249c3a4f98` por causa do metadata `APP_RELEASE`; isso não impediu o healthcheck nem o funcionamento do novo runtime, e a variável não foi alterada nesta entrega.
 
 ## 2026-10-22 — roteamento privado por hostname e deploy controlado
 
