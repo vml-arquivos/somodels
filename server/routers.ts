@@ -24,6 +24,7 @@ import {
   assertPasswordPolicy,
   authenticateLocalUser,
   changePassword,
+  closeLocalAccount,
   createLocalSession,
   registerUser,
   registerTestUser,
@@ -60,6 +61,7 @@ import {
   listUserReports,
   reorderOwnedMedia,
   updateOwnedMediaMetadata,
+  updateUserName,
   createProfileReport,
   listAdminReports,
   updateAdminReport,
@@ -68,6 +70,7 @@ import {
   listPendingMedia,
   listPendingProfiles,
   listPublishedProfiles,
+  listPublicLocations,
   moderateMedia,
   moderateProfile,
   saveProfile,
@@ -206,6 +209,28 @@ export const appRouter = router({
     me: publicProcedure.query(opts =>
       opts.ctx.user ? publicUser(opts.ctx.user) : null
     ),
+    updateAccount: protectedProcedure
+      .input(z.object({ name: z.string().trim().min(2).max(120) }))
+      .mutation(async ({ ctx, input }) => {
+        const user = await updateUserName(ctx.user.id, input.name);
+        if (!user) throw new Error("Conta não encontrada");
+        return publicUser(user);
+      }),
+    closeAccount: authenticatedProcedure
+      .input(
+        z.object({
+          currentPassword: z.string().min(1).max(200),
+          confirmation: z.literal("EXCLUIR"),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await closeLocalAccount(ctx.user.id, input.currentPassword);
+        ctx.res.clearCookie(LOCAL_SESSION_COOKIE, {
+          ...getLocalSessionCookieOptions(ctx.req),
+          maxAge: -1,
+        });
+        return { success: true as const };
+      }),
     register: publicProcedure
       .input(
         z.object({
@@ -412,6 +437,8 @@ export const appRouter = router({
             attribute: z.string().max(60).optional(),
             ageMin: z.number().int().min(18).max(99).optional(),
             ageMax: z.number().int().min(18).max(99).optional(),
+            availableNow: z.boolean().optional(),
+            sort: z.enum(["featured", "recent", "available"]).optional(),
             limit: z.number().int().min(1).max(25).optional(),
             offset: z.number().int().min(0).max(10000).optional(),
           })
@@ -438,6 +465,9 @@ export const appRouter = router({
           demoContactDisabled: true,
         }));
       }),
+    locations: publicProcedure.query(async ({ ctx }) =>
+      listPublicLocations(await hasValidAgeSession(ctx.req))
+    ),
     bySlug: publicProcedure
       .input(z.object({ slug: z.string().min(2).max(160) }))
       .query(async ({ ctx, input }) => {
@@ -457,6 +487,18 @@ export const appRouter = router({
     mineById: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ ctx, input }) => getOwnerProfile(ctx.user.id, input.id)),
+    archiveMine: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          confirmation: z.literal("EXCLUIR"),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const owned = await getOwnerProfile(ctx.user.id, input.id);
+        if (!owned) throw new Error("Perfil não pertence à conta");
+        return softDeleteProfile(input.id, ctx.user.id);
+      }),
     identity: protectedProcedure.query(({ ctx }) =>
       getIdentityVerification(ctx.user.id)
     ),

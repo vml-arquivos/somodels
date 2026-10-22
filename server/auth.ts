@@ -118,6 +118,20 @@ export async function changePassword(userId: number, currentPassword: string, ne
   await db.revokeAllAuthSessions(userId);
 }
 
+export async function closeLocalAccount(userId: number, currentPassword: string) {
+  const account = await db.getUserById(userId);
+  if (!account?.passwordHash || account.role !== "user") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Esta conta precisa ser encerrada por outro administrador",
+    });
+  }
+  if (!(await verifyPassword(currentPassword, account.passwordHash))) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Senha atual inválida" });
+  }
+  await db.anonymizeOwnAccount(userId);
+}
+
 export function passwordHashForTests(password: string) {
   return hashPassword(password);
 }

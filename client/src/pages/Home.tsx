@@ -42,6 +42,9 @@ export function DiscoveryPage({
     site.showGallery &&
     !!config.data?.publicAccessEnabled &&
     !!config.data?.publicLaunchEnabled;
+  const locations = trpc.profiles.locations.useQuery(undefined, {
+    enabled: open,
+  });
   const list = trpc.profiles.list.useQuery(
     {
       search: filters.search || undefined,
@@ -51,6 +54,8 @@ export function DiscoveryPage({
       attribute: filters.attribute || undefined,
       ageMin: filters.ageMin ? Number(filters.ageMin) : undefined,
       ageMax: filters.ageMax ? Number(filters.ageMax) : undefined,
+      availableNow: filters.availableNow || undefined,
+      sort: filters.sort,
       limit: DISCOVERY_PAGE_SIZE + 1,
       offset: filters.page * DISCOVERY_PAGE_SIZE,
     },
@@ -64,8 +69,20 @@ export function DiscoveryPage({
     filters.region ||
     filters.attribute ||
     filters.ageMin ||
-    filters.ageMax
+    filters.ageMax ||
+    filters.availableNow ||
+    filters.sort !== "featured"
   );
+  const activeFiltersCount = [
+    filters.city,
+    filters.region,
+    filters.category,
+    filters.attribute,
+    filters.ageMin,
+    filters.ageMax,
+  ].filter(Boolean).length +
+    (filters.availableNow ? 1 : 0) +
+    (filters.sort !== "featured" ? 1 : 0);
   const canonicalPath = fixedCity
     ? cityPath(fixedCity)
     : fixedCategory
@@ -166,8 +183,8 @@ export function DiscoveryPage({
               <a className="studio-cta" href="#busca">
                 {site.buttonText}
               </a>
-              <Link className="studio-cta studio-cta-secondary" href="/cadastro">
-                Anunciar meu perfil
+              <Link className="studio-cta studio-cta-secondary" href="#como-funciona">
+                Como funciona
               </Link>
             </div>
           </div>
@@ -210,83 +227,168 @@ export function DiscoveryPage({
             </div>
           ) : (
             <>
-              <div className="studio-toolbar">
-                <input
-                  aria-label="Buscar anúncios"
-                  placeholder={site.searchPlaceholder}
-                  value={filters.search}
-                  onChange={e => updateFilter("search", e.target.value)}
-                />
-                {!fixedCity && !fixedCategory && (
+              <div className="studio-discovery-controls">
+                <div className="studio-toolbar studio-toolbar-primary">
                   <input
-                    aria-label="Cidade"
-                    placeholder="Cidade"
-                    value={filters.city}
-                    onChange={e => updateFilter("city", e.target.value)}
+                    aria-label="Buscar anúncios"
+                    placeholder={site.searchPlaceholder}
+                    value={filters.search}
+                    onChange={e => updateFilter("search", e.target.value)}
                   />
-                )}
-                <select
-                  aria-label="Categoria do anúncio"
-                  disabled={Boolean(fixedCategory)}
-                  value={filters.category}
-                  onChange={e => updateFilter("category", e.target.value)}
-                >
-                  <option value="">Todas as categorias</option>
-                  {portfolioCategories.map(category => (
-                    <option key={category}>{category}</option>
+                  {!fixedCity && !fixedCategory && (
+                    <>
+                      <input
+                        aria-label="Cidade"
+                        list="ero-location-options"
+                        placeholder="Cidade ou região"
+                        value={filters.city}
+                        onChange={e => updateFilter("city", e.target.value)}
+                      />
+                      <datalist id="ero-location-options">
+                        {locations.data?.map(location => (
+                          <option
+                            key={`${location.city}-${location.region || ""}`}
+                            value={location.city}
+                          >
+                            {location.region || ""}
+                          </option>
+                        ))}
+                      </datalist>
+                    </>
+                  )}
+                </div>
+
+                <div className="studio-filter-chips" aria-label="Filtros rápidos">
+                  <button
+                    type="button"
+                    className={filters.availableNow ? "active" : ""}
+                    aria-pressed={filters.availableNow}
+                    onClick={() =>
+                      setFilters(current => ({
+                        ...current,
+                        availableNow: !current.availableNow,
+                        page: 0,
+                      }))
+                    }
+                  >
+                    Disponível agora
+                  </button>
+                  {["Com local", "Atende externo", "Virtual"].map(attribute => (
+                    <button
+                      type="button"
+                      className={filters.attribute === attribute ? "active" : ""}
+                      aria-pressed={filters.attribute === attribute}
+                      key={attribute}
+                      onClick={() =>
+                        updateFilter(
+                          "attribute",
+                          filters.attribute === attribute ? "" : attribute
+                        )
+                      }
+                    >
+                      {attribute}
+                    </button>
                   ))}
-                </select>
-                <input
-                  aria-label="Estado ou região"
-                  placeholder="Estado / região"
-                  value={filters.region}
-                  onChange={e => updateFilter("region", e.target.value)}
-                />
-                <select
-                  aria-label="Característica do anúncio"
-                  value={filters.attribute}
-                  onChange={e => updateFilter("attribute", e.target.value)}
-                >
-                  <option value="">Qualquer característica</option>
-                  <option value="Com local">Com local</option>
-                  <option value="Atende externo">Atende externo</option>
-                  <option value="Virtual">Virtual</option>
-                  <option value="Casal ou dupla">Casal ou dupla</option>
-                  <option value="Viagens">Viagens</option>
-                  <option value="Bilíngue">Bilíngue</option>
-                </select>
-                <input
-                  aria-label="Idade mínima"
-                  placeholder="Idade mín."
-                  inputMode="numeric"
-                  maxLength={2}
-                  value={filters.ageMin}
-                  onChange={e => updateFilter("ageMin", e.target.value)}
-                />
-                <input
-                  aria-label="Idade máxima"
-                  placeholder="Idade máx."
-                  inputMode="numeric"
-                  maxLength={2}
-                  value={filters.ageMax}
-                  onChange={e => updateFilter("ageMax", e.target.value)}
-                />
-                <button
-                  onClick={() =>
-                    setFilters({
-                      search: "",
-                      city: fixedCity || "",
-                      region: "",
-                      category: fixedCategory || "",
-                      attribute: "",
-                      ageMin: "",
-                      ageMax: "",
-                      page: 0,
-                    })
-                  }
-                >
-                  Limpar
-                </button>
+                </div>
+
+                <details className="studio-filter-details" open={activeFiltersCount > 0}>
+                  <summary>
+                    Filtros avançados
+                    {activeFiltersCount > 0 && <span>{activeFiltersCount} ativos</span>}
+                  </summary>
+                  <div className="studio-toolbar studio-toolbar-advanced">
+                    <select
+                      aria-label="Categoria do anúncio"
+                      disabled={Boolean(fixedCategory)}
+                      value={filters.category}
+                      onChange={e => updateFilter("category", e.target.value)}
+                    >
+                      <option value="">Todas as categorias</option>
+                      {portfolioCategories.map(category => (
+                        <option key={category}>{category}</option>
+                      ))}
+                    </select>
+                    <input
+                      aria-label="Estado ou região"
+                      placeholder="Estado / região"
+                      value={filters.region}
+                      onChange={e => updateFilter("region", e.target.value)}
+                    />
+                    <select
+                      aria-label="Característica do anúncio"
+                      value={filters.attribute}
+                      onChange={e => updateFilter("attribute", e.target.value)}
+                    >
+                      <option value="">Qualquer característica</option>
+                      <option value="Com local">Com local</option>
+                      <option value="Atende externo">Atende externo</option>
+                      <option value="Virtual">Virtual</option>
+                      <option value="Casal ou dupla">Casal ou dupla</option>
+                      <option value="Viagens">Viagens</option>
+                      <option value="Bilíngue">Bilíngue</option>
+                    </select>
+                    <input
+                      aria-label="Idade mínima"
+                      placeholder="Idade mín."
+                      inputMode="numeric"
+                      maxLength={2}
+                      value={filters.ageMin}
+                      onChange={e => updateFilter("ageMin", e.target.value)}
+                    />
+                    <input
+                      aria-label="Idade máxima"
+                      placeholder="Idade máx."
+                      inputMode="numeric"
+                      maxLength={2}
+                      value={filters.ageMax}
+                      onChange={e => updateFilter("ageMax", e.target.value)}
+                    />
+                    <select
+                      aria-label="Ordenar anúncios"
+                      value={filters.sort}
+                      onChange={e =>
+                        updateFilter("sort", e.target.value as typeof filters.sort)
+                      }
+                    >
+                      <option value="featured">Mais relevantes</option>
+                      <option value="available">Disponíveis primeiro</option>
+                      <option value="recent">Atualizados recentemente</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() =>
+                        setFilters({
+                          search: "",
+                          city: fixedCity || "",
+                          region: "",
+                          category: fixedCategory || "",
+                          attribute: "",
+                          ageMin: "",
+                          ageMax: "",
+                          availableNow: false,
+                          sort: "featured",
+                          page: 0,
+                        })
+                      }
+                    >
+                      Limpar filtros
+                    </button>
+                  </div>
+                </details>
+
+                <div className="studio-result-meta" aria-live="polite">
+                  <span>
+                    {list.isFetching
+                      ? "Atualizando resultados…"
+                      : `${items.length}${hasNext ? "+" : ""} anúncio${items.length === 1 ? "" : "s"}`}
+                  </span>
+                  <span>
+                    {locations.data?.length
+                      ? `${locations.data.length} localidades com anúncios publicados`
+                      : "Localizações atualizadas conforme a publicação"}
+                  </span>
+                </div>
               </div>
               {list.isLoading ? (
                 <p>Carregando anúncios…</p>
@@ -363,7 +465,7 @@ export function DiscoveryPage({
         )}
 
         {!fixedCity && !fixedCategory && (
-          <section className="studio-home-grid" aria-label="Como a Ero Models funciona">
+          <section id="como-funciona" className="studio-home-grid" aria-label="Como a Ero Models funciona">
             <article className="studio-panel">
               <p className="studio-kicker">Para anunciantes</p>
               <h2>Crie e controle o seu anúncio</h2>

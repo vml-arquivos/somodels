@@ -29,7 +29,7 @@ import {
   priorityForReport,
   type ReportCategory,
 } from "../shared/safety";
-import { hashPassword } from "./auth-crypto";
+import { createOpaqueToken, hashPassword } from "./auth-crypto";
 import {
   buildProfileContentDigest,
   currentPortfolioTerms,
@@ -180,6 +180,77 @@ export async function updateUserPassword(userId: number, password: string) {
       mustChangePassword: false,
     })
     .where(eq(users.id, userId));
+}
+
+export async function updateUserName(userId: number, name: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db
+    .update(users)
+    .set({ name: name.trim() })
+    .where(eq(users.id, userId));
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "user.name_updated",
+    entityType: "user",
+    entityId: userId,
+  });
+  return getUserById(userId);
+}
+
+export async function anonymizeOwnAccount(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.transaction(async tx => {
+    const [account] = await tx
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .for("update");
+    if (!account) throw new Error("Conta não encontrada");
+    if (account.role !== "user")
+      throw new Error("Contas administrativas precisam ser encerradas por outro administrador");
+
+    await tx
+      .update(users)
+      .set({
+        name: "Conta excluída",
+        email: null,
+        passwordHash: null,
+        emailVerifiedAt: null,
+        openId: `deleted:${userId}:${createOpaqueToken().slice(0, 16)}`,
+        accountStatus: "suspended",
+      })
+      .where(eq(users.id, userId));
+    await tx
+      .update(profiles)
+      .set({
+        isPublished: false,
+        status: "suspended",
+        phone: null,
+        whatsapp: null,
+        telegram: null,
+        portfolioReviewed: false,
+      })
+      .where(eq(profiles.ownerId, userId));
+    await tx.delete(favorites).where(eq(favorites.userId, userId));
+    await tx.delete(blocks).where(eq(blocks.userId, userId));
+    await tx
+      .update(authSessions)
+      .set({ revokedAt: new Date() })
+      .where(eq(authSessions.userId, userId));
+    await tx
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.userId, userId));
+    await tx.insert(auditLogs).values({
+      actorUserId: userId,
+      action: "user.self_anonymized",
+      entityType: "user",
+      entityId: userId,
+      metadata: JSON.stringify({ deletionMode: "soft", preferencesDeleted: true }),
+    });
+  });
+  return { success: true as const };
 }
 
 export async function createAuthSession(
@@ -571,6 +642,8 @@ export async function listPublishedProfiles(input: {
   attribute?: string;
   ageMin?: number;
   ageMax?: number;
+  availableNow?: boolean;
+  sort?: "featured" | "recent" | "available";
   limit?: number;
   offset?: number;
   publicAllowed?: boolean;
@@ -604,11 +677,23 @@ export async function listPublishedProfiles(input: {
     conditions.push(sql`${profiles.age} >= ${input.ageMin}`);
   if (input.ageMax !== undefined)
     conditions.push(sql`${profiles.age} <= ${input.ageMax}`);
+  if (input.availableNow) conditions.push(eq(profiles.isAvailableNow, true));
+  const order =
+    input.sort === "recent"
+      ? [desc(profiles.updatedAt), desc(profiles.id)]
+      : input.sort === "available"
+        ? [
+            desc(profiles.isAvailableNow),
+            desc(profiles.isFeatured),
+            desc(profiles.updatedAt),
+            desc(profiles.id),
+          ]
+        : [desc(profiles.isFeatured), desc(profiles.updatedAt), desc(profiles.id)];
   const rows = await db
     .select()
     .from(profiles)
     .where(and(...conditions))
-    .orderBy(desc(profiles.isFeatured), desc(profiles.updatedAt), desc(profiles.id))
+    .orderBy(...order)
     .limit(Math.min(input.limit ?? 60, 60))
     .offset(Math.min(input.offset ?? 0, 10000));
   return Promise.all(
@@ -629,6 +714,28 @@ export async function listPublishedProfiles(input: {
           };
     })
   );
+}
+
+export async function listPublicLocations(publicAllowed = true) {
+  const db = await getDb();
+  if (!db || !publicAllowed) return [];
+  const conditions: any[] = [
+    eq(profiles.status, "approved"),
+    eq(profiles.isPublished, true),
+    eq(profiles.portfolioReviewed, true),
+    eq(profiles.isActive, true),
+    sql`${profiles.deletedAt} IS NULL`,
+    activeProfileOwner(),
+  ];
+  if (!ENV.allowFakeData)
+    conditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
+  return db
+    .select({ city: profiles.city, region: profiles.region })
+    .from(profiles)
+    .where(and(...conditions))
+    .groupBy(profiles.city, profiles.region)
+    .orderBy(asc(profiles.city), asc(profiles.region))
+    .limit(250);
 }
 
 export async function getPublicProfile(slug: string, publicAllowed = true) {

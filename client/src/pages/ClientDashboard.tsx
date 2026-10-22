@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -21,6 +22,10 @@ const reportStatusLabels: Record<string, string> = {
 
 export default function ClientDashboard() {
   const { user, loading, logout } = useAuth();
+  const utils = trpc.useUtils();
+  const [name, setName] = useState("");
+  const [closePassword, setClosePassword] = useState("");
+  const [closeConfirmation, setCloseConfirmation] = useState("");
   const config = trpc.system.config.useQuery();
   const flags = config.data?.featureFlags;
   const ready = Boolean(user && !user.mustChangePassword);
@@ -32,6 +37,24 @@ export default function ClientDashboard() {
   });
   const reports = trpc.safety.myReports.useQuery(undefined, {
     enabled: ready && Boolean(flags?.reportsEnabled),
+  });
+  useEffect(() => {
+    if (user?.name) setName(user.name);
+  }, [user?.name]);
+  const updateAccount = trpc.auth.updateAccount.useMutation({
+    onSuccess: async () => {
+      toast.success("Dados da conta atualizados");
+      await utils.auth.me.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const closeAccount = trpc.auth.closeAccount.useMutation({
+    onSuccess: async () => {
+      toast.success("Conta encerrada");
+      await logout();
+      window.location.assign("/");
+    },
+    onError: error => toast.error(error.message),
   });
   const unblock = trpc.safety.unblockProfile.useMutation({
     onSuccess: async () => {
@@ -120,6 +143,81 @@ export default function ClientDashboard() {
               <Link href="/alterar-senha?returnTo=/conta">Alterar senha</Link>
               <Link href="/privacidade">Privacidade e dados</Link>
             </div>
+
+            <section className="studio-panel" aria-labelledby="account-data-title">
+              <p className="studio-kicker">Dados da conta</p>
+              <h2 id="account-data-title">Preferências de acesso</h2>
+              <form
+                className="studio-account-form"
+                onSubmit={event => {
+                  event.preventDefault();
+                  updateAccount.mutate({ name });
+                }}
+              >
+                <label>
+                  Nome de exibição
+                  <input
+                    autoComplete="name"
+                    value={name}
+                    onChange={event => setName(event.target.value)}
+                  />
+                </label>
+                <label>
+                  E-mail de acesso
+                  <input value={user.email || "—"} readOnly aria-readonly="true" />
+                </label>
+                <button className="primary" disabled={updateAccount.isPending || name.trim().length < 2}>
+                  {updateAccount.isPending ? "Salvando…" : "Salvar dados"}
+                </button>
+              </form>
+            </section>
+
+            <section className="studio-panel studio-danger-zone" aria-labelledby="close-account-title">
+              <p className="studio-kicker">Zona de segurança</p>
+              <h2 id="close-account-title">Encerrar minha conta</h2>
+              <p>
+                A ação remove seus dados de contato, despublica seus anúncios e
+                revoga suas sessões. Ela não pode ser desfeita pelo cliente.
+              </p>
+              <form
+                className="studio-account-form"
+                onSubmit={event => {
+                  event.preventDefault();
+                  if (closeConfirmation !== "EXCLUIR") return;
+                  closeAccount.mutate({
+                    currentPassword: closePassword,
+                    confirmation: "EXCLUIR",
+                  });
+                }}
+              >
+                <label>
+                  Senha atual
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={closePassword}
+                    onChange={event => setClosePassword(event.target.value)}
+                  />
+                </label>
+                <label>
+                  Digite EXCLUIR para confirmar
+                  <input
+                    value={closeConfirmation}
+                    onChange={event => setCloseConfirmation(event.target.value)}
+                  />
+                </label>
+                <button
+                  className="danger"
+                  disabled={
+                    closeAccount.isPending ||
+                    !closePassword ||
+                    closeConfirmation !== "EXCLUIR"
+                  }
+                >
+                  {closeAccount.isPending ? "Encerrando…" : "Encerrar conta"}
+                </button>
+              </form>
+            </section>
 
             {!flags?.favoritesEnabled &&
               !flags?.blockingEnabled &&

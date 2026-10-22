@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-22 — descoberta mobile, PWA e controles de conta
+
+- a vitrine ganhou filtros compartilháveis por cidade/região, categoria, característica, idade, disponibilidade atual e ordenação; as sugestões de localização vêm somente de anúncios públicos elegíveis;
+- o CTA de anunciante saiu do hero principal e permanece em contexto de titular/cadastro, enquanto a busca ganhou filtros rápidos, painel avançado, resumo de resultados e layout responsivo para telas pequenas;
+- adicionados manifest, ícones 192/512, registro de service worker, atalhos de instalação e fallback offline sem cachear respostas `/api/` ou dados privados;
+- a conta do cliente agora permite atualizar nome, encerrar a própria conta com senha e confirmação `EXCLUIR`, apagar preferências privadas e despublicar anúncios; o titular pode arquivar logicamente seus próprios anúncios, sempre com ownership backend;
+- pesquisa de referências registrada em `docs/UX-PWA-RESEARCH-2026-10-22.md`; foram adotados padrões funcionais de localização/filtros e requisitos oficiais de PWA, sem copiar marca, textos, imagens ou identidade de terceiros;
+- validação local: `pnpm check`, suíte completa com `99 testes`, `pnpm build` e `git diff --check` passaram; esta fatia ainda não foi redeployada.
+
 ## 2026-10-22 — roteamento privado por hostname e deploy controlado
 
 - o servidor passou a redirecionar `/` de `conta.eromodels.com.br` para `/conta` e de `admin.eromodels.com.br` para `/admin`, mantendo RBAC backend e sem compartilhar cookie entre hosts;

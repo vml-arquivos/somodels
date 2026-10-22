@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import PortfolioEditor from "@/components/PortfolioEditor";
@@ -21,6 +22,14 @@ export default function OwnerDashboard() {
     { id: id || 0 },
     { enabled: Boolean(id) && !user?.mustChangePassword }
   );
+  const archive = trpc.profiles.archiveMine.useMutation({
+    onSuccess: async () => {
+      toast.success("Anúncio arquivado");
+      setId(null);
+      await mine.refetch();
+    },
+    onError: error => toast.error(error.message),
+  });
   async function saved(next: number) {
     setId(next);
     await mine.refetch();
@@ -110,6 +119,18 @@ export default function OwnerDashboard() {
                           <Link className="studio-cta" href={`/perfil/${detail.data.profile.slug}`}>
                             Abrir página pública
                           </Link>
+                        )}
+                        {!detail.data.profile.deletedAt && (
+                          <button
+                            className="danger"
+                            disabled={archive.isPending}
+                            onClick={() => {
+                              if (!window.confirm("Arquivar este anúncio e tirá-lo da vitrine?")) return;
+                              archive.mutate({ id, confirmation: "EXCLUIR" });
+                            }}
+                          >
+                            {archive.isPending ? "Arquivando…" : "Arquivar anúncio"}
+                          </button>
                         )}
                         {readiness.isLoading ? (
                           <p>Calculando checklist…</p>
