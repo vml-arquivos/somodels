@@ -57,6 +57,7 @@ import {
   unblockProfile,
   getBlockStatus,
   listBlockedProfiles,
+  listUserReports,
   createProfileReport,
   listAdminReports,
   updateAdminReport,
@@ -101,11 +102,21 @@ function assertLoginRateLimit(req: {
 }
 
 function publicUser(user: User) {
+  const configuredAdmin =
+    Boolean(user.email && user.emailVerifiedAt) &&
+    ENV.adminEmails.includes(user.email!.toLowerCase());
+  const adminRole = ["dev", "super_admin", "admin"].includes(user.role)
+    ? user.role
+    : configuredAdmin
+      ? "admin"
+      : null;
   return {
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
+    isAdmin: Boolean(adminRole),
+    adminRole,
     loginMethod: user.loginMethod,
     emailVerifiedAt: user.emailVerifiedAt,
     mustChangePassword: user.mustChangePassword,
@@ -493,6 +504,7 @@ export const appRouter = router({
       .input(z.object({ profileId: z.number().int().positive() }))
       .mutation(({ ctx, input }) => unblockProfile(ctx.user.id, input.profileId)),
     blocks: protectedProcedure.query(({ ctx }) => listBlockedProfiles(ctx.user.id)),
+    myReports: protectedProcedure.query(({ ctx }) => listUserReports(ctx.user.id)),
     reportProfile: protectedProcedure
       .input(reportProfileInputSchema)
       .mutation(({ ctx, input }) => {

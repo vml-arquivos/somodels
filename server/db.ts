@@ -1499,6 +1499,27 @@ export async function listBlockedProfiles(userId: number) {
   return rows.filter(row => row.profileId !== null);
 }
 
+export async function listUserReports(userId: number) {
+  if (!ENV.reportsEnabled) return [];
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: moderationCases.id,
+      status: moderationCases.status,
+      priority: moderationCases.priority,
+      createdAt: moderationCases.createdAt,
+    })
+    .from(moderationCases)
+    .where(
+      and(
+        eq(moderationCases.targetType, "report"),
+        eq(moderationCases.createdBy, userId),
+      ),
+    )
+    .orderBy(desc(moderationCases.createdAt));
+}
+
 export async function createProfileReport(
   userId: number,
   input: { profileId: number; category: ReportCategory; description: string }

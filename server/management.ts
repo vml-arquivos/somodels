@@ -47,16 +47,28 @@ const userFields = {
   createdAt: users.createdAt,
   lastSignedIn: users.lastSignedIn,
 };
+type ManagementActor = Pick<User, "id" | "role"> &
+  Partial<Pick<User, "email" | "emailVerifiedAt">>;
+
+function effectiveAdminRole(actor: ManagementActor) {
+  if (["dev", "super_admin", "admin"].includes(actor.role)) return actor.role;
+  const configuredAdmin =
+    Boolean(actor.email && actor.emailVerifiedAt) &&
+    ENV.adminEmails.includes(actor.email!.toLowerCase());
+  return configuredAdmin ? "admin" : null;
+}
+
 export function canManage(
-  actor: Pick<User, "id" | "role">,
+  actor: ManagementActor,
   target: Pick<User, "id" | "role">
 ) {
   if (actor.id === target.id) return false;
-  return actor.role === "dev"
+  const role = effectiveAdminRole(actor);
+  return role === "dev"
     ? target.role !== "dev"
-    : actor.role === "super_admin"
+    : role === "super_admin"
       ? ["user", "admin"].includes(target.role)
-      : actor.role === "admin" && target.role === "user";
+      : role === "admin" && target.role === "user";
 }
 async function database() {
   const db = await getDb();
@@ -81,7 +93,9 @@ async function targetFor(actor: User, id: number) {
   return target;
 }
 function adminVisibility(actor: User) {
-  return actor.role === "dev" ? undefined : sql`${users.role} <> 'dev'`;
+  return effectiveAdminRole(actor) === "dev"
+    ? undefined
+    : sql`${users.role} <> 'dev'`;
 }
 async function audit(
   tx: any,
@@ -178,7 +192,7 @@ export const managementRouter = router({
           !target ||
           !canManage(ctx.user, target) ||
           target.openId.startsWith("deleted:") ||
-          (ctx.user.role === "admin" && input.role !== "user")
+          (effectiveAdminRole(ctx.user) === "admin" && input.role !== "user")
         )
           throw new TRPCError({ code: "FORBIDDEN" });
         const email = input.email.trim().toLowerCase();
@@ -221,7 +235,7 @@ export const managementRouter = router({
     .mutation(async ({ ctx, input }) => {
       if (
         input.role === "admin" &&
-        !["dev", "super_admin"].includes(ctx.user.role)
+        !["dev", "super_admin"].includes(effectiveAdminRole(ctx.user) || "")
       )
         throw new TRPCError({ code: "FORBIDDEN" });
       assertPasswordPolicy(input.password);
@@ -345,7 +359,10 @@ export const managementRouter = router({
   resetPassword: publicProcedure
     .input(
       z.object({
-        token: z.string().regex(/^[a-f0-9]{64}$/),
+        // createOpaqueToken emits 32 random bytes encoded as base64url.
+        // Validate its alphabet/size without coupling the public input to the
+        // SHA-256 digest length stored in the database.
+        token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
         password: z.string().min(16).max(200),
       })
     )

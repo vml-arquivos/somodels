@@ -15,6 +15,7 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const CityPage = lazy(() => import("./pages/CityPage"));
 const CategoryPage = lazy(() => import("./pages/CategoryPage"));
 const InstitutionalPage = lazy(() => import("./pages/InstitutionalPage"));
+const ClientDashboard = lazy(() => import("./pages/ClientDashboard"));
 const OwnerDashboard = lazy(() => import("./pages/OwnerDashboard"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminNewPortfolioPage = lazy(() => import("./pages/AdminNewPortfolioPage"));
@@ -37,6 +38,8 @@ function Router() {
       <Route path="/denuncia" component={InstitutionalPage} />
       <Route path="/ajuda" component={InstitutionalPage} />
       <Route path="/contato" component={InstitutionalPage} />
+      <Route path="/conta" component={ClientDashboard} />
+      <Route path="/cliente" component={ClientDashboard} />
       <Route path="/titular" component={OwnerDashboard} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/portfolio/novo" component={AdminNewPortfolioPage} />

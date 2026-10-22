@@ -9,14 +9,16 @@ export default function LoginPage() {
     [password, setPassword] = useState("");
   const requested = new URLSearchParams(window.location.search).get("returnTo");
   const safeReturn =
-    requested && /^\/(admin|titular)(\?|$)/.test(requested) ? requested : null;
+    requested && /^\/(admin|titular|conta|cliente)(\?|$)/.test(requested)
+      ? requested
+      : null;
   const login = trpc.auth.login.useMutation({
     onSuccess: ({ user, mustChangePassword }) => {
       const target =
         safeReturn ||
-        (["dev", "admin", "super_admin"].includes(user.role)
+        (user.isAdmin
           ? "/admin"
-          : "/titular");
+          : "/conta");
       navigate(
         mustChangePassword
           ? `/alterar-senha?returnTo=${encodeURIComponent(target)}`

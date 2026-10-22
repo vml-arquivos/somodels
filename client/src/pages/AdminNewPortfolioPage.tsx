@@ -12,7 +12,7 @@ export default function AdminNewPortfolioPage() {
   const [profileId, setProfileId] = useState<number | null>(null);
   const allowed =
     !!user &&
-    ["admin", "super_admin", "dev"].includes(user.role) &&
+    user.isAdmin &&
     !user.mustChangePassword;
   const accounts = trpc.management.users.useQuery(
     { page: 0, search, status: "active", kind: "owners" },

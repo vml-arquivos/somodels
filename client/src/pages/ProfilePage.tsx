@@ -59,6 +59,7 @@ export default function ProfilePage() {
     { enabled: adultAccess.ready }
   );
   const config = trpc.system.config.useQuery();
+  const settings = trpc.management.settings.useQuery();
   const data = result.data;
   const profileId = data?.profile.id ?? 0;
   const flags = config.data?.featureFlags;
@@ -262,7 +263,10 @@ export default function ProfilePage() {
                     </p>
                   )}
 
-                {user && flags?.secureContactEnabled && !blockStatus.data?.blocked && (
+                {user &&
+                  flags?.secureContactEnabled &&
+                  settings.data?.showContact === true &&
+                  !blockStatus.data?.blocked && (
                   <section className="studio-contact-panel" aria-label="Contato do anúncio">
                     <p className="studio-kicker">Contato direto</p>
                     <h2>Fale com este anúncio</h2>

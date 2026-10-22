@@ -35,6 +35,21 @@ function hasAllowedOrigin(req: express.Request) {
   return origin === ENV.allowedOrigin;
 }
 
+function hasAdminAuthority(user: {
+  role: string;
+  email?: string | null;
+  emailVerifiedAt?: Date | null;
+}) {
+  return (
+    ["admin", "super_admin", "dev"].includes(user.role) ||
+    Boolean(
+      user.email &&
+        user.emailVerifiedAt &&
+        ENV.adminEmails.includes(user.email.toLowerCase()),
+    )
+  );
+}
+
 function hasMagicBytes(buffer: Buffer, kind: "photo" | "video", contentType: string) {
   if (kind === "photo") {
     if (contentType === "image/jpeg") return buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
@@ -181,7 +196,7 @@ async function startServer() {
       const media = await getMediaById(id);
       if (!media) return res.status(404).send("Arquivo indisponível");
       const profile = await getAdminProfile(media.profileId);
-      if (!profile || (profile.profile.ownerId !== ctx.user.id && !["admin","super_admin","dev"].includes(ctx.user.role))) return res.status(403).send("Acesso negado");
+      if (!profile || (profile.profile.ownerId !== ctx.user.id && !hasAdminAuthority(ctx.user))) return res.status(403).send("Acesso negado");
       res.redirect(307, await storageGetSignedUrl(media.storageKey));
     } catch { res.status(503).send("Não foi possível visualizar o arquivo"); }
   });
@@ -199,7 +214,7 @@ async function startServer() {
       if (!profileId || !kind || !filename || !contentType || typeof data !== "string") return res.status(400).json({ error: "Dados de upload incompletos" });
       if (!["photo", "video"].includes(kind)) return res.status(400).json({ error: "Tipo de mídia inválido" });
       const managedProfile = await getAdminProfile(Number(profileId));
-      const isAdmin = ["admin", "super_admin", "dev"].includes(ctx.user.role);
+      const isAdmin = hasAdminAuthority(ctx.user);
       if (!managedProfile) return res.status(404).json({ error: "Perfil não encontrado" });
       const ownerId = managedProfile.profile.ownerId;
       const owner = await getUserById(ownerId);
