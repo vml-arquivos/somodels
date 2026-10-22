@@ -3,6 +3,7 @@ import {
   ACCOUNT_HOST,
   ADMIN_HOST,
   getPrivateHostLanding,
+  isAllowedApplicationOrigin,
   isPrivateHost,
   normalizeRequestHost,
 } from "./host-routing";
@@ -28,5 +29,28 @@ describe("private host routing", () => {
     expect(getPrivateHostLanding("eromodels.com.br")).toBeNull();
     expect(getPrivateHostLanding("preview.eromodels.com.br")).toBeNull();
     expect(isPrivateHost("eromodels.com.br")).toBe(false);
+  });
+
+  it("allows the three official application origins only", () => {
+    const canonical = "https://eromodels.com.br";
+    expect(isAllowedApplicationOrigin(canonical, canonical)).toBe(true);
+    expect(
+      isAllowedApplicationOrigin("https://conta.eromodels.com.br", canonical)
+    ).toBe(true);
+    expect(
+      isAllowedApplicationOrigin("https://admin.eromodels.com.br", canonical)
+    ).toBe(true);
+    expect(isAllowedApplicationOrigin("https://evil.example", canonical)).toBe(
+      false
+    );
+  });
+
+  it("does not add private origins for an unrelated canonical domain", () => {
+    expect(
+      isAllowedApplicationOrigin(
+        "https://admin.eromodels.com.br",
+        "https://example.com"
+      )
+    ).toBe(false);
   });
 });
