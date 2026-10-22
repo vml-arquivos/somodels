@@ -38,18 +38,18 @@ O painel acessado foi `https://coolifycar.casadf.com.br/`, no caminho fornecido 
 - Aplicação: `somodels-app`.
 - Estado mostrado: `Running`.
 - Source: Public GitHub, repositório `vml-arquivos/somodels`, branch `main`, commit configurado como `HEAD`.
-- Domínio configurado: somente `https://eromodels.com.br`, DNS marcado como correspondente, porta 3000 e redirecionamento HTTP → HTTPS habilitado.
-- Não foram observados `conta.eromodels.com.br` nem `admin.eromodels.com.br`; não criar esses hosts sem decisão de DNS/TLS/SSO e plano de retorno.
+- Fotografia inicial (21/10): somente `https://eromodels.com.br` estava configurado, com DNS correspondente, porta 3000 e redirecionamento HTTP → HTTPS habilitado.
+- Na fotografia inicial, `conta.eromodels.com.br` e `admin.eromodels.com.br` ainda não estavam observáveis no Coolify; a decisão posterior de DNS/TLS/host foi registrada no ADR-0002.
 - Healthcheck: HTTP GET para `localhost:3000/healthz`, esperado 200, intervalo 5 s, timeout 5 s, 10 tentativas, start period 5 s.
-- A tela de source/healthcheck mostrou “changes that haven't been saved yet”. A sessão não clicou em `Reset` nem em `Save changes`, preservando o estado pendente de terceiros.
-- A tela de variáveis mostrou 60 entradas e nenhum valor foi copiado para logs, relatório ou chat. Não foi feita alteração de variável, segredo, domínio, source, healthcheck ou deploy.
+- A tela inicial de source/healthcheck mostrou “changes that haven't been saved yet”; a fotografia inicial não clicou em `Reset` nem em `Save changes`.
+- A tela inicial de variáveis mostrou 60 entradas e nenhum valor foi copiado para logs, relatório ou chat; a atualização posterior não alterou variáveis ou segredos.
 - O painel informou que não há tokens de secret manager cadastrados e que não há canais de notificação habilitados. Isso é risco operacional para lançamento, não motivo para criar integração unilateralmente.
 
 ### Atualização operacional observada em 22/10/2026
 
-- `conta.eromodels.com.br` e `admin.eromodels.com.br` resolvem publicamente via DNS/Cloudflare, mas retornaram `503` em HTTPS porque ainda não estavam associados a nenhum domínio da aplicação no Coolify.
-- O código da branch de host routing redireciona a landing `/` desses hosts para `/conta` e `/admin` e devolve `Disallow: /` em `robots.txt`; a associação no Coolify só deve ocorrer após os gates dessa branch.
-- O deploy `aadp2chj3xf1vt0huwemyb7o` terminou `Success` no commit `2a9a43e2ee9cfe837a77afdfa141bb249c3a4f98`; `/healthz` retornou 200 com `database: true` e `/api/release` retornou o mesmo SHA.
+- `conta.eromodels.com.br` e `admin.eromodels.com.br` resolvem via DNS/Cloudflare e estão associados no Coolify; a aplicação mostra exatamente os três domínios (`eromodels.com.br`, `conta.eromodels.com.br`, `admin.eromodels.com.br`), todos com `DNS matches` e HTTP → HTTPS habilitado.
+- O deploy `nd415rf8z5i6irutfozsdvjc` terminou `Success` no commit `176f80576bcff79ad576ddf7dec1330b03db1e38`; `/healthz` retornou 200 com `database: true` e `/api/release` retornou o mesmo SHA.
+- Smoke final: `/` redireciona para `/conta` no host de conta e para `/admin` no host administrativo; ambas as rotas retornam 200, `robots.txt` retorna `Disallow: /` e `sitemap.xml` é vazio.
 
 Pelo nome do ambiente (`production`), domínio público e aplicação ativa, este alvo deve ser tratado como **produção**. Portanto, qualquer deploy, migration, mudança de flag, domínio ou source permanece sujeito a gate final explícito.
 
@@ -83,7 +83,7 @@ Avisos que continuam pendentes de confirmação no CI/runtime:
 | Vitrine, busca, perfil público e institucionais | operacional quando gates/flags estão abertos; bloqueada por configuração no release observado    | validar dados reais publicados, age gate, SEO e mobile em homologação                       |
 | Login local, sessão e logout                    | parcial; rotas locais funcionam, retorno seguro foi ampliado nesta branch                        | E2E com contas de teste e reset real em ambiente isolado                                    |
 | Área de cliente                                 | inexistente no release; `/conta` e `/cliente` implementados nesta branch com recursos existentes | testar com dois clientes e flags de favoritos/bloqueios/denúncias habilitadas em QA         |
-| Área de titular                                 | CRUD, editor, upload, checklist, galeria ordenável e metadados revisáveis nesta branch             | testar E2E com mídia aprovada/pending e avaliar host de conta                                  |
+| Área de titular                                 | CRUD, editor, upload, checklist, galeria ordenável e metadados revisáveis nesta branch           | testar E2E com mídia aprovada/pending e avaliar host de conta                               |
 | Administração                                   | operations/moderação/financeiro manual existem                                                   | separar RBAC por função, MFA para privilégio alto e matriz aprovada                         |
 | Allowlist administrativa                        | backend tRPC reconhecia e-mail verificado, UI/HTTP tinham divergências                           | corrigido nesta branch para login, UI e preview/upload; testar com conta allowlisted        |
 | Reset de senha                                  | emissão usava token base64url, validação aceitava apenas hex de 64 caracteres                    | corrigido nesta branch e coberto pela suíte existente                                       |
