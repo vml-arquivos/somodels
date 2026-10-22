@@ -5,7 +5,8 @@
 - o servidor passou a redirecionar `/` de `conta.eromodels.com.br` para `/conta` e de `admin.eromodels.com.br` para `/admin`, mantendo RBAC backend e sem compartilhar cookie entre hosts;
 - `robots.txt` e `sitemap.xml` ficam fail-closed nos hosts privados para evitar indexação ou canonical incorreto;
 - DNS/Cloudflare dos dois hosts foi confirmado e os três domínios exatos foram associados no Coolify, com HTTP → HTTPS e `DNS matches`;
-- `pnpm check`, suíte completa (`84 testes`), build e testes de host routing passaram; o deploy `nd415rf8z5i6irutfozsdvjc` de `176f80576bcff79ad576ddf7dec1330b03db1e38` terminou `Success`, com `database: true` e `/api/release` alinhado ao SHA;
+- `pnpm check`, suíte completa (`84 testes`), build e testes de host routing passaram; o deploy `nd415rf8z5i6irutfozsdvjc` de `176f80576bcff79ad576ddf7dec1330b03db1e38` terminou `Success`, com `database: true`;
+- `/api/release` ainda reporta `2a9a43e2ee9cfe837a77afdfa141bb249c3a4f98` por causa do metadata `APP_RELEASE`; a tentativa de corrigir somente essa variável no editor Coolify respondeu 500 e não foi repetida, sem mudança parcial observada;
 - smoke final confirmou `/` → `/conta` e `/admin`, rotas 200, `robots.txt` privado e sitemap vazio;
 - nenhuma variável adicional, secret, migration, flag ou provider foi criado para esta fatia.
 
