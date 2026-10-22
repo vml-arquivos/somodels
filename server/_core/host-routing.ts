@@ -19,3 +19,21 @@ export function getPrivateHostLanding(host: string | undefined | null) {
 export function isPrivateHost(host: string | undefined | null) {
   return getPrivateHostLanding(host) !== null;
 }
+
+export function isAllowedApplicationOrigin(
+  origin: string | undefined,
+  canonicalOrigin: string | undefined
+) {
+  if (!origin || !canonicalOrigin) return true;
+  const normalizedCanonical = canonicalOrigin.replace(/\/+$/, "");
+  const allowed = new Set([normalizedCanonical]);
+  try {
+    if (new URL(normalizedCanonical).hostname === "eromodels.com.br") {
+      allowed.add(`https://${ACCOUNT_HOST}`);
+      allowed.add(`https://${ADMIN_HOST}`);
+    }
+  } catch {
+    return origin === normalizedCanonical;
+  }
+  return allowed.has(origin);
+}

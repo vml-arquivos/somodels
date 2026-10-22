@@ -20,7 +20,7 @@ import { bootstrapLocalAccounts } from "../auth";
 import { isPublicIndexingEnabled } from "../public-indexing";
 import { getServerSeo, renderSeoHead } from "../seo";
 import { createInMemoryRateLimiter, rateLimitMessage, sensitiveRateLimits } from "../rate-limit";
-import { getPrivateHostLanding, isPrivateHost } from "./host-routing";
+import { getPrivateHostLanding, isAllowedApplicationOrigin, isPrivateHost } from "./host-routing";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -32,8 +32,7 @@ function isPortAvailable(port: number): Promise<boolean> {
 
 function hasAllowedOrigin(req: express.Request) {
   const origin = req.headers.origin;
-  if (!origin || !ENV.allowedOrigin) return true;
-  return origin === ENV.allowedOrigin;
+  return isAllowedApplicationOrigin(origin, ENV.allowedOrigin);
 }
 
 function hasAdminAuthority(user: {
