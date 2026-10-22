@@ -10,7 +10,7 @@
 - [x] Implementar busca textual e filtros por cidade, categoria e atributos
 - [x] Implementar localização e URLs públicas por cidade
 - [x] Criar página individual pública de perfil com estados de privacidade e indisponibilidade
-- [ ] Implementar galeria ordenada de fotos com metadados no banco e arquivos no armazenamento seguro
+- [x] Implementar galeria ordenada de fotos com metadados no banco e arquivos no armazenamento seguro
 - [ ] Implementar área de vídeos com estados gratuito, premium, privado e indisponível
 - [x] Preparar estrutura de checkout e liberação de acesso para vídeos premium sem ativar cobrança real nesta etapa
 - [x] Criar revisão, aprovação, suspensão e destaque administrativo de perfis
@@ -32,7 +32,7 @@
 
 - [x] Implementar fluxo completo do titular: criar, editar perfil existente, enviar para revisão explicitamente e refletir estados no painel
 - [x] Criar rotas e páginas públicas por cidade com URLs dedicadas e navegação própria
-- [ ] Adicionar ordenação funcional da galeria e edição de metadados de mídia
+- [x] Adicionar ordenação funcional da galeria e edição de metadados de mídia
 - [ ] Completar a experiência de vídeos com player e estados distintos de gratuito, premium, privado e indisponível
 - [ ] Adicionar gestão administrativa de catálogos de cidades, categorias e atributos
 - [ ] Criar testes Vitest para permissões, validações, filtros, publicação/moderação e mídia
@@ -49,7 +49,7 @@
 - [ ] Auditar o pacote atual contra critérios de deploy real e corrigir inconsistências de rastreamento
 - [ ] Completar proteção de mídia premium e fluxo técnico de acesso
 - [ ] Completar catálogo administrativo de cidades, categorias e atributos
-- [ ] Completar ordenação e edição de metadados de galeria
+- [x] Completar ordenação e edição de metadados de galeria
 - [ ] Implementar SSR ou estratégia equivalente para SEO público indexável
 - [ ] Ampliar testes de permissões, moderação, filtros, mídia e upload
 - [x] Revisar variáveis de ambiente, scripts, health check e instruções de produção

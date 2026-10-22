@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-21 — preflight e conta do cliente
+
+- registrada a fotografia da Etapa A em `docs/PREFLIGHT-2026-10-21.md`, incluindo a divergência entre `main` (`95a7ab1`) e o release público (`a8e5a8e`), o alvo Coolify de produção e os gates ainda pendentes;
+- criada matriz de papéis e permissões em `docs/ROLE-PERMISSION-MATRIX-2026-10-21.md` e ADR de separação de vitrine, conta e administração em `docs/ADR-0002-account-and-host-separation.md`;
+- adicionadas as rotas privadas `/conta` e `/cliente`, com dados básicos da conta, favoritos, bloqueios, acompanhamento das próprias denúncias e mensagem honesta de que checkout/premium continuam indisponíveis;
+- alinhada a autoridade administrativa efetiva entre allowlist `ADMIN_EMAILS`, login, console, upload e preview HTTP, sem promover o papel persistido nem remover a separação de funções;
+- corrigido o reset de senha para aceitar o token base64url realmente emitido pela aplicação, com a suíte existente atualizada para reproduzir o formato real;
+- adicionados endpoints autenticados para editar título/descrição de mídia e reordenar a galeria por ownership; alterações de metadados em mídia aprovada retornam o item para revisão;
+- o perfil público agora representa conteúdo premium aprovado sem expor URL ou simular checkout, enquanto fotos/vídeos gratuitos continuam com player/galeria normais;
+- o cabeçalho público e a área do titular passaram a oferecer acesso claro à conta, exploração e logout;
+- a alteração não cria migration, não ativa flags, não configura DNS/host, não altera secrets e não executa deploy.
+
 ## Próxima versão — reconciliação de produção
 
 A administração de perfis passou a ter ciclo de vida explícito e auditado: busca por nome/slug/cidade, filtros de ativo/inativo/excluído, edição de qualquer perfil não excluído, ativação, inativação, restauração e exclusão lógica com confirmação pelo slug. Perfis inativos ou excluídos não aparecem na publicação, não aceitam novos uploads e não podem ser aprovados sem passar novamente pelos gates. A tela de novo perfil foi reescrita com copy profissional da Ero Models, formulário vazio por padrão, placeholders orientativos, localização aproximada e descrição editorial focada em experiência, especialidades e projetos.

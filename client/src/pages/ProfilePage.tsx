@@ -59,6 +59,7 @@ export default function ProfilePage() {
     { enabled: adultAccess.ready }
   );
   const config = trpc.system.config.useQuery();
+  const settings = trpc.management.settings.useQuery();
   const data = result.data;
   const profileId = data?.profile.id ?? 0;
   const flags = config.data?.featureFlags;
@@ -262,7 +263,10 @@ export default function ProfilePage() {
                     </p>
                   )}
 
-                {user && flags?.secureContactEnabled && !blockStatus.data?.blocked && (
+                {user &&
+                  flags?.secureContactEnabled &&
+                  settings.data?.showContact === true &&
+                  !blockStatus.data?.blocked && (
                   <section className="studio-contact-panel" aria-label="Contato do anúncio">
                     <p className="studio-kicker">Contato direto</p>
                     <h2>Fale com este anúncio</h2>
@@ -398,18 +402,26 @@ export default function ProfilePage() {
               </div>
               <div className="studio-gallery studio-ad-gallery">
                 {data.media
-                  .filter(media => !media.isPremium && media.url)
+                  .filter(media => media.isPremium || media.url)
                   .map(media => (
                     <figure key={media.id}>
-                      {media.kind === "photo" ? (
+                      {media.isPremium ? (
+                        <div className="studio-panel" role="status">
+                          <p className="studio-kicker">Conteúdo reservado</p>
+                          <strong>Este conteúdo premium não está disponível</strong>
+                          <p className="studio-muted">
+                            A plataforma ainda não oferece checkout ou liberação paga.
+                          </p>
+                        </div>
+                      ) : media.kind === "photo" ? (
                         <img
-                          src={media.url}
+                          src={media.url!}
                           alt={media.title || `Foto de ${data.profile.stageName}`}
                           loading="lazy"
                         />
                       ) : (
                         <video
-                          src={media.url}
+                          src={media.url!}
                           controls
                           preload="metadata"
                           aria-label={media.title || `Vídeo de ${data.profile.stageName}`}
@@ -419,7 +431,7 @@ export default function ProfilePage() {
                     </figure>
                   ))}
               </div>
-              {!data.media.filter(media => !media.isPremium && media.url).length && (
+              {!data.media.filter(media => media.isPremium || media.url).length && (
                 <div className="studio-panel">
                   <p>Este anúncio ainda não possui mídia pública aprovada.</p>
                 </div>

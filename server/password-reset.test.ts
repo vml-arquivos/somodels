@@ -14,7 +14,7 @@ vi.mock("./db", () => ({
   createLocalUser: vi.fn(),
 }));
 vi.mock("./auth-crypto", () => ({
-  createOpaqueToken: () => "a".repeat(64),
+  createOpaqueToken: () => "a".repeat(43),
   hashToken: () => "token-hash",
   hashPassword: (p: string) => state.hash(p),
 }));
@@ -53,11 +53,13 @@ beforeEach(() => {
   };
 });
 describe("one-use password reset", () => {
+  const issuedToken = "a".repeat(43);
+
   it("rejects an unknown token without hashing or writing", async () => {
     state.rows = [[]];
     await expect(
       caller().resetPassword({
-        token: "a".repeat(64),
+        token: issuedToken,
         password: "NewPasswordValid2026",
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -68,7 +70,7 @@ describe("one-use password reset", () => {
     state.rows = [[{ userId: 2 }], [{ id: 2, accountStatus: "active" }], []];
     await expect(
       caller().resetPassword({
-        token: "a".repeat(64),
+        token: issuedToken,
         password: "NewPasswordValid2026",
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -82,7 +84,7 @@ describe("one-use password reset", () => {
     ];
     await expect(
       caller().resetPassword({
-        token: "a".repeat(64),
+        token: issuedToken,
         password: "NewPasswordValid2026",
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
@@ -96,7 +98,7 @@ describe("one-use password reset", () => {
     ];
     await expect(
       caller().resetPassword({
-        token: "a".repeat(64),
+        token: issuedToken,
         password: "NewPasswordValid2026",
       })
     ).resolves.toEqual({ success: true });

@@ -57,6 +57,9 @@ import {
   unblockProfile,
   getBlockStatus,
   listBlockedProfiles,
+  listUserReports,
+  reorderOwnedMedia,
+  updateOwnedMediaMetadata,
   createProfileReport,
   listAdminReports,
   updateAdminReport,
@@ -101,11 +104,21 @@ function assertLoginRateLimit(req: {
 }
 
 function publicUser(user: User) {
+  const configuredAdmin =
+    Boolean(user.email && user.emailVerifiedAt) &&
+    ENV.adminEmails.includes(user.email!.toLowerCase());
+  const adminRole = ["dev", "super_admin", "admin"].includes(user.role)
+    ? user.role
+    : configuredAdmin
+      ? "admin"
+      : null;
   return {
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
+    isAdmin: Boolean(adminRole),
+    adminRole,
     loginMethod: user.loginMethod,
     emailVerifiedAt: user.emailVerifiedAt,
     mustChangePassword: user.mustChangePassword,
@@ -364,6 +377,30 @@ export const appRouter = router({
       .mutation(({ ctx, input }) =>
         updateOwnedMedia(ctx.user.id, input.id, "hide")
       ),
+    updateMediaMetadata: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          title: z.string().trim().max(160),
+          description: z.string().trim().max(2000),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        updateOwnedMediaMetadata(ctx.user.id, input.id, {
+          title: input.title || null,
+          description: input.description || null,
+        })
+      ),
+    reorderMedia: protectedProcedure
+      .input(
+        z.object({
+          profileId: z.number().int().positive(),
+          mediaIds: z.array(z.number().int().positive()).min(1).max(100),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        reorderOwnedMedia(ctx.user.id, input.profileId, input.mediaIds)
+      ),
     list: publicProcedure
       .input(
         z
@@ -493,6 +530,7 @@ export const appRouter = router({
       .input(z.object({ profileId: z.number().int().positive() }))
       .mutation(({ ctx, input }) => unblockProfile(ctx.user.id, input.profileId)),
     blocks: protectedProcedure.query(({ ctx }) => listBlockedProfiles(ctx.user.id)),
+    myReports: protectedProcedure.query(({ ctx }) => listUserReports(ctx.user.id)),
     reportProfile: protectedProcedure
       .input(reportProfileInputSchema)
       .mutation(({ ctx, input }) => {

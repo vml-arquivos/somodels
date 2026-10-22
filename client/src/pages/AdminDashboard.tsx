@@ -57,7 +57,7 @@ export default function AdminDashboard() {
     [confirmed, setConfirmed] = useState(false);
   const allowed =
     !!user &&
-    ["admin", "super_admin", "dev"].includes(user.role) &&
+    user.isAdmin &&
     !user.mustChangePassword;
   const overview = trpc.management.overview.useQuery(undefined, {
     enabled: allowed && tab === "overview",

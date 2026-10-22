@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function StudioHeader({
   children,
@@ -9,6 +10,7 @@ export default function StudioHeader({
   minimal?: boolean;
 }) {
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
   return (
     <header className="studio-header">
       <Link href="/" className="studio-brand" aria-label="Ero Models — início">
@@ -26,7 +28,14 @@ export default function StudioHeader({
             <Link href="/#anuncios">Visualizar todos</Link>
             <Link href="/#busca">Buscar</Link>
             <Link href="/#categorias">Categorias</Link>
-            <Link href="/login" className="studio-header-login">Entrar</Link>
+            {user ? (
+              <>
+                <Link href="/conta">Minha conta</Link>
+                <Link href="/titular">Área do titular</Link>
+              </>
+            ) : (
+              <Link href="/login" className="studio-header-login">Entrar</Link>
+            )}
           </nav>
         )}
         {children ? <div className="studio-header-extra">{children}</div> : null}
