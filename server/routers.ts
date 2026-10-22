@@ -58,6 +58,8 @@ import {
   getBlockStatus,
   listBlockedProfiles,
   listUserReports,
+  reorderOwnedMedia,
+  updateOwnedMediaMetadata,
   createProfileReport,
   listAdminReports,
   updateAdminReport,
@@ -374,6 +376,30 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ ctx, input }) =>
         updateOwnedMedia(ctx.user.id, input.id, "hide")
+      ),
+    updateMediaMetadata: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          title: z.string().trim().max(160),
+          description: z.string().trim().max(2000),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        updateOwnedMediaMetadata(ctx.user.id, input.id, {
+          title: input.title || null,
+          description: input.description || null,
+        })
+      ),
+    reorderMedia: protectedProcedure
+      .input(
+        z.object({
+          profileId: z.number().int().positive(),
+          mediaIds: z.array(z.number().int().positive()).min(1).max(100),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        reorderOwnedMedia(ctx.user.id, input.profileId, input.mediaIds)
       ),
     list: publicProcedure
       .input(

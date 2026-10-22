@@ -7,6 +7,9 @@
 - adicionadas as rotas privadas `/conta` e `/cliente`, com dados básicos da conta, favoritos, bloqueios, acompanhamento das próprias denúncias e mensagem honesta de que checkout/premium continuam indisponíveis;
 - alinhada a autoridade administrativa efetiva entre allowlist `ADMIN_EMAILS`, login, console, upload e preview HTTP, sem promover o papel persistido nem remover a separação de funções;
 - corrigido o reset de senha para aceitar o token base64url realmente emitido pela aplicação, com a suíte existente atualizada para reproduzir o formato real;
+- adicionados endpoints autenticados para editar título/descrição de mídia e reordenar a galeria por ownership; alterações de metadados em mídia aprovada retornam o item para revisão;
+- o perfil público agora representa conteúdo premium aprovado sem expor URL ou simular checkout, enquanto fotos/vídeos gratuitos continuam com player/galeria normais;
+- o cabeçalho público e a área do titular passaram a oferecer acesso claro à conta, exploração e logout;
 - a alteração não cria migration, não ativa flags, não configura DNS/host, não altera secrets e não executa deploy.
 
 ## Próxima versão — reconciliação de produção

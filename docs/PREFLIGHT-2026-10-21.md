@@ -77,11 +77,11 @@ Avisos que continuam pendentes de confirmação no CI/runtime:
 | Vitrine, busca, perfil público e institucionais | operacional quando gates/flags estão abertos; bloqueada por configuração no release observado    | validar dados reais publicados, age gate, SEO e mobile em homologação                       |
 | Login local, sessão e logout                    | parcial; rotas locais funcionam, retorno seguro foi ampliado nesta branch                        | E2E com contas de teste e reset real em ambiente isolado                                    |
 | Área de cliente                                 | inexistente no release; `/conta` e `/cliente` implementados nesta branch com recursos existentes | testar com dois clientes e flags de favoritos/bloqueios/denúncias habilitadas em QA         |
-| Área de titular                                 | CRUD, editor, upload e checklist existentes; layout ainda usa contexto público                   | completar galeria ordenada/metadados e avaliar host de conta                                |
+| Área de titular                                 | CRUD, editor, upload, checklist, galeria ordenável e metadados revisáveis nesta branch             | testar E2E com mídia aprovada/pending e avaliar host de conta                                  |
 | Administração                                   | operations/moderação/financeiro manual existem                                                   | separar RBAC por função, MFA para privilégio alto e matriz aprovada                         |
 | Allowlist administrativa                        | backend tRPC reconhecia e-mail verificado, UI/HTTP tinham divergências                           | corrigido nesta branch para login, UI e preview/upload; testar com conta allowlisted        |
 | Reset de senha                                  | emissão usava token base64url, validação aceitava apenas hex de 64 caracteres                    | corrigido nesta branch e coberto pela suíte existente                                       |
-| Premium/pagamentos                              | estrutura sem fluxo e explicitamente rejeitada                                                   | provider adulto aprovado, sandbox, webhook/reconciliação/entitlement antes de qualquer flag |
+| Premium/pagamentos                              | estrutura sem fluxo; perfil mostra estado reservado sem URL/checkout                             | provider adulto aprovado, sandbox, webhook/reconciliação/entitlement antes de qualquer flag |
 | Age/KYC externo                                 | estruturas sem callback de aprovação                                                             | decisão de fornecedor, contrato, retenção, callback assinado e homologação                  |
 | Hosts `conta`/`admin`                           | não configurados no Coolify/DNS                                                                  | decisão de host, TLS, CORS/CSRF e SSO isolado; não alterar produção agora                   |
 | Backup/restore e banco                          | não comprovados nesta sessão                                                                     | backup consistente e restore em ambiente separado antes de migration/deploy                 |
@@ -96,6 +96,8 @@ Esta branch implementa somente mudanças reversíveis e sem migration:
 - login de usuário comum para `/conta`, com `returnTo` restrito a rotas locais permitidas;
 - correção do formato de token de reset para o token realmente emitido;
 - autoridade administrativa efetiva compartilhada entre allowlist, tRPC, UI e upload/preview HTTP;
+- galeria do titular com ordenação persistente, título/descrição e retorno a revisão quando metadado de mídia aprovada muda;
+- perfil público com estados gratuitos e premium sem expor URL protegida ou criar checkout fictício;
 - perfil só exibe contato quando `showContact` está explicitamente ativo;
 - matriz, ADR e inventário operacional em documentação versionada.
 

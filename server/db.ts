@@ -1785,3 +1785,91 @@ export async function updateOwnedMedia(
   });
   return { success: true };
 }
+
+export async function updateOwnedMediaMetadata(
+  ownerId: number,
+  mediaId: number,
+  input: { title: string | null; description: string | null },
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco indisponível");
+  await db.transaction(async tx => {
+    const [media] = await tx
+      .select()
+      .from(profileMedia)
+      .where(eq(profileMedia.id, mediaId))
+      .for("update");
+    if (!media) throw new Error("Arquivo indisponível");
+    const [profile] = await tx
+      .select({ id: profiles.id })
+      .from(profiles)
+      .where(and(eq(profiles.id, media.profileId), eq(profiles.ownerId, ownerId)))
+      .for("update");
+    if (!profile) throw new Error("Arquivo não pertence à conta");
+    const metadataChanged =
+      media.title !== input.title || media.description !== input.description;
+    await tx
+      .update(profileMedia)
+      .set({
+        title: input.title,
+        description: input.description,
+        ...(metadataChanged && media.status === "approved"
+          ? { status: "pending" as const }
+          : {}),
+      })
+      .where(eq(profileMedia.id, mediaId));
+    await tx.insert(auditLogs).values({
+      actorUserId: ownerId,
+      action: "media.metadata_updated",
+      entityType: "media",
+      entityId: mediaId,
+      metadata: JSON.stringify({ reviewRequired: metadataChanged && media.status === "approved" }),
+    });
+  });
+  return { success: true };
+}
+
+export async function reorderOwnedMedia(
+  ownerId: number,
+  profileId: number,
+  mediaIds: number[],
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco indisponível");
+  if (new Set(mediaIds).size !== mediaIds.length)
+    throw new Error("A galeria não pode conter arquivos repetidos");
+  await db.transaction(async tx => {
+    const [profile] = await tx
+      .select({ id: profiles.id })
+      .from(profiles)
+      .where(and(eq(profiles.id, profileId), eq(profiles.ownerId, ownerId)))
+      .for("update");
+    if (!profile) throw new Error("Perfil não pertence à conta");
+    const rows = await tx
+      .select({ id: profileMedia.id })
+      .from(profileMedia)
+      .where(eq(profileMedia.profileId, profileId))
+      .for("update");
+    const knownIds = new Set(rows.map(row => row.id));
+    if (
+      mediaIds.length !== rows.length ||
+      mediaIds.some(mediaId => !knownIds.has(mediaId))
+    )
+      throw new Error("A ordenação precisa incluir todos os arquivos do anúncio");
+    for (let sortOrder = 0; sortOrder < mediaIds.length; sortOrder++) {
+      const mediaId = mediaIds[sortOrder];
+      await tx
+        .update(profileMedia)
+        .set({ sortOrder })
+        .where(and(eq(profileMedia.id, mediaId), eq(profileMedia.profileId, profileId)));
+    }
+    await tx.insert(auditLogs).values({
+      actorUserId: ownerId,
+      action: "media.reordered",
+      entityType: "profile",
+      entityId: profileId,
+      metadata: JSON.stringify({ mediaIds }),
+    });
+  });
+  return { success: true };
+}

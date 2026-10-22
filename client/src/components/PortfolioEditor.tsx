@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import {
   portfolioCategories,
@@ -51,12 +51,17 @@ export default function PortfolioEditor({
     rightsConfirmed: false,
     responsibilityConfirmed: false,
   });
+  const [mediaEdits, setMediaEdits] = useState<
+    Record<number, { title: string; description: string }>
+  >({});
   const save = trpc.profiles.save.useMutation();
   const adminSave = trpc.management.saveProfile.useMutation();
   const add = trpc.media.add.useMutation();
   const adminAdd = trpc.admin.addMedia.useMutation();
   const cover = trpc.profiles.cover.useMutation();
   const hide = trpc.profiles.hideMedia.useMutation();
+  const updateMediaMetadata = trpc.profiles.updateMediaMetadata.useMutation();
+  const reorderMedia = trpc.profiles.reorderMedia.useMutation();
   const ownerTerms = trpc.profiles.termsStatus.useQuery(
     { id: initial?.id || 0 },
     { enabled: Boolean(initial?.id) && !admin }
@@ -65,6 +70,53 @@ export default function PortfolioEditor({
   const update = (key: string, value: any) =>
     setForm(f => ({ ...f, [key]: value }));
   const links = contactLinks(form.phone, form.whatsapp);
+  useEffect(() => {
+    setMediaEdits(
+      Object.fromEntries(
+        media.map(item => [
+          item.id,
+          { title: item.title || "", description: item.description || "" },
+        ])
+      )
+    );
+  }, [media]);
+  async function saveMediaMetadata(item: any) {
+    const draft = mediaEdits[item.id] || { title: "", description: "" };
+    setBusy(true);
+    try {
+      await updateMediaMetadata.mutateAsync({ id: item.id, ...draft });
+      toast.success(
+        item.status === "approved"
+          ? "Metadados salvos e enviados para nova revisão"
+          : "Metadados salvos"
+      );
+      onSaved(initial.id);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function moveMedia(index: number, direction: -1 | 1) {
+    if (!initial?.id) return;
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= media.length) return;
+    const ordered = media.map(item => item.id);
+    [ordered[index], ordered[nextIndex]] = [ordered[nextIndex], ordered[index]];
+    setBusy(true);
+    try {
+      await reorderMedia.mutateAsync({
+        profileId: initial.id,
+        mediaIds: ordered,
+      });
+      toast.success("Ordem da galeria salva");
+      onSaved(initial.id);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function submit(review: boolean) {
     if (!consent) {
       toast.error(
@@ -396,12 +448,17 @@ export default function PortfolioEditor({
               privados até a revisão. {admin ? "O titular ainda precisa revisar o material e aceitar o termo." : ""}
             </p>
             <div className="studio-media">
-              {media.map(m => (
+              {media.map((m, index) => {
+                const draft = mediaEdits[m.id] || {
+                  title: m.title || "",
+                  description: m.description || "",
+                };
+                return (
                 <article key={m.id}>
                   {m.kind === "photo" ? (
                     <img
                       src={`/api/media-preview/${m.id}`}
-                        alt={m.title || "Foto do anúncio"}
+                      alt={draft.title || "Foto do anúncio"}
                     />
                   ) : (
                     <video
@@ -413,6 +470,61 @@ export default function PortfolioEditor({
                   <p>
                     {m.status} · {m.kind === "photo" ? "Foto" : "Vídeo"}
                   </p>
+                  {!admin && (
+                    <div className="studio-fields">
+                      <label>
+                        Título da mídia
+                        <input
+                          maxLength={160}
+                          value={draft.title}
+                          onChange={e =>
+                            setMediaEdits(current => ({
+                              ...current,
+                              [m.id]: { ...draft, title: e.target.value },
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        Descrição da mídia
+                        <textarea
+                          rows={3}
+                          maxLength={2000}
+                          value={draft.description}
+                          onChange={e =>
+                            setMediaEdits(current => ({
+                              ...current,
+                              [m.id]: { ...draft, description: e.target.value },
+                            }))
+                          }
+                        />
+                      </label>
+                      <div className="studio-actions">
+                        <button
+                          disabled={busy || updateMediaMetadata.isPending}
+                          onClick={() => void saveMediaMetadata(m)}
+                        >
+                          Salvar metadados
+                        </button>
+                        <button
+                          disabled={busy || reorderMedia.isPending || index === 0}
+                          onClick={() => void moveMedia(index, -1)}
+                        >
+                          Subir
+                        </button>
+                        <button
+                          disabled={
+                            busy ||
+                            reorderMedia.isPending ||
+                            index === media.length - 1
+                          }
+                          onClick={() => void moveMedia(index, 1)}
+                        >
+                          Descer
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {!admin && (
                     <div className="studio-actions">
                       {m.kind === "photo" && (
@@ -447,7 +559,8 @@ export default function PortfolioEditor({
                     </div>
                   )}
                 </article>
-              ))}
+                );
+              })}
             </div>
           </>
         )}

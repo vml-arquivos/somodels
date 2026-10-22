@@ -7,7 +7,7 @@ import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
 import { portfolioPublicationLabel } from "@shared/portfolio";
 export default function OwnerDashboard() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [id, setId] = useState<number | null>(null);
   const [version, setVersion] = useState(0);
   const mine = trpc.profiles.mine.useQuery(undefined, {
@@ -30,7 +30,13 @@ export default function OwnerDashboard() {
   return (
     <div className="studio">
       <Seo title="Meus anúncios — Ero Models" description="Área privada do titular dos anúncios." noindex />
-      <StudioHeader />
+      <StudioHeader minimal>
+        <nav aria-label="Navegação do titular" className="studio-header-account-nav">
+          <Link href="/conta">Minha conta</Link>
+          <Link href="/">Explorar anúncios</Link>
+          {user && <button onClick={() => void logout()}>Sair</button>}
+        </nav>
+      </StudioHeader>
       <main className="studio-main">
         <p className="studio-kicker">Área do titular</p>
         <h1>Seu anúncio, sob seu controle.</h1>
