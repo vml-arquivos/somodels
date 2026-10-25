@@ -1,5 +1,20 @@
 # Reformulação da home Ero Models — landing page de marketplace
 
+## Etapa 2 — refinamento visual e editor completo de conteúdo
+
+**Status:** concluída no checkout local; typecheck, 102 testes, build, diff e inspeções desktop/mobile aprovados. A publicação em produção permanece separada deste checkpoint até uma confirmação explícita de merge/deploy.
+
+O screenshot reenviado é tratado como referência de ritmo, escala e composição, não como fonte para copiar marca, textos, imagens ou elementos proprietários. A etapa 2 deve corrigir hierarquia tipográfica, espaçamento, largura de leitura, contraste e comportamento em desktop, mobile e PWA. Toda copy editorial visível da home — navegação contextual, hero, links rápidos, confiança, CTA de titular, catálogo, estados vazios, busca guiada, categorias, sobre e rodapé — passa a vir de um objeto de settings versionado, editável pela aba “Página inicial” do painel admin. Rotas e valores funcionais continuam protegidos: o admin edita rótulos e mensagens, mas não pode apontar links para hosts externos nem alterar gates de publicação.
+
+### Decisões de implementação da etapa 2
+
+- ampliar `shared/portfolio.ts` com um schema de conteúdo editorial completo e defaults seguros;
+- normalizar settings legados no carregamento, fazendo merge profundo com defaults para não exigir migration nem quebrar JSON já salvo;
+- atualizar `Home.tsx`, `StudioHeader` e `PublicFooter` para consumir o conteúdo público configurável, mantendo labels de erro, loading e segurança mínimos e estáveis;
+- reorganizar o editor admin em blocos por seção, com campos curtos, textareas para descrições e preview da home, sem permitir HTML arbitrário;
+- revisar `studio.css` com tokens de tipografia, larguras fluidas, `clamp()`, breakpoints mobile/PWA, foco visível, safe-area e prevenção de overflow horizontal;
+- validar a composição em viewport desktop e mobile pelo preview, além de typecheck, testes, build e smoke das rotas existentes antes de qualquer publicação.
+
 ## Objetivo
 
 Transformar a home em uma landing page editorial de marketplace adulto: hero visual forte, busca acionável, prova de segurança, descoberta por categorias/localidades, cadastro contextual de titulares e rodapé institucional. A referência enviada orienta ritmo, composição e hierarquia, mas não serão copiados marca, textos, imagens, métricas ou componentes de terceiros.

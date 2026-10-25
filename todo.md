@@ -8,6 +8,9 @@
 - [x] Criar fluxo de criação, edição, envio para revisão e publicação de perfil pelo titular
 - [x] Criar vitrine pública responsiva sem anúncios fictícios exibidos como reais
 - [x] Reformular a home como landing page editorial de marketplace, com hero, busca imediata, segurança, cadastro contextual, categorias/localidades e rodapé institucional
+- [x] Refinar tipografia, espaçamento, hierarquia e harmonização visual da home para desktop, mobile e PWA, sem overflow horizontal e com foco/acessibilidade preservados
+- [x] Tornar configuráveis no painel admin todos os textos editoriais visíveis da home: navegação contextual, hero, busca, links rápidos, segurança, CTA de titular, catálogo, estados vazios, busca guiada, categorias, sobre e rodapé
+- [x] Preservar links funcionais, age gate, SEO, filtros, RBAC, tRPC e dados reais enquanto a copy é editada pelo admin sem HTML arbitrário ou hosts externos
 - [x] Implementar busca textual e filtros por cidade, categoria e atributos
 - [x] Implementar localização e URLs públicas por cidade
 - [x] Criar página individual pública de perfil com estados de privacidade e indisponibilidade
@@ -26,7 +29,7 @@
 - [ ] Avaliar necessidade de SSR para conteúdo público indexável
 - [ ] Criar testes Vitest para permissões, validações, filtros, publicação e mídia
 - [x] Executar check, build, testes e verificação visual responsiva
-- [ ] Validar a nova landing page em desktop e mobile, preservando age gate, SEO, PWA, filtros e rotas privadas
+- [x] Validar a nova landing page em desktop, mobile e PWA, preservando age gate, SEO, filtros e rotas privadas
 - [x] Documentar análise do repositório, arquitetura, arquivos alterados, migrations, configuração e testes
 - [x] Criar ZIP final atualizado do projeto
 

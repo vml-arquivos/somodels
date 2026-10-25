@@ -88,6 +88,124 @@ export function profileOperationalLabel(profile: {
   return profile.isActive === false ? "Inativo" : "Ativo";
 }
 
+const homeCopySchema = z.object({
+  nav: z.object({
+    explore: z.string().trim().min(2).max(40),
+    search: z.string().trim().min(2).max(40),
+    categories: z.string().trim().min(2).max(40),
+    login: z.string().trim().min(2).max(40),
+    theme: z.string().trim().min(2).max(40),
+    themeLight: z.string().trim().min(2).max(40),
+    themeDark: z.string().trim().min(2).max(40),
+    install: z.string().trim().min(2).max(40),
+    account: z.string().trim().min(2).max(40),
+    owner: z.string().trim().min(2).max(40),
+    createProfile: z.string().trim().min(2).max(50),
+  }),
+  hero: z.object({
+    eyebrow: z.string().trim().min(2).max(80),
+    title: z.string().trim().min(3).max(140),
+    subtitle: z.string().trim().min(3).max(400),
+    searchLabel: z.string().trim().min(2).max(80),
+    searchPlaceholder: z.string().trim().min(2).max(80),
+    locationLabel: z.string().trim().min(2).max(80),
+    locationPlaceholder: z.string().trim().min(2).max(80),
+    buttonText: z.string().trim().min(2).max(60),
+    notes: z.array(z.string().trim().min(2).max(80)).length(3),
+    visualTitle: z.string().trim().min(3).max(160),
+    visualSubtitle: z.string().trim().min(3).max(140),
+    imageAlt: z.string().trim().min(3).max(180),
+  }),
+  quickLinks: z.object({
+    kicker: z.string().trim().min(2).max(80),
+    title: z.string().trim().min(3).max(120),
+    items: z
+      .array(z.object({ label: z.string().trim().min(2).max(60) }))
+      .length(4),
+  }),
+  trust: z.object({
+    kicker: z.string().trim().min(2).max(80),
+    title: z.string().trim().min(3).max(140),
+    text: z.string().trim().min(3).max(260),
+    points: z
+      .array(
+        z.object({
+          marker: z.string().trim().min(1).max(12),
+          title: z.string().trim().min(2).max(80),
+          text: z.string().trim().min(3).max(180),
+        })
+      )
+      .length(4),
+  }),
+  holder: z.object({
+    kicker: z.string().trim().min(2).max(80),
+    title: z.string().trim().min(3).max(140),
+    text: z.string().trim().min(3).max(300),
+    buttonText: z.string().trim().min(2).max(60),
+    benefits: z.array(z.string().trim().min(2).max(60)).length(4),
+  }),
+  featured: z.object({
+    kicker: z.string().trim().min(2).max(80),
+    title: z.string().trim().min(3).max(140),
+    text: z.string().trim().min(3).max(260),
+  }),
+  catalog: z.object({
+    kicker: z.string().trim().min(2).max(80),
+    title: z.string().trim().min(3).max(140),
+    status: z.string().trim().min(2).max(100),
+    loadingText: z.string().trim().min(2).max(100),
+    listErrorText: z.string().trim().min(3).max(180),
+    resultsEmptyTitle: z.string().trim().min(3).max(140),
+    resultsEmptyText: z.string().trim().min(3).max(300),
+    resultsEmptyButton: z.string().trim().min(2).max(60),
+    launchKicker: z.string().trim().min(2).max(80),
+    launchTitle: z.string().trim().min(3).max(140),
+    launchText: z.string().trim().min(3).max(300),
+    launchButton: z.string().trim().min(2).max(60),
+    errorText: z.string().trim().min(3).max(180),
+  }),
+  searchBand: z.object({
+    kicker: z.string().trim().min(2).max(80),
+    title: z.string().trim().min(3).max(120),
+    text: z.string().trim().min(3).max(260),
+    buttonText: z.string().trim().min(2).max(60),
+    artLabel: z.string().trim().min(2).max(60),
+    artFallback: z.string().trim().min(2).max(80),
+    artCaption: z.string().trim().min(2).max(120),
+  }),
+  categories: z.object({
+    kicker: z.string().trim().min(2).max(80),
+    title: z.string().trim().min(3).max(140),
+    text: z.string().trim().min(3).max(260),
+    emptyTitle: z.string().trim().min(3).max(140),
+    emptyText: z.string().trim().min(3).max(300),
+    emptyButton: z.string().trim().min(2).max(60),
+    locationsKicker: z.string().trim().min(2).max(80),
+  }),
+  about: z.object({
+    kicker: z.string().trim().min(2).max(80),
+    title: z.string().trim().min(3).max(160),
+    text: z.string().trim().min(3).max(1200),
+    policyLink: z.string().trim().min(2).max(100),
+  }),
+  footer: z.object({
+    tagline: z.string().trim().min(3).max(260),
+    ageNote: z.string().trim().min(3).max(120),
+    signature: z.string().trim().min(2).max(160),
+    closing: z.string().trim().min(2).max(160),
+    groups: z
+      .array(
+        z.object({
+          title: z.string().trim().min(2).max(60),
+          links: z
+            .array(z.object({ label: z.string().trim().min(2).max(60) }))
+            .length(3),
+        })
+      )
+      .length(4),
+  }),
+});
+
 export const siteSettingsSchema = z.object({
   eyebrow: z.string().trim().min(3).max(80),
   title: z.string().trim().min(3).max(120),
@@ -103,6 +221,7 @@ export const siteSettingsSchema = z.object({
   showGallery: z.boolean(),
   showAbout: z.boolean(),
   showContact: z.boolean(),
+  home: homeCopySchema,
 });
 
 export const defaultSiteSettings = {
@@ -122,6 +241,291 @@ export const defaultSiteSettings = {
   showGallery: true,
   showAbout: true,
   showContact: true,
+  home: {
+    nav: {
+      explore: "Visualizar todos",
+      search: "Buscar",
+      categories: "Categorias",
+      login: "Entrar",
+      theme: "Tema claro",
+      themeLight: "Tema claro",
+      themeDark: "Tema escuro",
+      install: "Instalar app",
+      account: "Minha conta",
+      owner: "Área do titular",
+      createProfile: "Criar meu perfil",
+    },
+    hero: {
+      eyebrow: "Ero Models",
+      title: "Encontre acompanhantes com privacidade e clareza.",
+      subtitle:
+        "Pesquise perfis adultos por cidade, categoria e disponibilidade. Veja informações públicas, critérios de publicação e contato autorizado quando disponível.",
+      searchLabel: "O que você procura?",
+      searchPlaceholder: "Nome, cidade ou palavra-chave",
+      locationLabel: "Onde?",
+      locationPlaceholder: "Sua cidade",
+      buttonText: "Encontrar acompanhantes",
+      notes: [
+        "Publicação revisada",
+        "Contato autorizado",
+        "Privacidade por padrão",
+      ],
+      visualTitle: "Respeito, segurança e privacidade.",
+      visualSubtitle: "Uma vitrine adulta com informação clara.",
+      imageAlt: "Atmosfera editorial da Ero Models",
+    },
+    quickLinks: {
+      kicker: "Explore a plataforma",
+      title: "Comece pelo que procura.",
+      items: [
+        { label: "Ver anúncios" },
+        { label: "Explorar categorias" },
+        { label: "Minha conta" },
+        { label: "Criar meu perfil" },
+      ],
+    },
+    trust: {
+      kicker: "Uma experiência mais clara",
+      title: "Escolha com informação e tranquilidade.",
+      text: "A Ero Models organiza a descoberta para que cada pessoa encontre o que procura sem excesso de ruído.",
+      points: [
+        {
+          marker: "18+",
+          title: "Acesso adulto",
+          text: "Uma experiência exclusiva para maiores de idade.",
+        },
+        {
+          marker: "01",
+          title: "Publicação revisada",
+          text: "Perfis e mídias passam por etapas de publicação e moderação.",
+        },
+        {
+          marker: "02",
+          title: "Privacidade por padrão",
+          text: "Contato e dados sensíveis só aparecem quando autorizados.",
+        },
+        {
+          marker: "03",
+          title: "Denúncia e cuidado",
+          text: "Ferramentas de segurança acompanham a experiência pública.",
+        },
+      ],
+    },
+    holder: {
+      kicker: "Para titulares",
+      title: "Crie seu perfil e seja encontrado.",
+      text: "Um cadastro guiado para apresentar seu trabalho, controlar suas informações e enviar o perfil para revisão.",
+      buttonText: "Começar cadastro",
+      benefits: [
+        "Nome artístico",
+        "Galeria própria",
+        "Localização aproximada",
+        "Controle no painel",
+      ],
+    },
+    featured: {
+      kicker: "Perfis publicados",
+      title: "Veja quem já está na vitrine.",
+      text: "Uma seleção do catálogo público disponível agora.",
+    },
+    catalog: {
+      kicker: "Catálogo público",
+      title: "Encontre perfis do seu jeito",
+      status: "Atualizado conforme a publicação",
+      loadingText: "Carregando anúncios…",
+      listErrorText: "Não foi possível carregar os anúncios.",
+      resultsEmptyTitle: "Nenhum anúncio publicado ainda",
+      resultsEmptyText:
+        "A vitrine está pronta para receber os primeiros anúncios aprovados.",
+      resultsEmptyButton: "Quero criar um perfil",
+      launchKicker: "Em preparação",
+      launchTitle: "Os primeiros perfis aprovados chegam aqui.",
+      launchText:
+        "A vitrine está pronta para receber cadastros e publicar somente o que passar pelos critérios do ambiente.",
+      launchButton: "Criar um perfil",
+      errorText: "Não foi possível carregar a configuração da vitrine.",
+    },
+    searchBand: {
+      kicker: "Busca personalizada",
+      title: "Filtre pelo que importa.",
+      text: "Use características, disponibilidade, categoria e localização para chegar ao anúncio certo em poucos passos.",
+      buttonText: "Abrir busca completa",
+      artLabel: "Buscando em",
+      artFallback: "todo o Brasil",
+      artCaption: "Perfis, categorias e disponibilidade",
+    },
+    categories: {
+      kicker: "Navegue por afinidade",
+      title: "Categorias e localidades para começar.",
+      text: "Escolha um caminho e explore somente o catálogo disponível para publicação pública.",
+      emptyTitle: "O catálogo está sendo preparado.",
+      emptyText:
+        "As categorias e localidades aparecem aqui conforme os primeiros perfis aprovados entram na vitrine.",
+      emptyButton: "Criar um perfil",
+      locationsKicker: "Localidades",
+    },
+    about: {
+      kicker: "Sobre a Ero Models",
+      title: "Uma vitrine adulta para encontrar e ser encontrado.",
+      text: "A Ero Models é uma plataforma adulta de anúncios. Cada titular controla o que deseja publicar, e a operação mantém revisão, age gate, privacidade, moderação e canais de denúncia antes da abertura pública.",
+      policyLink: "Conheça as regras de segurança",
+    },
+    footer: {
+      tagline:
+        "Uma vitrine adulta para descobrir perfis com clareza, respeito e privacidade.",
+      ageNote: "Conteúdo exclusivo para maiores de 18 anos.",
+      signature: "Ero Models • Portal adulto de anúncios.",
+      closing: "Respeito, segurança e dignidade.",
+      groups: [
+        {
+          title: "Explorar",
+          links: [
+            { label: "Ver anúncios" },
+            { label: "Categorias" },
+            { label: "Minha conta" },
+          ],
+        },
+        {
+          title: "Para titulares",
+          links: [
+            { label: "Criar meu perfil" },
+            { label: "Área do titular" },
+            { label: "Entrar" },
+          ],
+        },
+        {
+          title: "Segurança",
+          links: [
+            { label: "Como funciona" },
+            { label: "Privacidade" },
+            { label: "Denúncias" },
+          ],
+        },
+        {
+          title: "Institucional",
+          links: [
+            { label: "Termos" },
+            { label: "Ajuda" },
+            { label: "Contato" },
+          ],
+        },
+      ],
+    },
+  },
 };
 
 export type SiteSettings = z.infer<typeof siteSettingsSchema>;
+
+export function normalizeSiteSettings(value: unknown): SiteSettings {
+  const persisted =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
+  const persistedHome =
+    persisted.home && typeof persisted.home === "object"
+      ? (persisted.home as Record<string, any>)
+      : {};
+  const legacyText = (key: string) =>
+    typeof persisted[key] === "string" ? { [key]: persisted[key] } : {};
+  const legacyHero = {
+    ...legacyText("eyebrow"),
+    ...legacyText("title"),
+    ...legacyText("subtitle"),
+    ...legacyText("searchPlaceholder"),
+    ...legacyText("buttonText"),
+    ...(typeof persisted.heroVisualTitle === "string"
+      ? { visualTitle: persisted.heroVisualTitle }
+      : {}),
+    ...(typeof persisted.heroVisualSubtitle === "string"
+      ? { visualSubtitle: persisted.heroVisualSubtitle }
+      : {}),
+  };
+  const legacyCatalog = {
+    ...(typeof persisted.emptyTitle === "string"
+      ? { launchTitle: persisted.emptyTitle }
+      : {}),
+    ...(typeof persisted.emptyText === "string"
+      ? { launchText: persisted.emptyText }
+      : {}),
+  };
+  const legacyAbout =
+    typeof persisted.about === "string" ? { text: persisted.about } : {};
+  const legacyFooter =
+    typeof persisted.footer === "string" ? { tagline: persisted.footer } : {};
+  const listOrDefault = (value: unknown, fallback: unknown[]) =>
+    Array.isArray(value) && value.length === fallback.length ? value : fallback;
+  const home = {
+    ...defaultSiteSettings.home,
+    ...persistedHome,
+    nav: { ...defaultSiteSettings.home.nav, ...(persistedHome.nav || {}) },
+    hero: {
+      ...defaultSiteSettings.home.hero,
+      ...legacyHero,
+      ...(persistedHome.hero || {}),
+      notes: listOrDefault(
+        persistedHome.hero?.notes,
+        defaultSiteSettings.home.hero.notes
+      ),
+    },
+    quickLinks: {
+      ...defaultSiteSettings.home.quickLinks,
+      ...(persistedHome.quickLinks || {}),
+      items: listOrDefault(
+        persistedHome.quickLinks?.items,
+        defaultSiteSettings.home.quickLinks.items
+      ),
+    },
+    trust: {
+      ...defaultSiteSettings.home.trust,
+      ...(persistedHome.trust || {}),
+      points: listOrDefault(
+        persistedHome.trust?.points,
+        defaultSiteSettings.home.trust.points
+      ),
+    },
+    holder: {
+      ...defaultSiteSettings.home.holder,
+      ...(persistedHome.holder || {}),
+      benefits: listOrDefault(
+        persistedHome.holder?.benefits,
+        defaultSiteSettings.home.holder.benefits
+      ),
+    },
+    featured: {
+      ...defaultSiteSettings.home.featured,
+      ...(persistedHome.featured || {}),
+    },
+    catalog: {
+      ...defaultSiteSettings.home.catalog,
+      ...legacyCatalog,
+      ...(persistedHome.catalog || {}),
+    },
+    searchBand: {
+      ...defaultSiteSettings.home.searchBand,
+      ...(persistedHome.searchBand || {}),
+    },
+    categories: {
+      ...defaultSiteSettings.home.categories,
+      ...(persistedHome.categories || {}),
+    },
+    about: {
+      ...defaultSiteSettings.home.about,
+      ...legacyAbout,
+      ...(persistedHome.about || {}),
+    },
+    footer: {
+      ...defaultSiteSettings.home.footer,
+      ...legacyFooter,
+      ...(persistedHome.footer || {}),
+      groups: listOrDefault(
+        persistedHome.footer?.groups,
+        defaultSiteSettings.home.footer.groups
+      ),
+    },
+  };
+  return siteSettingsSchema.parse({
+    ...defaultSiteSettings,
+    ...persisted,
+    home,
+  });
+}
