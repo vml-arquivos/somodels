@@ -106,13 +106,12 @@ export const siteSettingsSchema = z.object({
 });
 
 export const defaultSiteSettings = {
-  eyebrow: "Portal adulto de anúncios",
-  title: "Encontre acompanhantes na sua cidade.",
-  subtitle:
-    "Anúncios para maiores de 18 anos, com fotos, vídeos, informações públicas e contato direto quando autorizado pelo titular.",
-  heroVisualTitle: "Anúncios adultos com informação e privacidade.",
-  heroVisualSubtitle: "Imagem ilustrativa da experiência da vitrine.",
-  buttonText: "Encontrar acompanhantes",
+  eyebrow: "Ero Models",
+  title: "Encontre o perfil certo para o seu momento.",
+  subtitle: "Descubra perfis adultos por cidade, categoria e preferência.",
+  heroVisualTitle: "Respeito, segurança e privacidade.",
+  heroVisualSubtitle: "Uma vitrine adulta com informação clara.",
+  buttonText: "Buscar perfis",
   searchPlaceholder: "Nome, cidade ou palavra-chave",
   emptyTitle: "Nenhum anúncio publicado ainda",
   emptyText:
