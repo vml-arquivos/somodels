@@ -170,6 +170,36 @@ export async function createLocalUser(input: {
   return getUserByEmail(email);
 }
 
+export async function resetBootstrapDevAccount(email: string, password: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const normalizedEmail = email.trim().toLowerCase();
+  const existing = await getUserByEmail(normalizedEmail);
+  if (!existing || existing.role !== "dev" || !existing.mustChangePassword) return false;
+
+  await db.transaction(async tx => {
+    await tx
+      .update(users)
+      .set({
+        passwordHash: await hashPassword(password),
+        mustChangePassword: false,
+      })
+      .where(eq(users.id, existing.id));
+    await tx
+      .update(authSessions)
+      .set({ revokedAt: new Date() })
+      .where(eq(authSessions.userId, existing.id));
+    await tx.insert(auditLogs).values({
+      actorUserId: existing.id,
+      action: "bootstrap_dev.password_rotated",
+      entityType: "user",
+      entityId: existing.id,
+      metadata: JSON.stringify({ email: normalizedEmail }),
+    });
+  });
+  return true;
+}
+
 export async function updateUserPassword(userId: number, password: string) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
