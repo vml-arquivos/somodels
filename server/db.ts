@@ -175,7 +175,7 @@ export async function resetBootstrapDevAccount(email: string, password: string) 
   if (!db) throw new Error("Database unavailable");
   const normalizedEmail = email.trim().toLowerCase();
   const existing = await getUserByEmail(normalizedEmail);
-  if (!existing || existing.role !== "dev" || !existing.mustChangePassword) return false;
+  if (!existing || existing.role !== "dev") return false;
 
   await db.transaction(async tx => {
     await tx

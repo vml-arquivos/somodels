@@ -40,7 +40,7 @@ A aplicação usa o recurso correto de aplicação no Coolify com build Docker a
 | `PAYMENT_PROVIDER`, `PAYMENT_API_KEY`, `PAYMENT_WEBHOOK_SECRET` | Condicionais | Checkout com provedor aprovado | valores secretos | Checkout não é criado |
 | `BOOTSTRAP_SUPER_ADMIN_EMAIL/PASSWORD` | Condicionais | Conta temporária inicial | e-mail + senha no manager | Nenhuma conta é criada |
 | `BOOTSTRAP_DEV_EMAIL/PASSWORD` | Condicionais | Conta dev temporária | e-mail + senha no manager | Nenhuma conta é criada |
-| `BOOTSTRAP_DEV_RESET_EXISTING` | Temporária e `false` por padrão | Faz uma única rotação da senha de uma conta `dev` existente ainda marcada para troca inicial; revoga sessões antigas | `true` somente durante recuperação autorizada | Bootstrap normal, sem reset de conta |
+| `BOOTSTRAP_DEV_RESET_EXISTING` | Temporária e `false` por padrão | Faz uma rotação explícita da senha da conta `dev` correspondente ao e-mail configurado; revoga sessões antigas | `true` somente durante recuperação autorizada | Bootstrap normal, sem reset de conta |
 | `SESSION_DURATION_HOURS` | Recomendada | Duração da sessão local | `12` | Usa 12 horas |
 | `LOGIN_RATE_LIMIT_WINDOW_MS`, `LOGIN_RATE_LIMIT_MAX` | Recomendadas | Limitação de tentativas | `900000`, `10` | Usa defaults seguros |
 
@@ -50,4 +50,4 @@ No aplicativo `somodels.buscarr.com.br`, mantenha o MySQL privado compatível, a
 
 Durante a homologação, valide `/cadastro-teste`, `/titular`, `/admin`, home, filtros, páginas de cidade/perfil, moderação e logout/login local. O administrador é autorizado pelo backend por role persistida ou `ADMIN_EMAILS`; a interface não é a única barreira. Contatos demo permanecem não acionáveis e nenhum documento, dado real, e-mail, webhook ou pagamento deve ser enviado.
 
-Valores secretos devem ser cadastrados exclusivamente no gerenciador de segredos do Coolify. Nunca devem ser commitados, inseridos no HTML, impressos em logs ou incluídos em relatório. Após o primeiro login, as senhas de bootstrap devem ser trocadas na rota `/alterar-senha`; o handoff deve ocorrer somente de forma privada e a senha temporária não deve permanecer na documentação. `BOOTSTRAP_DEV_RESET_EXISTING=true` deve ser desligada imediatamente após a recuperação: ela só atua sobre uma conta `dev` que ainda está marcada para troca inicial e não promove nem renomeia outras contas.
+Valores secretos devem ser cadastrados exclusivamente no gerenciador de segredos do Coolify. Nunca devem ser commitados, inseridos no HTML, impressos em logs ou incluídos em relatório. Após o primeiro login, as senhas de bootstrap devem ser trocadas na rota `/alterar-senha`; o handoff deve ocorrer somente de forma privada e a senha temporária não deve permanecer na documentação. `BOOTSTRAP_DEV_RESET_EXISTING=true` deve ser desligada imediatamente após a recuperação: ela só atua sobre a conta `dev` do e-mail configurado e não promove nem renomeia outras contas.
