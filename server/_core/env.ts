@@ -76,6 +76,7 @@ export const ENV = {
   bootstrapSuperAdminPassword: process.env.BOOTSTRAP_SUPER_ADMIN_PASSWORD ?? "",
   bootstrapDevEmail: process.env.BOOTSTRAP_DEV_EMAIL ?? "",
   bootstrapDevPassword: process.env.BOOTSTRAP_DEV_PASSWORD ?? "",
+  bootstrapDevResetExisting: readBoolean(process.env.BOOTSTRAP_DEV_RESET_EXISTING, false),
   loginRateLimitWindowMs: readInteger(process.env.LOGIN_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
   loginRateLimitMax: readInteger(process.env.LOGIN_RATE_LIMIT_MAX, 10),
 };

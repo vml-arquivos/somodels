@@ -97,6 +97,9 @@ export async function bootstrapLocalAccounts() {
     if (!entry.email || !entry.password || entry.password.length < 16) {
       throw new Error(`Bootstrap inválido para ${entry.role}: informe e-mail e senha com pelo menos 16 caracteres`);
     }
+    if (entry.role === "dev" && ENV.bootstrapDevResetExisting) {
+      await db.resetBootstrapDevAccount(entry.email, entry.password);
+    }
     await db.createLocalUser({ ...entry, mustChangePassword: true });
   }
 }
