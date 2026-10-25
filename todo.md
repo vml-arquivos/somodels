@@ -1,4 +1,4 @@
-# Projeto TODO — Só Models
+# Projeto TODO — Ero Models
 
 - [x] Inspecionar o ZIP anexado do Permupay Vendas e registrar a arquitetura reaproveitável
 - [x] Substituir a marca Permupay Vendas por Só Models em toda a experiência
@@ -30,6 +30,8 @@
 - [ ] Criar testes Vitest para permissões, validações, filtros, publicação e mídia
 - [x] Executar check, build, testes e verificação visual responsiva
 - [x] Validar a nova landing page em desktop, mobile e PWA, preservando age gate, SEO, filtros e rotas privadas
+- [x] Corrigir a calibração visual pós-publicação e normalizar branding legado persistido
+- [ ] Provisionar/recuperar o acesso DEV da conta configurada no Coolify sem expor senha no chat
 - [x] Documentar análise do repositório, arquitetura, arquivos alterados, migrations, configuração e testes
 - [x] Criar ZIP final atualizado do projeto
 

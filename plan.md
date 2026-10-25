@@ -15,6 +15,12 @@ O screenshot reenviado é tratado como referência de ritmo, escala e composiç�
 - revisar `studio.css` com tokens de tipografia, larguras fluidas, `clamp()`, breakpoints mobile/PWA, foco visível, safe-area e prevenção de overflow horizontal;
 - validar a composição em viewport desktop e mobile pelo preview, além de typecheck, testes, build e smoke das rotas existentes antes de qualquer publicação.
 
+## Etapa 3 — correção visual pós-publicação e acesso DEV
+
+**Status:** correção visual validada no preview local; publicação ainda pendente. O acesso DEV será ajustado somente após a identificação da conta configurada e a definição segura de uma nova senha.
+
+O screenshot de produção mostrou que os defaults preservados deixaram a mudança visual pouco perceptível e que settings antigos ainda exibiam o branding “Só Models” no rodapé. Esta etapa aumenta a escala e o contraste tipográficos da landing, reforça a navegação e os cards, reduz a sensação de texto pequeno, normaliza branding legado sem migration e mantém as rotas de cliente, titular, admin e DEV sob as mesmas guards existentes.
+
 ## Objetivo
 
 Transformar a home em uma landing page editorial de marketplace adulto: hero visual forte, busca acionável, prova de segurança, descoberta por categorias/localidades, cadastro contextual de titulares e rodapé institucional. A referência enviada orienta ritmo, composição e hierarquia, mas não serão copiados marca, textos, imagens, métricas ou componentes de terceiros.

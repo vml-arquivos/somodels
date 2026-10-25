@@ -416,10 +416,29 @@ export const defaultSiteSettings = {
 
 export type SiteSettings = z.infer<typeof siteSettingsSchema>;
 
+function normalizeLegacyBrand(value: unknown): unknown {
+  if (typeof value === "string") {
+    return value
+      .replace(/Só Models/gi, "Ero Models")
+      .replace(/So Models/gi, "Ero Models");
+  }
+  if (Array.isArray(value)) return value.map(normalizeLegacyBrand);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        normalizeLegacyBrand(entry),
+      ])
+    );
+  }
+  return value;
+}
+
 export function normalizeSiteSettings(value: unknown): SiteSettings {
+  const normalizedValue = normalizeLegacyBrand(value);
   const persisted =
-    value && typeof value === "object"
-      ? (value as Record<string, unknown>)
+    normalizedValue && typeof normalizedValue === "object"
+      ? (normalizedValue as Record<string, unknown>)
       : {};
   const persistedHome =
     persisted.home && typeof persisted.home === "object"
