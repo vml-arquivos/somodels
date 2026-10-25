@@ -27,29 +27,6 @@ const quickAttributes = [
   "Casal ou dupla",
 ];
 
-const trustPoints = [
-  {
-    marker: "18+",
-    title: "Acesso adulto",
-    text: "Uma experiência exclusiva para maiores de idade.",
-  },
-  {
-    marker: "01",
-    title: "Publicação revisada",
-    text: "Perfis e mídias passam por etapas de publicação e moderação.",
-  },
-  {
-    marker: "02",
-    title: "Privacidade por padrão",
-    text: "Contato e dados sensíveis só aparecem quando autorizados.",
-  },
-  {
-    marker: "03",
-    title: "Denúncia e cuidado",
-    text: "Ferramentas de segurança acompanham a experiência pública.",
-  },
-];
-
 function LandingHeading({
   kicker,
   title,
@@ -110,6 +87,7 @@ export function DiscoveryPage({
   );
   const settings = trpc.management.settings.useQuery();
   const site = settings.data || defaultSiteSettings;
+  const copy = site.home;
   const config = trpc.system.config.useQuery();
   const activeCity = fixedCity || filters.city;
   const activeCategory = fixedCategory || filters.category;
@@ -171,12 +149,12 @@ export function DiscoveryPage({
     ? `Anúncios de acompanhantes em ${fixedCity} — Ero Models`
     : fixedCategory
       ? `${fixedCategory} — Anúncios Ero Models`
-      : `Ero Models — ${site.title}`;
+      : `Ero Models — ${copy.hero.title}`;
   const description = fixedCity
     ? `Encontre anúncios de acompanhantes adultos em ${fixedCity}.`
     : fixedCategory
       ? `Explore anúncios adultos na categoria ${fixedCategory}.`
-      : site.subtitle;
+      : copy.hero.subtitle;
   const noindex = Boolean(
     config.data?.robotsNoIndex ||
       config.data?.ageVerificationRequired ||
@@ -284,24 +262,24 @@ export function DiscoveryPage({
           <div className="studio-landing-hero-inner">
             <div className="studio-landing-hero-copy">
               <p className="studio-landing-overline">
-                {site.eyebrow} <span>•</span> 18+
+                {copy.hero.eyebrow} <span>•</span> 18+
               </p>
               <h1 id="hero-title">
                 {fixedCity
                   ? `Perfis em ${fixedCity}`
                   : fixedCategory
                     ? `Perfis de ${fixedCategory}`
-                    : site.title}
+                    : copy.hero.title}
               </h1>
               <p className="studio-landing-hero-lead">
-                {fixedCity || fixedCategory ? description : site.subtitle}
+                {fixedCity || fixedCategory ? description : copy.hero.subtitle}
               </p>
               <form className="studio-landing-search" onSubmit={submitSearch}>
                 <label>
-                  <span>O que você procura?</span>
+                  <span>{copy.hero.searchLabel}</span>
                   <input
                     aria-label="Buscar anúncios"
-                    placeholder={site.searchPlaceholder}
+                    placeholder={copy.hero.searchPlaceholder}
                     value={filters.search}
                     onChange={event =>
                       updateFilter("search", event.target.value)
@@ -309,11 +287,11 @@ export function DiscoveryPage({
                   />
                 </label>
                 <label>
-                  <span>Onde?</span>
+                  <span>{copy.hero.locationLabel}</span>
                   <input
                     aria-label="Cidade"
                     list="ero-location-options"
-                    placeholder="Sua cidade"
+                    placeholder={copy.hero.locationPlaceholder}
                     value={fixedCity || filters.city}
                     disabled={Boolean(fixedCity)}
                     onChange={event => updateFilter("city", event.target.value)}
@@ -330,26 +308,26 @@ export function DiscoveryPage({
                   </datalist>
                 </label>
                 <button className="primary" type="submit">
-                  {site.buttonText}
+                  {copy.hero.buttonText}
                 </button>
               </form>
               <div
                 className="studio-landing-hero-note"
                 aria-label="Características da plataforma"
               >
-                <span>Publicação revisada</span>
-                <span>Contato autorizado</span>
-                <span>Privacidade por padrão</span>
+                {copy.hero.notes.map(note => (
+                  <span key={note}>{note}</span>
+                ))}
               </div>
             </div>
             <div className="studio-landing-hero-visual">
               <img
                 src="/images/hero/ero-models-hero.webp"
-                alt="Atmosfera editorial da Ero Models"
+                alt={copy.hero.imageAlt}
               />
               <div className="studio-landing-hero-badge">
-                <strong>{site.heroVisualTitle}</strong>
-                <span>{site.heroVisualSubtitle}</span>
+                <strong>{copy.hero.visualTitle}</strong>
+                <span>{copy.hero.visualSubtitle}</span>
               </div>
               <span className="studio-landing-hero-line" aria-hidden="true" />
             </div>
@@ -361,8 +339,8 @@ export function DiscoveryPage({
           aria-labelledby="popular-title"
         >
           <div>
-            <p className="studio-kicker">Explore a plataforma</p>
-            <h2 id="popular-title">Comece pelo que procura.</h2>
+            <p className="studio-kicker">{copy.quickLinks.kicker}</p>
+            <h2 id="popular-title">{copy.quickLinks.title}</h2>
           </div>
           <div className="studio-popular-links">
             <a
@@ -373,22 +351,22 @@ export function DiscoveryPage({
               }}
             >
               <span>01</span>
-              <strong>Ver anúncios</strong>
+              <strong>{copy.quickLinks.items[0].label}</strong>
               <b aria-hidden="true">↗</b>
             </a>
             <Link href={categoryPath("Acompanhante")}>
               <span>02</span>
-              <strong>Explorar categorias</strong>
+              <strong>{copy.quickLinks.items[1].label}</strong>
               <b aria-hidden="true">↗</b>
             </Link>
             <Link href="/conta">
               <span>03</span>
-              <strong>Minha conta</strong>
+              <strong>{copy.quickLinks.items[2].label}</strong>
               <b aria-hidden="true">↗</b>
             </Link>
             <Link href="/cadastro">
               <span>04</span>
-              <strong>Criar meu perfil</strong>
+              <strong>{copy.quickLinks.items[3].label}</strong>
               <b aria-hidden="true">↗</b>
             </Link>
           </div>
@@ -400,13 +378,13 @@ export function DiscoveryPage({
         >
           <LandingHeading
             id="trust-title"
-            kicker="Uma experiência mais clara"
-            title="Escolha com informação e tranquilidade."
-            text="A Ero Models organiza a descoberta para que cada pessoa encontre o que procura sem excesso de ruído."
+            kicker={copy.trust.kicker}
+            title={copy.trust.title}
+            text={copy.trust.text}
             align="center"
           />
           <div className="studio-main studio-trust-grid">
-            {trustPoints.map(point => (
+            {copy.trust.points.map(point => (
               <article key={point.title} className="studio-trust-card">
                 <span className="studio-trust-marker">{point.marker}</span>
                 <h3>{point.title}</h3>
@@ -422,24 +400,20 @@ export function DiscoveryPage({
         >
           <div className="studio-main studio-holder-cta-inner">
             <div>
-              <p className="studio-kicker">Para titulares</p>
-              <h2 id="holder-title">Crie seu perfil e seja encontrado.</h2>
-              <p>
-                Um cadastro guiado para apresentar seu trabalho, controlar suas
-                informações e enviar o perfil para revisão.
-              </p>
+              <p className="studio-kicker">{copy.holder.kicker}</p>
+              <h2 id="holder-title">{copy.holder.title}</h2>
+              <p>{copy.holder.text}</p>
             </div>
             <Link className="studio-cta" href="/cadastro">
-              Começar cadastro
+              {copy.holder.buttonText}
             </Link>
             <div
               className="studio-holder-benefits"
-              aria-label="Benefícios do cadastro"
+              aria-label={copy.holder.title}
             >
-              <span>Nome artístico</span>
-              <span>Galeria própria</span>
-              <span>Localização aproximada</span>
-              <span>Controle no painel</span>
+              {copy.holder.benefits.map(benefit => (
+                <span key={benefit}>{benefit}</span>
+              ))}
             </div>
           </div>
         </section>
@@ -451,9 +425,9 @@ export function DiscoveryPage({
           >
             <LandingHeading
               id="featured-title"
-              kicker="Perfis publicados"
-              title="Veja quem já está na vitrine."
-              text="Uma seleção do catálogo público disponível agora."
+              kicker={copy.featured.kicker}
+              title={copy.featured.title}
+              text={copy.featured.text}
             />
             <div className="studio-profile-preview-grid">
               {items.slice(0, 4).map(profile => (
@@ -470,36 +444,31 @@ export function DiscoveryPage({
         >
           <div className="studio-title" id="busca">
             <div>
-              <p className="studio-kicker">Catálogo público</p>
+              <p className="studio-kicker">{copy.catalog.kicker}</p>
               <h2 id="listing-title">
                 {fixedCity
                   ? `Anúncios em ${fixedCity}`
                   : fixedCategory
                     ? `Anúncios: ${fixedCategory}`
-                    : "Encontre perfis do seu jeito"}
+                    : copy.catalog.title}
               </h2>
             </div>
             {open && items.length > 0 ? (
               <span className="studio-catalog-status">
-                Atualizado conforme a publicação
+                {copy.catalog.status}
               </span>
             ) : null}
           </div>
 
           {settings.error ? (
-            <p className="studio-error">
-              Não foi possível carregar a configuração da vitrine.
-            </p>
+            <p className="studio-error">{copy.catalog.errorText}</p>
           ) : !open ? (
             <div className="studio-panel studio-launch-panel studio-landing-empty">
-              <p className="studio-kicker">Em preparação</p>
-              <h3>Os primeiros perfis aprovados chegam aqui.</h3>
-              <p>
-                A vitrine está pronta para receber cadastros e publicar somente
-                o que passar pelos critérios do ambiente.
-              </p>
+              <p className="studio-kicker">{copy.catalog.launchKicker}</p>
+              <h3>{copy.catalog.launchTitle}</h3>
+              <p>{copy.catalog.launchText}</p>
               <Link className="studio-cta" href="/cadastro">
-                Criar um perfil
+                {copy.catalog.launchButton}
               </Link>
             </div>
           ) : (
@@ -508,7 +477,7 @@ export function DiscoveryPage({
                 <div className="studio-toolbar studio-toolbar-primary">
                   <input
                     aria-label="Buscar anúncios"
-                    placeholder={site.searchPlaceholder}
+                    placeholder={copy.hero.searchPlaceholder}
                     value={filters.search}
                     onChange={event =>
                       updateFilter("search", event.target.value)
@@ -683,9 +652,9 @@ export function DiscoveryPage({
               </div>
 
               {list.isLoading ? (
-                <p>Carregando anúncios…</p>
+                <p>{copy.catalog.loadingText}</p>
               ) : list.error ? (
-                <p role="alert">Não foi possível carregar os anúncios.</p>
+                <p role="alert">{copy.catalog.listErrorText}</p>
               ) : items.length ? (
                 <>
                   <div className="studio-cards">
@@ -724,9 +693,11 @@ export function DiscoveryPage({
                 </>
               ) : (
                 <div className="studio-panel studio-landing-empty">
-                  <h3>{site.emptyTitle}</h3>
-                  <p>{site.emptyText}</p>
-                  <Link href="/cadastro">Quero criar um perfil</Link>
+                  <h3>{copy.catalog.resultsEmptyTitle}</h3>
+                  <p>{copy.catalog.resultsEmptyText}</p>
+                  <Link href="/cadastro">
+                    {copy.catalog.resultsEmptyButton}
+                  </Link>
                 </div>
               )}
             </>
@@ -739,12 +710,9 @@ export function DiscoveryPage({
         >
           <div className="studio-main studio-search-band-inner">
             <div className="studio-search-band-copy">
-              <p className="studio-kicker">Busca personalizada</p>
-              <h2 id="personal-search-title">Filtre pelo que importa.</h2>
-              <p>
-                Use características, disponibilidade, categoria e localização
-                para chegar ao anúncio certo em poucos passos.
-              </p>
+              <p className="studio-kicker">{copy.searchBand.kicker}</p>
+              <h2 id="personal-search-title">{copy.searchBand.title}</h2>
+              <p>{copy.searchBand.text}</p>
               <div className="studio-search-band-chips">
                 {quickAttributes.map(attribute => (
                   <button
@@ -765,14 +733,14 @@ export function DiscoveryPage({
                 type="button"
                 onClick={scrollToListings}
               >
-                Abrir busca completa
+                {copy.searchBand.buttonText}
               </button>
             </div>
             <div className="studio-search-band-art" aria-hidden="true">
               <div className="studio-search-window">
-                <span>Buscando em</span>
-                <strong>{filters.city || "todo o Brasil"}</strong>
-                <small>Perfis, categorias e disponibilidade</small>
+                <span>{copy.searchBand.artLabel}</span>
+                <strong>{filters.city || copy.searchBand.artFallback}</strong>
+                <small>{copy.searchBand.artCaption}</small>
               </div>
               <span className="studio-search-orbit studio-search-orbit-one" />
               <span className="studio-search-orbit studio-search-orbit-two" />
@@ -786,9 +754,9 @@ export function DiscoveryPage({
         >
           <LandingHeading
             id="catalog-title"
-            kicker="Navegue por afinidade"
-            title="Categorias e localidades para começar."
-            text="Escolha um caminho e explore somente o catálogo disponível para publicação pública."
+            kicker={copy.categories.kicker}
+            title={copy.categories.title}
+            text={copy.categories.text}
           />
           {locations.isLoading || locations.data?.length ? (
             <div className="studio-category-card-grid" id="categorias">
@@ -806,12 +774,9 @@ export function DiscoveryPage({
             </div>
           ) : (
             <div className="studio-panel studio-landing-empty">
-              <h3>O catálogo está sendo preparado.</h3>
-              <p>
-                As categorias e localidades aparecem aqui conforme os primeiros
-                perfis aprovados entram na vitrine.
-              </p>
-              <Link href="/cadastro">Criar um perfil</Link>
+              <h3>{copy.categories.emptyTitle}</h3>
+              <p>{copy.categories.emptyText}</p>
+              <Link href="/cadastro">{copy.categories.emptyButton}</Link>
             </div>
           )}
           {open && locations.data?.length ? (
@@ -819,7 +784,7 @@ export function DiscoveryPage({
               className="studio-city-cloud"
               aria-label="Localidades com anúncios publicados"
             >
-              <p className="studio-kicker">Localidades</p>
+              <p className="studio-kicker">{copy.categories.locationsKicker}</p>
               <div>
                 {locations.data.slice(0, 16).map(location => (
                   <Link
@@ -842,15 +807,13 @@ export function DiscoveryPage({
           >
             <div className="studio-main studio-landing-about-inner">
               <div>
-                <p className="studio-kicker">Sobre a Ero Models</p>
-                <h2 id="about-title">
-                  Uma vitrine adulta para encontrar e ser encontrado.
-                </h2>
+                <p className="studio-kicker">{copy.about.kicker}</p>
+                <h2 id="about-title">{copy.about.title}</h2>
               </div>
               <div>
-                <p>{site.about}</p>
+                <p>{copy.about.text}</p>
                 <p className="studio-landing-policy">{portfolioPolicy}</p>
-                <Link href="/seguranca">Conheça as regras de segurança</Link>
+                <Link href="/seguranca">{copy.about.policyLink}</Link>
               </div>
             </div>
           </section>

@@ -7,7 +7,9 @@
 - a apresentação usa o hero e a identidade Ero Models já versionados; não foram copiados marca, textos, imagens ou métricas da referência visual enviada;
 - perfis, cidades e localidades continuam vindo somente das consultas públicas elegíveis; quando não há publicação, a interface exibe estado neutro e CTA de cadastro, sem números ou anúncios fictícios;
 - preservados os settings administráveis da vitrine, normalização dos filtros de idade, navegação semântica do rodapé e JSON-LD consolidado para rotas de cidade/categoria;
-- validação local: `pnpm check`, suíte completa (`99 testes`), `pnpm build`, Prettier nos arquivos TypeScript/documentais e `git diff --check` passaram; a captura estática confirmou desktop e estados vazios.
+- toda a copy editorial visível da home, header e footer agora vem de `home` estruturado, validado por Zod e editável no painel admin por seções, sem HTML arbitrário ou destinos externos configuráveis;
+- a entrada 18+ recebeu layout próprio para desktop, mobile e PWA, e o headline deixou de quebrar palavras no meio; o header usa o logo de contraste correto na landing clara mesmo com tema escuro persistido;
+- validação local: `pnpm check`, suíte completa (`102 testes`), `pnpm build`, Prettier nos arquivos TypeScript/documentais e `git diff --check` passaram; a captura desktop confirmou hero, cards e CTA, enquanto a captura Chromium mobile (`390x844`) confirmou `document.scrollWidth === 390`, hero empilhado, busca vertical e footer dentro do viewport.
 
 ## 2026-10-22 — descoberta mobile, PWA e controles de conta
 

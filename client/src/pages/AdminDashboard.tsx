@@ -10,6 +10,7 @@ import {
 } from "@shared/portfolio";
 import { reportCategoryLabels, type ReportCategory } from "@shared/safety";
 import PortfolioEditor from "@/components/PortfolioEditor";
+import HomeCopyEditor from "@/components/HomeCopyEditor";
 import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
 const tabs = {
@@ -39,7 +40,9 @@ export default function AdminDashboard() {
   const utils = trpc.useUtils();
   const [tab, setTab] = useState<keyof typeof tabs>("overview"),
     [search, setSearch] = useState(""),
-    [accountKind, setAccountKind] = useState<"all" | "owners" | "system">("all"),
+    [accountKind, setAccountKind] = useState<"all" | "owners" | "system">(
+      "all"
+    ),
     [profileSearch, setProfileSearch] = useState(""),
     [profileLifecycle, setProfileLifecycle] = useState<
       "all" | "active" | "inactive" | "deleted"
@@ -55,10 +58,7 @@ export default function AdminDashboard() {
     [resetUrl, setResetUrl] = useState(""),
     [reason, setReason] = useState(""),
     [confirmed, setConfirmed] = useState(false);
-  const allowed =
-    !!user &&
-    user.isAdmin &&
-    !user.mustChangePassword;
+  const allowed = !!user && user.isAdmin && !user.mustChangePassword;
   const overview = trpc.management.overview.useQuery(undefined, {
     enabled: allowed && tab === "overview",
   });
@@ -252,7 +252,11 @@ export default function AdminDashboard() {
   }
   return (
     <div className="studio">
-      <Seo title="Administração — Ero Models" description="Área privada de administração da plataforma." noindex />
+      <Seo
+        title="Administração — Ero Models"
+        description="Área privada de administração da plataforma."
+        noindex
+      />
       <StudioHeader minimal>
         <button onClick={() => logout()}>Sair</button>
       </StudioHeader>
@@ -271,7 +275,9 @@ export default function AdminDashboard() {
             <Link className="studio-cta" href="/admin/portfolio/novo">
               Criar anúncio para um titular
             </Link>
-            <Link href="/alterar-senha?returnTo=/admin">Alterar minha senha</Link>
+            <Link href="/alterar-senha?returnTo=/admin">
+              Alterar minha senha
+            </Link>
           </div>
         </div>
         {loading ? (
@@ -462,7 +468,8 @@ export default function AdminDashboard() {
                           <small>
                             {u.role === "user"
                               ? "Titular de anúncio"
-                              : "Usuário do sistema"}{" "}· {u.accountStatus}
+                              : "Usuário do sistema"}{" "}
+                            · {u.accountStatus}
                           </small>
                         </button>
                       ))
@@ -485,7 +492,7 @@ export default function AdminDashboard() {
                       </button>
                     </div>
                   </section>
-                    <section className="studio-panel">
+                  <section className="studio-panel">
                     <h2>
                       {newUser
                         ? "Nova conta"
@@ -704,7 +711,9 @@ export default function AdminDashboard() {
                       aria-label="Estado operacional do perfil"
                       value={profileLifecycle}
                       onChange={event =>
-                        setProfileLifecycle(event.target.value as typeof profileLifecycle)
+                        setProfileLifecycle(
+                          event.target.value as typeof profileLifecycle
+                        )
                       }
                     >
                       <option value="all">Todos os estados</option>
@@ -719,7 +728,7 @@ export default function AdminDashboard() {
                   <section className="studio-panel">
                     <h2>
                       {tab === "moderation"
-                          ? "Anúncios pendentes"
+                        ? "Anúncios pendentes"
                         : "Anúncios cadastrados"}
                     </h2>
                     <p className="studio-muted">
@@ -739,7 +748,8 @@ export default function AdminDashboard() {
                         >
                           <strong>{p.stageName}</strong>
                           <small>
-                            {p.city} · {profileOperationalLabel(p)} · {p.status} ·{" "}
+                            {p.city} · {profileOperationalLabel(p)} · {p.status}{" "}
+                            ·{" "}
                             {p.isPublished && p.portfolioReviewed
                               ? "Publicado"
                               : "Oculto"}
@@ -802,11 +812,15 @@ export default function AdminDashboard() {
                                   : "Oculto"}
                               </dd>
                               <dt>Estado operacional</dt>
-                              <dd>{profileOperationalLabel(profile.data.profile)}</dd>
+                              <dd>
+                                {profileOperationalLabel(profile.data.profile)}
+                              </dd>
                               {profile.data.profile.deletedAt && (
                                 <>
                                   <dt>Excluído em</dt>
-                                  <dd>{date(profile.data.profile.deletedAt)}</dd>
+                                  <dd>
+                                    {date(profile.data.profile.deletedAt)}
+                                  </dd>
                                 </>
                               )}
                             </dl>
@@ -814,11 +828,24 @@ export default function AdminDashboard() {
                               <div className="studio-notice">
                                 <h4>Gates verificados</h4>
                                 <p>
-                                  Identidade: {profileReadiness.data.identityApproved ? "vigente" : "pendente"} · Termo: {profileReadiness.data.terms.current ? "vigente" : "pendente"} · Mídia pública aprovada: {profileReadiness.data.approvedMediaCount}
+                                  Identidade:{" "}
+                                  {profileReadiness.data.identityApproved
+                                    ? "vigente"
+                                    : "pendente"}{" "}
+                                  · Termo:{" "}
+                                  {profileReadiness.data.terms.current
+                                    ? "vigente"
+                                    : "pendente"}{" "}
+                                  · Mídia pública aprovada:{" "}
+                                  {profileReadiness.data.approvedMediaCount}
                                 </p>
                                 {profileReadiness.data.blockers.length > 0 && (
                                   <ul>
-                                    {profileReadiness.data.blockers.map(blocker => <li key={blocker}>{blocker}</li>)}
+                                    {profileReadiness.data.blockers.map(
+                                      blocker => (
+                                        <li key={blocker}>{blocker}</li>
+                                      )
+                                    )}
                                   </ul>
                                 )}
                               </div>
@@ -833,9 +860,15 @@ export default function AdminDashboard() {
                               {!profile.data.profile.deletedAt &&
                                 (profile.data.profile.isActive ? (
                                   <button
-                                    disabled={deactivateProfile.isPending || reason.trim().length < 3}
+                                    disabled={
+                                      deactivateProfile.isPending ||
+                                      reason.trim().length < 3
+                                    }
                                     onClick={() =>
-                                      deactivateProfile.mutate({ id: pid!, reason: reason.trim() })
+                                      deactivateProfile.mutate({
+                                        id: pid!,
+                                        reason: reason.trim(),
+                                      })
                                     }
                                   >
                                     Inativar anúncio
@@ -867,12 +900,14 @@ export default function AdminDashboard() {
                                       });
                                   }}
                                 >
-                                    Restaurar anúncio
+                                  Restaurar anúncio
                                 </button>
                               ) : (
                                 <button
                                   disabled={deleteProfile.isPending}
-                                  onClick={() => deleteProfile.mutate({ id: pid! })}
+                                  onClick={() =>
+                                    deleteProfile.mutate({ id: pid! })
+                                  }
                                 >
                                   Excluir anúncio
                                 </button>
@@ -953,7 +988,10 @@ export default function AdminDashboard() {
                                 Aprovar publicação
                               </button>
                               <button
-                                disabled={moderate.isPending || reason.trim().length < 10}
+                                disabled={
+                                  moderate.isPending ||
+                                  reason.trim().length < 10
+                                }
                                 onClick={() =>
                                   moderate.mutate({
                                     id: pid!,
@@ -965,7 +1003,10 @@ export default function AdminDashboard() {
                                 Ocultar / suspender
                               </button>
                               <button
-                                disabled={moderate.isPending || reason.trim().length < 10}
+                                disabled={
+                                  moderate.isPending ||
+                                  reason.trim().length < 10
+                                }
                                 onClick={() =>
                                   moderate.mutate({
                                     id: pid!,
@@ -981,9 +1022,7 @@ export default function AdminDashboard() {
                         )}
                       </>
                     ) : (
-                      <p>
-                        Selecione um anúncio para conferir dados e mídias.
-                      </p>
+                      <p>Selecione um anúncio para conferir dados e mídias.</p>
                     )}
                   </section>
                 </div>
@@ -1011,7 +1050,8 @@ export default function AdminDashboard() {
                     <p className="studio-kicker">Trust &amp; Safety</p>
                     <h2>Fila de denúncias</h2>
                     <p className="studio-muted">
-                      O denunciante não é exibido nesta fila. Casos urgentes aparecem primeiro; decisões são auditadas.
+                      O denunciante não é exibido nesta fila. Casos urgentes
+                      aparecem primeiro; decisões são auditadas.
                     </p>
                   </div>
                 </div>
@@ -1049,12 +1089,15 @@ export default function AdminDashboard() {
                             <td>{report.priority}</td>
                             <td>
                               <strong>
-                                {reportCategoryLabels[report.category as ReportCategory] || "Outro"}
+                                {reportCategoryLabels[
+                                  report.category as ReportCategory
+                                ] || "Outro"}
                               </strong>
                               <small>{report.description}</small>
                             </td>
                             <td>
-                              #{report.profileId} {report.profileName || "Perfil indisponível"}
+                              #{report.profileId}{" "}
+                              {report.profileName || "Perfil indisponível"}
                             </td>
                             <td>{report.status}</td>
                             <td>{date(report.createdAt)}</td>
@@ -1074,28 +1117,36 @@ export default function AdminDashboard() {
                                     Assumir
                                   </button>
                                 )}
-                                {!['approved', 'rejected', 'closed'].includes(report.status) && (
+                                {!["approved", "rejected", "closed"].includes(
+                                  report.status
+                                ) && (
                                   <button
                                     disabled={updateReport.isPending}
                                     onClick={() =>
                                       updateReport.mutate({
                                         id: report.id,
                                         status: "closed",
-                                        decision: reportDecision || "Caso encerrado após revisão administrativa.",
+                                        decision:
+                                          reportDecision ||
+                                          "Caso encerrado após revisão administrativa.",
                                       })
                                     }
                                   >
                                     Encerrar
                                   </button>
                                 )}
-                                {['approved', 'rejected', 'closed'].includes(report.status) && (
+                                {["approved", "rejected", "closed"].includes(
+                                  report.status
+                                ) && (
                                   <button
                                     disabled={updateReport.isPending}
                                     onClick={() =>
                                       updateReport.mutate({
                                         id: report.id,
                                         status: "open",
-                                        decision: reportDecision || "Caso reaberto para nova análise.",
+                                        decision:
+                                          reportDecision ||
+                                          "Caso reaberto para nova análise.",
                                       })
                                     }
                                   >
@@ -1117,36 +1168,17 @@ export default function AdminDashboard() {
                 <section className="studio-panel">
                   <h2>Conteúdo da página inicial</h2>
                   <p className="studio-muted">
-                    Edite somente a apresentação da home. Anúncios, fotos e
-                    vídeos são cadastrados separadamente no painel de anúncios.
+                    Configure toda a copy editorial da home. Links, filtros,
+                    publicação, age gate e regras de segurança continuam
+                    protegidos pelo sistema.
                   </p>
                   <Failure error={settings.error} />
-                  {(
-                    [
-                      ["eyebrow", "Chamada curta"],
-                      ["title", "Título principal"],
-                      ["subtitle", "Descrição principal"],
-                      ["heroVisualTitle", "Título do painel visual"],
-                      ["heroVisualSubtitle", "Legenda do painel visual"],
-                      ["buttonText", "Texto do botão"],
-                      ["searchPlaceholder", "Placeholder da busca"],
-                      ["emptyTitle", "Título sem anúncios"],
-                      ["emptyText", "Texto sem anúncios"],
-                      ["about", "Sobre a plataforma"],
-                      ["footer", "Rodapé"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <label key={key}>
-                      {label}
-                      <textarea
-                        rows={key === "about" || key === "emptyText" || key === "subtitle" ? 4 : 2}
-                        value={site[key]}
-                        onChange={e =>
-                          setSite(s => ({ ...s, [key]: e.target.value }))
-                        }
-                      />
-                    </label>
-                  ))}
+                  <HomeCopyEditor
+                    value={site.home}
+                    onChange={home =>
+                      setSite(current => ({ ...current, home }))
+                    }
+                  />
                   {(
                     [
                       ["showGallery", "Exibir vitrine"],
@@ -1177,18 +1209,22 @@ export default function AdminDashboard() {
                   <p className="studio-kicker">
                     Prévia dos textos — ainda não publicada
                   </p>
-                    <p className="studio-kicker">{site.eyebrow}</p>
-                    <h1>{site.title}</h1>
-                    <p>{site.subtitle}</p>
-                    <h3>{site.heroVisualTitle}</h3>
-                    <small>{site.heroVisualSubtitle}</small>
-                    <button>{site.buttonText}</button>
-                    <input readOnly value={site.searchPlaceholder} aria-label="Prévia do placeholder de busca" />
-                    {site.showAbout && <p>{site.about}</p>}
-                    <h3>{site.emptyTitle}</h3>
-                    <p>{site.emptyText}</p>
+                  <p className="studio-kicker">{site.home.hero.eyebrow}</p>
+                  <h1>{site.home.hero.title}</h1>
+                  <p>{site.home.hero.subtitle}</p>
+                  <h3>{site.home.hero.visualTitle}</h3>
+                  <small>{site.home.hero.visualSubtitle}</small>
+                  <button>{site.home.hero.buttonText}</button>
+                  <input
+                    readOnly
+                    value={site.home.hero.searchPlaceholder}
+                    aria-label="Prévia do placeholder de busca"
+                  />
+                  {site.showAbout && <p>{site.home.about.text}</p>}
+                  <h3>{site.home.catalog.resultsEmptyTitle}</h3>
+                  <p>{site.home.catalog.resultsEmptyText}</p>
                   <hr />
-                  <small>{site.footer}</small>
+                  <small>{site.home.footer.tagline}</small>
                   <p className="studio-muted">
                     Vitrine:{" "}
                     {site.showGallery
