@@ -7,6 +7,7 @@
 - [x] Criar tabela e validações de perfil com nome artístico, descrição, cidade/região, categorias, atributos, contato e status
 - [x] Criar fluxo de criação, edição, envio para revisão e publicação de perfil pelo titular
 - [x] Criar vitrine pública responsiva sem anúncios fictícios exibidos como reais
+- [x] Reformular a home como landing page editorial de marketplace, com hero, busca imediata, segurança, cadastro contextual, categorias/localidades e rodapé institucional
 - [x] Implementar busca textual e filtros por cidade, categoria e atributos
 - [x] Implementar localização e URLs públicas por cidade
 - [x] Criar página individual pública de perfil com estados de privacidade e indisponibilidade
@@ -25,6 +26,7 @@
 - [ ] Avaliar necessidade de SSR para conteúdo público indexável
 - [ ] Criar testes Vitest para permissões, validações, filtros, publicação e mídia
 - [x] Executar check, build, testes e verificação visual responsiva
+- [ ] Validar a nova landing page em desktop e mobile, preservando age gate, SEO, PWA, filtros e rotas privadas
 - [x] Documentar análise do repositório, arquitetura, arquivos alterados, migrations, configuração e testes
 - [x] Criar ZIP final atualizado do projeto
 

@@ -56,6 +56,9 @@ export default function Seo({
     const existing = document.head.querySelector('script[data-seo-jsonld="true"]');
     existing?.remove();
     if (jsonLd) {
+      document.head
+        .querySelectorAll('script[data-seo-jsonld="server"]')
+        .forEach(script => script.remove());
       const script = document.createElement("script");
       script.type = "application/ld+json";
       script.dataset.seoJsonld = "true";

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-25 — landing editorial de marketplace
+
+- a home foi reorganizada em hero visual, busca acima da dobra, links rápidos, sinais de segurança, CTA contextual para titulares, catálogo, busca avançada, categorias/localidades e rodapé institucional;
+- o texto foi reduzido para títulos e ações diretas, mantendo o age gate, SEO, filtros compartilháveis, PWA e rotas privadas existentes;
+- a apresentação usa o hero e a identidade Ero Models já versionados; não foram copiados marca, textos, imagens ou métricas da referência visual enviada;
+- perfis, cidades e localidades continuam vindo somente das consultas públicas elegíveis; quando não há publicação, a interface exibe estado neutro e CTA de cadastro, sem números ou anúncios fictícios;
+- preservados os settings administráveis da vitrine, normalização dos filtros de idade, navegação semântica do rodapé e JSON-LD consolidado para rotas de cidade/categoria;
+- validação local: `pnpm check`, suíte completa (`99 testes`), `pnpm build`, Prettier nos arquivos TypeScript/documentais e `git diff --check` passaram; a captura estática confirmou desktop e estados vazios.
+
 ## 2026-10-22 — descoberta mobile, PWA e controles de conta
 
 - a vitrine ganhou filtros compartilháveis por cidade/região, categoria, característica, idade, disponibilidade atual e ordenação; as sugestões de localização vêm somente de anúncios públicos elegíveis;

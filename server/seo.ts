@@ -252,7 +252,7 @@ export function renderSeoHead(seo: ServerSeo) {
   }
   if (seo.jsonLd) {
     const serialized = JSON.stringify(seo.jsonLd).replace(/</g, "\\u003c");
-    tags.push(`<script type="application/ld+json">${serialized}</script>`);
+    tags.push(`<script type="application/ld+json" data-seo-jsonld="server">${serialized}</script>`);
   }
   return tags.join("\n    ");
 }
