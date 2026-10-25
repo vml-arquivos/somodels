@@ -45,4 +45,19 @@ describe("site settings normalization", () => {
       })
     ).not.toThrow();
   });
+
+  it("normalizes the former brand in persisted copy", () => {
+    const settings = normalizeSiteSettings({
+      home: {
+        footer: {
+          tagline: "Só Models · Classificados adultos legais",
+          signature: "So Models — Portal adulto",
+        },
+      },
+    });
+
+    expect(settings.home.footer.tagline).toContain("Ero Models");
+    expect(settings.home.footer.signature).toContain("Ero Models");
+    expect(settings.home.footer.tagline).not.toMatch(/Só Models|So Models/i);
+  });
 });

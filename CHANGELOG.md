@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-25 — correção visual pós-publicação
+
+- a revisão do screenshot real mostrou que a etapa anterior tornou o conteúdo configurável, mas preservou defaults e settings antigos o suficiente para a mudança pública parecer pequena;
+- a landing recebeu uma segunda calibração visual, com navegação maior, headline e corpo mais legíveis, contraste reforçado, cards com hierarquia mais clara e ritmo mais equilibrado entre seções;
+- settings persistidos que ainda contêm “Só Models” ou “So Models” são normalizados para “Ero Models” no carregamento, sem migration e sem apagar a possibilidade de editar a copy pelo admin;
+- validação local: `pnpm check`, suíte completa (`103 testes`), build, Prettier e `git diff --check` passaram; Chromium mobile `390x844` confirmou `document.scrollWidth === 390` após a nova calibração.
+
 ## 2026-10-25 — landing editorial de marketplace
 
 - a home foi reorganizada em hero visual, busca acima da dobra, links rápidos, sinais de segurança, CTA contextual para titulares, catálogo, busca avançada, categorias/localidades e rodapé institucional;
