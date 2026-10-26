@@ -2663,3 +2663,565 @@
   font-size: 0.92rem;
   line-height: 1.55;
 }
+
+/* ==========================================================================
+   Revisão final de design: tipografia, contraste, ritmo e responsividade.
+   Este bloco vem por último de propósito e consolida as camadas anteriores.
+   ========================================================================== */
+
+/* A landing tem paleta clara própria. Fixar os tokens evita misturar fundo claro
+   com cartões escuros e texto claro quando o tema escuro está salvo no navegador. */
+.studio-landing,
+:root.dark .studio-landing {
+  --s-bg: #fbfaf8;
+  --s-panel: #ffffff;
+  --s-text: #18232d;
+  --s-muted: #5c6871;
+  --s-line: #e6dedf;
+  --s-soft: #f3eeee;
+  --s-accent: #b73d55;
+  --s-accent-text: #ffffff;
+  color: var(--s-text);
+}
+
+/* O tema só vale nas demais páginas; na landing o botão não faria nada. */
+.studio-landing .studio-theme-toggle {
+  display: none !important;
+}
+
+/* Escala tipográfica fluida e quebras naturais. */
+.studio-landing h1,
+.studio-landing h2,
+.studio-landing h3,
+.studio-landing p {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
+  text-wrap: balance;
+}
+
+.studio-landing p {
+  text-wrap: pretty;
+}
+
+.studio-landing-hero h1 {
+  max-width: 100%;
+  margin: 0 0 22px;
+  font-size: clamp(2.5rem, 1.2rem + 4.2vw, 4.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
+  font-weight: 800;
+}
+
+.studio-landing h2,
+.studio-landing-popular h2,
+.studio-landing-heading h2,
+.studio-landing-holder-cta h2,
+.studio-landing-about h2,
+.studio-search-band-copy h2 {
+  max-width: 20ch;
+  margin: 0 0 14px;
+  font-size: clamp(1.75rem, 1.1rem + 2.2vw, 2.75rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  font-weight: 800;
+}
+
+.studio-landing h3 {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.studio-landing-hero-lead {
+  max-width: 54ch;
+  font-size: clamp(1rem, 0.95rem + 0.35vw, 1.18rem);
+  line-height: 1.6;
+}
+
+/* Contraste: texto claro sobre faixas escuras, escuro sobre faixas claras. */
+.studio-landing-search-band,
+.studio-landing-search-band .studio-search-band-copy h2,
+.studio-landing-search-band .studio-kicker {
+  color: #fff;
+}
+
+.studio-landing-search-band .studio-kicker {
+  color: #ff9aa5;
+}
+
+.studio-search-band-copy > p:not(.studio-kicker) {
+  max-width: 52ch;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.studio-landing-holder-cta,
+.studio-landing-holder-cta h2,
+.studio-landing-holder-cta p,
+.studio-landing-holder-cta .studio-kicker {
+  color: #fff;
+}
+
+.studio-landing-holder-cta .studio-cta {
+  background: #fff;
+  color: var(--landing-coral-dark);
+}
+
+.studio-landing-hero h1,
+.studio-landing-popular h2,
+.studio-landing-heading h2,
+.studio-landing-about h2,
+.studio-landing-catalog h2,
+.studio-discovery-section h2 {
+  color: var(--landing-heading, #18232d);
+}
+
+.studio-landing-hero-visual,
+.studio-landing-hero-badge,
+.studio-landing-hero-badge strong,
+.studio-landing-hero-badge span {
+  color: #f7e9e6;
+}
+
+/* Cartões e painéis claros dentro da landing. */
+.studio-landing .studio-panel,
+.studio-landing-empty {
+  background: #fff;
+  border: 1px solid var(--s-line);
+  color: var(--s-text);
+}
+
+.studio-landing-empty {
+  max-width: 760px;
+  padding: 28px;
+  border-radius: 16px;
+}
+
+.studio-landing-empty h3 {
+  margin: 0 0 8px;
+  color: var(--landing-heading, #18232d);
+  font-size: clamp(1.25rem, 1.1rem + 0.7vw, 1.6rem);
+}
+
+.studio-landing-empty p {
+  margin: 0 0 16px;
+  color: var(--s-muted);
+}
+
+.studio-landing-empty a:not(.studio-cta) {
+  color: var(--landing-coral-dark);
+  font-weight: 760;
+}
+
+/* Busca da vitrine: campos legíveis, chips e contadores alinhados. */
+.studio-discovery-section {
+  color: var(--s-text);
+}
+
+.studio-discovery-controls,
+.studio-toolbar {
+  color: var(--s-text);
+}
+
+.studio-landing .studio-discovery-controls,
+.studio-landing .studio-toolbar-primary,
+.studio-landing .studio-toolbar-advanced {
+  background: #fff;
+  border: 1px solid var(--s-line);
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(43, 37, 46, 0.05);
+}
+
+.studio-landing .studio-discovery-controls input,
+.studio-landing .studio-discovery-controls select,
+.studio-landing .studio-toolbar input,
+.studio-landing .studio-toolbar select {
+  min-height: 46px;
+  border: 1px solid var(--s-line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--s-text);
+  font-size: 1rem;
+}
+
+.studio-landing .studio-filter-chips button,
+.studio-landing .studio-search-band-chips button {
+  min-height: 40px;
+}
+
+.studio-landing .studio-filter-chips button {
+  border: 1px solid var(--s-line);
+  background: #fff;
+  color: var(--s-text);
+}
+
+.studio-landing .studio-filter-chips button[aria-pressed="true"],
+.studio-landing .studio-filter-chips button.active {
+  border-color: var(--landing-coral-dark);
+  background: var(--landing-coral-dark);
+  color: #fff;
+}
+
+.studio-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 18px;
+  color: var(--s-muted);
+  font-size: 0.9rem;
+}
+
+.studio-landing .studio-kicker {
+  color: var(--landing-coral-dark);
+}
+
+/* Busca do topo: campos com respiro suficiente para o texto de exemplo. */
+.studio-landing-search {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  max-width: 720px;
+}
+
+.studio-landing-search label span {
+  font-size: 0.7rem;
+  margin-bottom: 2px;
+}
+
+.studio-landing-search input {
+  height: 38px;
+  font-size: 1rem;
+  color: var(--s-text);
+}
+
+.studio-landing-search input::placeholder {
+  color: #7b858d;
+  opacity: 1;
+}
+
+.studio-landing-search button {
+  min-height: 56px;
+  padding: 0 24px;
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 760;
+  color: #fff;
+}
+
+/* Botões e CTAs: alvo de toque confortável e peso consistente. */
+.studio-landing .studio-cta,
+.studio-landing .primary,
+.studio-landing .secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-size: 0.98rem;
+  font-weight: 760;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* Ritmo vertical entre seções. */
+.studio-landing-popular {
+  padding-top: clamp(40px, 6vw, 72px);
+  padding-bottom: clamp(40px, 6vw, 72px);
+}
+
+.studio-landing-section {
+  padding-top: clamp(56px, 8vw, 96px);
+  padding-bottom: clamp(56px, 8vw, 96px);
+}
+
+.studio-landing-catalog,
+.studio-discovery-section {
+  padding-top: clamp(48px, 7vw, 80px);
+  padding-bottom: clamp(48px, 7vw, 80px);
+}
+
+.studio-landing-hero-inner {
+  min-height: 0;
+  padding-top: clamp(40px, 6vw, 80px);
+  padding-bottom: clamp(48px, 7vw, 88px);
+}
+
+.studio-landing-about-inner {
+  padding-top: clamp(48px, 7vw, 80px);
+  padding-bottom: clamp(48px, 7vw, 80px);
+  gap: clamp(28px, 5vw, 80px);
+}
+
+/* Bloco "Sobre": uma coluna em telas pequenas (antes ficava estreito demais). */
+@media (max-width: 900px) {
+  .studio-landing-about-inner,
+  .studio-holder-cta-inner,
+  .studio-popular-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studio-landing-popular {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .studio-landing-hero-visual {
+    min-height: 360px;
+  }
+
+  .studio-landing-search {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .studio-landing-search button {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  .studio-landing-search label:nth-of-type(2) {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .studio-landing-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studio-landing-search label {
+    border-right: 0;
+    border-bottom: 1px solid var(--s-line);
+  }
+
+  .studio-landing-search label:nth-of-type(2) {
+    border-bottom: 0;
+  }
+
+  .studio-landing-hero h1 {
+    font-size: clamp(2.2rem, 10.5vw, 3rem);
+  }
+
+  .studio-landing h2,
+  .studio-landing-heading h2 {
+    max-width: 100%;
+  }
+
+  .studio-landing .studio-cta,
+  .studio-landing-holder-cta .studio-cta {
+    width: 100%;
+  }
+
+  .studio-result-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Rodapé legível em todas as larguras. */
+.studio-landing .studio-footer {
+  color: #d9dde0;
+}
+
+.studio-landing .studio-footer nav a {
+  color: #d9dde0;
+}
+
+.studio-landing .studio-footer a:hover {
+  color: #fff;
+}
+
+/* Busca do topo: dois campos na mesma linha e botão em largura total. */
+.studio-landing-search {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+  padding: 10px;
+}
+
+.studio-landing-search label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6px 16px 8px;
+}
+
+.studio-landing-search label:nth-of-type(2) {
+  border-right: 0;
+}
+
+.studio-landing-search input {
+  width: 100%;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  text-overflow: ellipsis;
+}
+
+.studio-landing-search button {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.studio-landing-hero h1 {
+  line-height: 1.05;
+}
+
+@media (max-width: 640px) {
+  .studio-landing-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studio-landing-search label {
+    border-right: 0;
+    border-bottom: 1px solid var(--s-line);
+  }
+
+  .studio-landing-search label:nth-of-type(2) {
+    border-bottom: 0;
+  }
+}
+
+/* Cabeçalhos de seção: alinhados à esquerda do conteúdo ou realmente centralizados. */
+.studio-landing-heading {
+  max-width: 760px;
+  margin: 0 0 clamp(24px, 3vw, 36px);
+}
+
+.studio-landing-heading-left {
+  margin-left: 0;
+  margin-right: auto;
+  text-align: left;
+}
+
+.studio-landing-heading-center {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.studio-landing-heading-center h2 {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Páginas de texto (institucionais, como anunciar, ajuda): leitura confortável. */
+.studio-about {
+  max-width: 760px;
+  padding: clamp(28px, 5vw, 64px) 0 clamp(20px, 3vw, 40px);
+}
+
+.studio-about h1 {
+  margin: 0 0 20px;
+  font-size: clamp(2rem, 1.3rem + 2.8vw, 3.2rem);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.studio-about h2 {
+  margin: 36px 0 12px;
+  font-size: clamp(1.25rem, 1.1rem + 0.7vw, 1.6rem);
+  line-height: 1.2;
+}
+
+.studio-about p {
+  max-width: 68ch;
+  margin: 0 0 16px;
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+.studio-about ul,
+.studio-about ol {
+  max-width: 68ch;
+  margin: 0 0 20px;
+  padding-left: 22px;
+  list-style: disc;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.studio-about ol {
+  list-style: decimal;
+}
+
+.studio-about li {
+  margin: 0 0 8px;
+  padding-left: 4px;
+}
+
+.studio-about .studio-actions {
+  margin-top: 24px;
+}
+
+.studio-main > .studio-panel {
+  max-width: 880px;
+}
+
+.studio-breadcrumb {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .studio-main {
+    padding: 24px 16px 56px;
+  }
+
+  .studio-about p,
+  .studio-about ul {
+    font-size: 1rem;
+  }
+}
+
+/* Rodapé: a regra genérica "footer nav" (flex, centralizado) quebrava a grade de colunas. */
+.studio-footer .studio-footer-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-content: stretch;
+  gap: 28px;
+  margin-top: 0;
+  font-size: inherit;
+}
+
+.studio-footer .studio-footer-columns a {
+  color: rgba(255, 255, 255, 0.78) !important;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.studio-footer-brand p {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.94rem;
+}
+
+.studio-footer-brand span {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.8rem;
+}
+
+.studio-footer-bottom {
+  flex-wrap: wrap;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 0.8rem;
+}
+
+.studio-footer-bottom a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 820px) {
+  .studio-footer .studio-footer-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px 22px;
+  }
+}
+
+@media (max-width: 380px) {
+  .studio-footer .studio-footer-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-26 — revisão visual de todas as páginas
+
+- home: o título do topo não passa mais por baixo da foto (tamanho fluido por largura de tela);
+- títulos e textos que ficavam invisíveis (faixa escura "Filtre pelo que importa", cartões do catálogo e de categorias) agora têm contraste correto; a landing usa paleta clara própria e o botão de tema não aparece nela;
+- busca do topo com dois campos e botão em largura total; filtros e contadores da vitrine alinhados;
+- cabeçalhos de seção alinhados à esquerda do conteúdo (antes ficavam recuados) e espaçamento vertical menor entre seções;
+- bloco "Sobre" deixa de virar coluna estreita no celular;
+- páginas de texto (como anunciar, termos, ajuda, planos) com tamanho de letra, listas numeradas e largura de linha confortáveis;
+- rodapé com colunas alinhadas no celular e texto mais legível;
+- conferido em 360, 390, 768, 1024 e 1440 px, sem rolagem horizontal em nenhuma página testada (home, cidade, categoria, planos, como anunciar, calculadora, termos, privacidade, segurança, denúncia, ajuda, contato, login, cadastro, titular, conta e admin). As telas foram checadas com dados simulados; confira também com anúncios reais.
+
 ## 2026-10-26 — pronto para receber cadastros: planos, segurança do admin e vitrine completa
 
 - migration `0008_plans_mfa_availability`: tabela `user_mfa`, campos novos em `plans` (destaque, duração, ordem, benefícios), em `subscriptions` (origem, observação, quem ativou) e `availableUntil` em `profiles`;
