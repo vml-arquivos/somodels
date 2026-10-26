@@ -22,7 +22,7 @@ Nunca commite valores reais dessas variáveis. Em produção, configure-as no ge
 
 ## Instalação e build
 
-Execute `corepack enable`, `corepack pnpm install`, `corepack pnpm drizzle-kit generate`, aplique a migration SQL gerada no banco de produção seguindo o procedimento do provedor, e então execute `corepack pnpm run build`. O artefato do servidor fica em `dist/index.js` e os arquivos públicos ficam em `dist/public`.
+Execute `corepack enable`, `corepack pnpm install --frozen-lockfile`, `corepack pnpm db:migrate` e então `corepack pnpm run build`. O deploy aplica somente as migrations versionadas; não gere SQL novo nem use `db:push` em produção. O artefato do servidor fica em `dist/index.js` e os arquivos públicos ficam em `dist/public`.
 
 ## Inicialização
 
@@ -50,6 +50,6 @@ pnpm test
 pnpm build
 ```
 
-Em seguida valide `/healthz`, `/api/release`, login/logout, age gate, storage, perfil público e admin. Use `docs/DEPLOY-ROLLBACK-PLAN.md` como runbook. Como esta entrega não adiciona migration e preserva `0000`–`0005`, não há SQL novo a aplicar especificamente para favoritos/bloqueios/denúncias: eles reutilizam estruturas existentes. Ainda assim, a versão de banco deve estar integralmente em `0005` antes do deploy.
+Em seguida valide `/healthz`, `/api/release`, login/logout, age gate, storage, perfil público e admin. Use `docs/DEPLOY-ROLLBACK-PLAN.md` como runbook. Esta etapa adiciona a migration `0011_talented_ares.sql`, que somente cria `profiles.paymentMethods`; ela é aplicada automaticamente por `db:migrate` antes do servidor iniciar. As migrations anteriores permanecem necessárias e devem estar integralmente aplicadas antes do tráfego público.
 
 A homologação final deve ocorrer contra um MySQL/TiDB real com backup/restauração testados. Providers de age/KYC/payment não devem ser considerados operacionais apenas por existirem variáveis de ambiente.

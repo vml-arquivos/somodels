@@ -19,8 +19,75 @@ export const serviceOptions = [
   "Roleplay e fantasias (sob consulta)",
 ] as const;
 
+export const brazilianStateOptions = [
+  ["AC", "Acre"],
+  ["AL", "Alagoas"],
+  ["AP", "Amapá"],
+  ["AM", "Amazonas"],
+  ["BA", "Bahia"],
+  ["CE", "Ceará"],
+  ["DF", "Distrito Federal"],
+  ["ES", "Espírito Santo"],
+  ["GO", "Goiás"],
+  ["MA", "Maranhão"],
+  ["MT", "Mato Grosso"],
+  ["MS", "Mato Grosso do Sul"],
+  ["MG", "Minas Gerais"],
+  ["PA", "Pará"],
+  ["PB", "Paraíba"],
+  ["PR", "Paraná"],
+  ["PE", "Pernambuco"],
+  ["PI", "Piauí"],
+  ["RJ", "Rio de Janeiro"],
+  ["RN", "Rio Grande do Norte"],
+  ["RS", "Rio Grande do Sul"],
+  ["RO", "Rondônia"],
+  ["RR", "Roraima"],
+  ["SC", "Santa Catarina"],
+  ["SP", "São Paulo"],
+  ["SE", "Sergipe"],
+  ["TO", "Tocantins"],
+] as const;
+
+export const languageOptions = [
+  "Português",
+  "Inglês",
+  "Espanhol",
+  "Francês",
+  "Italiano",
+  "Alemão",
+  "Libras",
+] as const;
+export const profileAttributeOptions = [
+  "Discreta",
+  "Com local",
+  "Atendimento externo",
+  "Disponibilidade para viagens",
+  "Atendimento noturno",
+  "Atendimento diurno",
+] as const;
+export const profilePreferenceOptions = [
+  "Virtual",
+  "Casal ou dupla",
+  "Viagens",
+  "Eventos",
+  "Atendimento recorrente",
+] as const;
+export const contactMethodOptions = [
+  "WhatsApp",
+  "Ligação telefônica",
+  "Telegram",
+] as const;
+export const paymentMethodOptions = [
+  "Pix",
+  "Dinheiro",
+  "Cartão",
+  "Transferência bancária",
+] as const;
+
 export type AttendancePlace = (typeof attendancePlaceOptions)[number];
 export type ServiceOption = (typeof serviceOptions)[number];
+export type PaymentMethod = (typeof paymentMethodOptions)[number];
 
 // Faixas rápidas exibidas na vitrine (valor máximo em centavos).
 export const priceBands = [

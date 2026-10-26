@@ -35,6 +35,27 @@ Badges são calculados no servidor pela nova consulta `management.navigationCoun
 
 O smoke não precisa de senha, login manual ou alteração de dados: verifica healthcheck e banco nos três hosts, rotas públicas e administrativas, redirecionamentos `conta.*`/`admin.*`, assets PWA, robots, sitemaps, flags de produção e o envelope tRPC de uma tentativa fictícia de login. A automação reduz trabalho operacional, mas mantém RBAC, MFA, aprovação de anúncios/mídias e todas as autorizações do backend.
 
+## Etapa 6 — conta, rascunho retomável e mídia do titular
+
+**Status:** concluída no checkout local; `pnpm check`, 157 testes, build e `git diff --check` aprovados. A migration aditiva `0011_talented_ares.sql` será aplicada pelo fluxo normal de `db:migrate` no deploy.
+
+O fluxo será dividido em quatro estados claros: dados da conta, rascunho salvo, envio para revisão e publicação após as gates existentes. Salvar rascunho não exigirá o aceite contratual final nem os campos completos; o servidor persistirá valores parciais com placeholders internos seguros e ownership do titular. Enviar para revisão continuará exigindo dados completos, autorização do conteúdo, termo vigente e identidade quando configurada.
+
+O titular poderá abrir qualquer rascunho na lista, continuar a edição sem reiniciar o formulário, salvar novamente, aceitar o termo ligado ao conteúdo atual, enviar para revisão e acompanhar os bloqueios de publicação. O upload será mantido privado até a revisão, com mensagens explícitas para consentimento, identidade, formato, limite e armazenamento; depois do upload o registro será criado e a galeria será recarregada automaticamente. A área de cliente exibirá o acesso aos dados da conta e à continuidade dos anúncios, sem duplicar regras de autorização.
+
+O formulário usa selects controlados para estado, idiomas, categorias, características, preferências, formas de contato, formas de pagamento, locais e serviços; texto livre fica restrito aos dados que realmente precisam de contexto humano. A página pública exibe a galeria em cartões responsivos, distingue vídeos e mostra formas de pagamento somente quando publicadas pelo titular. Sugestão por IA não foi ativada nesta etapa porque o provider/modelo não está configurado no ambiente de validação; a descrição manual permanece segura e funcional.
+
+### Estrutura envolvida
+
+- `shared/profile-schema.ts`: contrato estrito para publicação e contrato parcial para rascunhos.
+- `server/routers.ts`: validação distinta entre salvar rascunho e enviar para revisão.
+- `server/db.ts`: merge seguro de rascunho, placeholders não públicos, slug único e ownership.
+- `client/src/components/PortfolioEditor.tsx`: fluxo de salvar, retomar, aceite, revisão e upload com feedback acionável.
+- `client/src/pages/OwnerDashboard.tsx`: dados da conta, lista retomável, status e checklist de ativação.
+- `client/src/pages/ClientDashboard.tsx`: acesso claro à conta e à continuidade do anúncio.
+- `server/*test.ts`: regressões para rascunho parcial, retomada, ownership, revisão e upload.
+- `drizzle/0011_talented_ares.sql`: coluna opcional `paymentMethods`, sem reset de dados históricos.
+
 ## Objetivo
 
 Transformar a home em uma landing page editorial de marketplace adulto: hero visual forte, busca acionável, prova de segurança, descoberta por categorias/localidades, cadastro contextual de titulares e rodapé institucional. A referência enviada orienta ritmo, composição e hierarquia, mas não serão copiados marca, textos, imagens, métricas ou componentes de terceiros.

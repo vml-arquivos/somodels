@@ -1,5 +1,5 @@
-import { getMediaById } from "../db";
-import { serveStoredObject } from "../storage";
+import { createMedia, getMediaById } from "../db";
+import { serveStoredObject, storageDelete } from "../storage";
 import { readSiteSettings } from "../site-config";
 import "dotenv/config";
 import express from "express";
@@ -263,10 +263,44 @@ async function startServer() {
       const extension = path.extname(String(filename)).toLowerCase().replace(/[^a-z0-9.]/g, "") || (kind === "photo" ? ".jpg" : ".mp4");
       const safeKey = `profiles/${ownerId}/${profileId}/${kind}/${randomUUID()}${extension}`;
       const uploaded = await storagePut(safeKey, buffer, contentType);
-      return res.json(uploaded);
+      try {
+        const mediaId = await createMedia(
+          ownerId,
+          {
+            profileId: Number(profileId),
+            kind,
+            storageKey: uploaded.key,
+            url: uploaded.url,
+            mimeType: contentType,
+            isPremium: false,
+            sortOrder: managedProfile.media.length,
+          },
+          ctx.user.id,
+          !isAdmin
+        );
+        return res.json({ ...uploaded, mediaId });
+      } catch (error) {
+        await storageDelete(uploaded.key).catch(cleanupError => {
+          console.error(
+            "[Upload] orphan cleanup failed:",
+            cleanupError instanceof Error ? cleanupError.message : "unknown error"
+          );
+        });
+        throw error;
+      }
     } catch (error) {
-      console.error("[Upload] failed", error instanceof Error ? error.message : "unknown error");
-      return res.status(500).json({ error: "Não foi possível armazenar a mídia" });
+      const message = error instanceof Error ? error.message : "unknown error";
+      console.error("[Upload] failed", message);
+      const actionable = [
+        "Verificação de identidade",
+        "Perfil não pertence",
+        "perfil está inativo",
+        "perfil está excluído",
+        "titular precisa estar ativo",
+      ].some(fragment => message.toLowerCase().includes(fragment.toLowerCase()));
+      return res.status(actionable ? 403 : 500).json({
+        error: actionable ? message : "Não foi possível armazenar a mídia; tente novamente",
+      });
     }
   });
   app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));

@@ -1,5 +1,5 @@
 import { contactLinks, defaultSiteSettings, portfolioCategories } from "../shared/portfolio";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, asc, desc, eq, getTableColumns, like, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
@@ -624,6 +624,7 @@ export function hydrateProfile(row: any) {
     contactOptions: parseJson(row.contactOptions),
     preferences: parseJson(row.preferences),
     languages: parseJson(row.languages),
+    paymentMethods: parseJson(row.paymentMethods),
     services: parseJson(row.services),
     attendancePlaces: parseJson(row.attendancePlaces),
     priceFromCents: row.priceFromCents ?? null,
@@ -637,6 +638,7 @@ export function hydratePublicProfile(row: any) {
   const contactOptions = parseJson(row.contactOptions);
   const preferences = parseJson(row.preferences);
   const languages = parseJson(row.languages);
+  const paymentMethods = parseJson(row.paymentMethods);
   const services = parseJson(row.services);
   const attendancePlaces = parseJson(row.attendancePlaces);
   const contactAllowed = !row.isDemo && !row.isTest && row.portfolioReviewed;
@@ -653,6 +655,7 @@ export function hydratePublicProfile(row: any) {
     attributes,
     preferences,
     languages,
+    paymentMethods,
     services,
     attendancePlaces,
     priceFromCents: row.priceFromCents ?? null,
@@ -1005,7 +1008,7 @@ export async function getOwnerProfiles(ownerId: number) {
   const rows = await db
     .select()
     .from(profiles)
-    .where(eq(profiles.ownerId, ownerId))
+    .where(and(eq(profiles.ownerId, ownerId), sql`${profiles.deletedAt} IS NULL`))
     .orderBy(desc(profiles.updatedAt));
   return rows.map(hydrateProfile);
 }
@@ -1016,7 +1019,13 @@ export async function getOwnerProfile(ownerId: number, id: number) {
   const rows = await db
     .select()
     .from(profiles)
-    .where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)))
+    .where(
+      and(
+        eq(profiles.id, id),
+        eq(profiles.ownerId, ownerId),
+        sql`${profiles.deletedAt} IS NULL`
+      )
+    )
     .limit(1);
   if (!rows[0]) return null;
   const media = await db
@@ -1029,7 +1038,7 @@ export async function getOwnerProfile(ownerId: number, id: number) {
 
 export async function saveProfile(
   ownerId: number,
-  input: Omit<InsertProfile, "ownerId">,
+  input: Partial<Omit<InsertProfile, "ownerId">>,
   id?: number,
   submitForReview = false
 ) {
@@ -1045,44 +1054,85 @@ export async function saveProfile(
       "A verificação de identidade do anunciante é obrigatória antes do envio para análise"
     );
   }
+  const currentRows = id
+    ? await db
+        .select()
+        .from(profiles)
+        .where(
+          and(
+            eq(profiles.id, id),
+            eq(profiles.ownerId, ownerId),
+            sql`${profiles.deletedAt} IS NULL`
+          )
+        )
+        .limit(1)
+    : [];
+  const current = currentRows[0];
+  if (id && !current) throw new Error("Perfil não pertence à conta ou está arquivado");
+  const hydratedCurrent = current ? hydrateProfile(current) : {};
+  const stageName = String(input.stageName ?? hydratedCurrent.stageName ?? "Rascunho sem nome").trim() || "Rascunho sem nome";
+  const city = String(input.city ?? hydratedCurrent.city ?? "A definir").trim() || "A definir";
+  const slugCandidate = String(
+    input.slug ?? hydratedCurrent.slug ?? `rascunho-${ownerId}-${randomUUID().slice(0, 12)}`
+  )
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  const slug = slugCandidate || `rascunho-${ownerId}-${randomUUID().slice(0, 12)}`;
+  const [slugOwner] = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(eq(profiles.slug, slug))
+    .limit(1);
+  if (slugOwner && slugOwner.id !== id)
+    throw new Error("Este slug já está em uso; escolha outro endereço público");
+  const categories = input.categories ?? hydratedCurrent.categories ?? [];
+  const attributes = input.attributes ?? hydratedCurrent.attributes ?? [];
+  const contactOptions = input.contactOptions ?? hydratedCurrent.contactOptions ?? [];
+  const preferences = input.preferences ?? hydratedCurrent.preferences ?? [];
+  const languages = input.languages ?? hydratedCurrent.languages ?? [];
+  const paymentMethods = input.paymentMethods ?? hydratedCurrent.paymentMethods ?? [];
+  const services = input.services ?? hydratedCurrent.services ?? [];
+  const attendancePlaces = input.attendancePlaces ?? hydratedCurrent.attendancePlaces ?? [];
   const values: any = {
-    ...input,
+    stageName,
+    slug,
+    description: input.description ?? hydratedCurrent.description ?? null,
+    city,
+    region: input.region ?? hydratedCurrent.region ?? null,
+    locationNote: input.locationNote ?? hydratedCurrent.locationNote ?? null,
+    age: input.age ?? hydratedCurrent.age ?? null,
+    avatarUrl: input.avatarUrl ?? hydratedCurrent.avatarUrl ?? null,
+    categories: serialize(categories),
+    attributes: serialize(attributes),
+    contactOptions: serialize(contactOptions),
+    preferences: serialize(preferences),
+    languages: serialize(languages),
+    paymentMethods: serialize(paymentMethods),
+    services: serialize(services),
+    attendancePlaces: serialize(attendancePlaces),
+    availabilityLabel: input.availabilityLabel ?? hydratedCurrent.availabilityLabel ?? null,
+    isAvailableNow: input.isAvailableNow ?? Boolean(hydratedCurrent.isAvailableNow),
+    priceFromCents: input.priceFromCents ?? hydratedCurrent.priceFromCents ?? null,
+    phone: input.phone !== undefined ? input.phone || null : hydratedCurrent.phone ?? null,
+    whatsapp: input.whatsapp !== undefined ? input.whatsapp || null : hydratedCurrent.whatsapp ?? null,
+    telegram: input.telegram !== undefined ? input.telegram || null : hydratedCurrent.telegram ?? null,
     portfolioReviewed: false,
     ownerId,
-    locationNote: input.locationNote ?? null,
-    categories: serialize(input.categories),
-    attributes: serialize(input.attributes),
-    contactOptions: serialize(input.contactOptions),
-    preferences: serialize(input.preferences),
-    languages: serialize(input.languages),
-    ...(input.isAvailableNow ? {} : { availableUntil: null }),
-    services: serialize((input as any).services),
-    attendancePlaces: serialize((input as any).attendancePlaces),
-    priceFromCents: (input as any).priceFromCents ?? null,
-    phone: input.phone ?? null,
-    whatsapp: input.whatsapp ?? null,
-    telegram: input.telegram ?? null,
+    ...(input.isAvailableNow ?? hydratedCurrent.isAvailableNow
+      ? { availableUntil: current?.availableUntil ?? null }
+      : { availableUntil: null }),
   };
   if (id) {
-    const [owned] = await db
-      .select({ id: profiles.id })
-      .from(profiles)
-      .where(
-        and(
-          eq(profiles.id, id),
-          eq(profiles.ownerId, ownerId),
-          sql`${profiles.deletedAt} IS NULL`
-        )
-      )
-      .limit(1);
-    if (!owned) throw new Error("Perfil não pertence à conta");
     await db
       .update(profiles)
       .set({
         ...values,
         status: submitForReview ? "pending" : "draft",
         isPublished: false,
-        rejectionReason: submitForReview ? null : undefined,
+        rejectionReason: null,
       })
       .where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)));
     await writeAuditLog({

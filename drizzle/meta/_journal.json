@@ -78,6 +78,13 @@
       "when": 1790562800000,
       "tag": "0010_admin_function",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1793026614424,
+      "tag": "0011_talented_ares",
+      "breakpoints": true
     }
   ]
 }

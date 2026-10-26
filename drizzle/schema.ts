@@ -208,6 +208,7 @@ export const profiles = mysqlTable(
     categories: text("categories"),
     attributes: text("attributes"),
     contactOptions: text("contactOptions"),
+    paymentMethods: text("paymentMethods"),
     preferences: text("preferences"),
     languages: text("languages"),
     priceFromCents: int("priceFromCents"),

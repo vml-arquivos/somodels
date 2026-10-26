@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { COOKIE_NAME, UNAUTHED_ERR_MSG } from '@shared/const';
+import { COOKIE_NAME, UNAUTHED_ERR_MSG } from "@shared/const";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
@@ -18,12 +18,26 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  const localAuthPaths = ["/admin", "/titular", "/alterar-senha", "/login"];
-  const isLocalAuthFlow = localAuthPaths.some(path => window.location.pathname.startsWith(path));
+  const localAuthPaths = [
+    "/admin",
+    "/titular",
+    "/conta",
+    "/cliente",
+    "/alterar-senha",
+    "/login",
+  ];
+  const isLocalAuthFlow = localAuthPaths.some(path =>
+    window.location.pathname.startsWith(path)
+  );
   if (isLocalAuthFlow) {
-    if (window.location.pathname !== "/login" && window.location.pathname !== "/alterar-senha") {
+    if (
+      window.location.pathname !== "/login" &&
+      window.location.pathname !== "/alterar-senha"
+    ) {
       const returnTo = `${window.location.pathname}${window.location.search}`;
-      window.location.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+      window.location.replace(
+        `/login?returnTo=${encodeURIComponent(returnTo)}`
+      );
     }
     return;
   }

@@ -152,6 +152,22 @@ export async function storagePut(
   return { key, url: `/manus-storage/${key}` };
 }
 
+export async function storageDelete(relKey: string): Promise<void> {
+  const key = normalizeKey(relKey);
+  const driver = resolveStorageDriver();
+  if (driver === "local") {
+    await fs.rm(resolveLocalPath(key), { force: true });
+    return;
+  }
+  if (driver === "s3") {
+    const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+    const client = await getS3();
+    await client.send(new DeleteObjectCommand({ Bucket: ENV.s3Bucket, Key: key }));
+    return;
+  }
+  throw new Error("Remoção automática não está disponível para o storage legado");
+}
+
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   return { key, url: `/manus-storage/${key}` };
@@ -198,4 +214,3 @@ export async function serveStoredObject(res: Response, relKey: string): Promise<
     if (error && !res.headersSent) res.status(500).send("Não foi possível ler o arquivo");
   });
 }
-
