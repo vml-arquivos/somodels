@@ -1,9 +1,10 @@
 import { updateOwnedMedia } from "./db";
-import { profileInputSchema } from "../shared/profile-schema";
+import { profileDraftInputSchema, profileInputSchema } from "../shared/profile-schema";
 import { attendancePlaceOptions, serviceOptions } from "../shared/discovery-options";
 import { readSiteSettings } from "./site-config";
 import { managementRouter } from "./management";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { reportProfileInputSchema } from "../shared/safety";
 import type { User } from "../drizzle/schema";
 import { COOKIE_NAME } from "@shared/const";
@@ -692,13 +693,28 @@ export const appRouter = router({
       .mutation(({ ctx, input }) => acceptProfileTerms(ctx.user.id, input.id)),
     save: protectedProcedure
       .input(
-        profileInputSchema.extend({
+        profileDraftInputSchema.extend({
           id: z.number().int().positive().optional(),
           submitForReview: z.boolean().default(false),
         })
       )
       .mutation(({ ctx, input }) => {
         const { id, submitForReview, ...data } = input;
+        if (submitForReview) {
+          const strict = profileInputSchema.safeParse({
+            ...data,
+            phone: data.phone || undefined,
+            whatsapp: data.whatsapp || undefined,
+          });
+          if (!strict.success) {
+            const issue = strict.error.issues[0];
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: issue?.message || "Complete os dados obrigatórios antes de enviar para revisão",
+            });
+          }
+          return saveProfile(ctx.user.id, strict.data as any, id, true);
+        }
         return saveProfile(ctx.user.id, data as any, id, submitForReview);
       }),
   }),

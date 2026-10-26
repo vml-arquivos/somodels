@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-26 — fluxo completo do titular e galeria
+
+- dados pessoais editáveis no painel do titular e na área do cliente, com e-mail de acesso somente leitura e retorno seguro após troca de senha;
+- rascunhos agora aceitam o primeiro salvamento parcial, geram slug interno único, preservam ownership e podem ser retomados por `/titular?profileId=...` sem iniciar outro anúncio;
+- envio para revisão continua estrito: dados obrigatórios, consentimento, termo vigente e identidade permanecem gates separados;
+- categorias, estado, idiomas, características, preferências, contatos, formas de pagamento, locais e serviços usam selects controlados; a descrição continua livre para contexto pessoal;
+- `POST /api/upload/media` passou a criar o registro da mídia no mesmo fluxo, retornar `mediaId` e limpar o objeto armazenado quando a gravação falha; fotos e vídeos continuam privados até revisão;
+- página pública do perfil exibe galeria responsiva com selo discreto de vídeo e formas de pagamento quando publicadas; migration `0011_talented_ares` adiciona somente `profiles.paymentMethods`;
+- validação: `pnpm check`, 157 testes, `pnpm build` e `git diff --check` aprovados. Ajuda por IA para descrição permanece desativada até haver provider/modelo configurado e auditável.
+
 ## 2026-10-26 — navegação lateral administrativa
 
 - painel administrativo reorganizado em sidebar fixo no desktop e drawer acessível no mobile/PWA, com agrupamentos Principal, Pessoas, Conteúdo, Atendimento, Comercial, Site e Sistema;

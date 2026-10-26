@@ -10,7 +10,13 @@ import {
 } from "@shared/portfolio";
 import {
   attendancePlaceOptions,
+  brazilianStateOptions,
+  contactMethodOptions,
   centsToReais,
+  languageOptions,
+  paymentMethodOptions,
+  profileAttributeOptions,
+  profilePreferenceOptions,
   reaisToCents,
   serviceOptions,
   type AttendancePlace,
@@ -25,6 +31,18 @@ type Props = {
   admin?: boolean;
   onSaved: (id: number) => void;
 };
+
+function selectedValues(event: { currentTarget: HTMLSelectElement }) {
+  return Array.from(
+    event.currentTarget.selectedOptions,
+    option => option.value
+  );
+}
+
+function withLegacyValues(options: readonly string[], current: string[]) {
+  return Array.from(new Set([...options, ...current]));
+}
+
 export default function PortfolioEditor({
   initial,
   media = [],
@@ -45,15 +63,27 @@ export default function PortfolioEditor({
     categories: (initial?.categories || []).filter((v: string) =>
       (portfolioCategories as readonly string[]).includes(v)
     ),
-    languages: (initial?.languages || []).join(", "),
+    languages: (initial?.languages || []).filter(
+      (v: unknown): v is string => typeof v === "string" && Boolean(v.trim())
+    ),
     availabilityLabel: initial?.availabilityLabel || "",
-    attributes: (initial?.attributes || []).join(", "),
-    preferences: (initial?.preferences || []).join(", "),
-    contactOptions: (initial?.contactOptions || []).join(", "),
+    attributes: (initial?.attributes || []).filter(
+      (v: unknown): v is string => typeof v === "string" && Boolean(v.trim())
+    ),
+    preferences: (initial?.preferences || []).filter(
+      (v: unknown): v is string => typeof v === "string" && Boolean(v.trim())
+    ),
+    contactOptions: (initial?.contactOptions || []).filter(
+      (v: unknown): v is string => typeof v === "string" && Boolean(v.trim())
+    ),
+    paymentMethods: (initial?.paymentMethods || []).filter((v: string) =>
+      (paymentMethodOptions as readonly string[]).includes(v)
+    ),
     isAvailableNow: Boolean(initial?.isAvailableNow),
     priceFrom: centsToReais(initial?.priceFromCents),
     services: ((initial?.services || []) as string[]).filter(
-      (v): v is ServiceOption => (serviceOptions as readonly string[]).includes(v)
+      (v): v is ServiceOption =>
+        (serviceOptions as readonly string[]).includes(v)
     ),
     attendancePlaces: ((initial?.attendancePlaces || []) as string[]).filter(
       (v): v is AttendancePlace =>
@@ -70,10 +100,9 @@ export default function PortfolioEditor({
   const [mediaEdits, setMediaEdits] = useState<
     Record<number, { title: string; description: string }>
   >({});
+  const utils = trpc.useUtils();
   const save = trpc.profiles.save.useMutation();
   const adminSave = trpc.management.saveProfile.useMutation();
-  const add = trpc.media.add.useMutation();
-  const adminAdd = trpc.admin.addMedia.useMutation();
   const cover = trpc.profiles.cover.useMutation();
   const hide = trpc.profiles.hideMedia.useMutation();
   const updateMediaMetadata = trpc.profiles.updateMediaMetadata.useMutation();
@@ -134,7 +163,7 @@ export default function PortfolioEditor({
     }
   }
   async function submit(review: boolean) {
-    if (!consent) {
+    if (review && !consent) {
       toast.error(
         admin
           ? "Confirme que os dados foram fornecidos ou autorizados pelo titular"
@@ -165,41 +194,39 @@ export default function PortfolioEditor({
             .replace(/^-|-$/g, ""),
         categories: form.categories,
         age: form.age ? Number(form.age) : undefined,
-        attributes: form.attributes
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean),
-        languages: form.languages
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean),
-        preferences: form.preferences
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean),
-        contactOptions: form.contactOptions
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean),
+        attributes: form.attributes,
+        languages: form.languages,
+        preferences: form.preferences,
+        contactOptions: form.contactOptions,
+        paymentMethods: form.paymentMethods,
         isAvailableNow: form.isAvailableNow,
       };
       if (admin) {
-        const id = await adminSave.mutateAsync({ ...payload, ownerId: ownerId! });
+        const id = await adminSave.mutateAsync({
+          ...payload,
+          ownerId: ownerId!,
+        });
         toast.success("Anúncio salvo para revisão do titular e da moderação");
         onSaved(Number(id));
         return;
       }
       const id = await save.mutateAsync({ ...payload, submitForReview: false });
       if (review) {
-        const status = initial?.id ? await ownerTerms.refetch() : null;
-        if (!status?.data?.current) {
+        const terms = await utils.profiles.termsStatus.fetch({
+          id: Number(id),
+        });
+        if (!terms.current) {
           toast.error(
-            "Rascunho salvo. Aceite o termo de responsabilidade vigente para este conteúdo antes de enviar para revisão."
+            "Rascunho salvo. Confira os dados, aceite o termo vigente e envie novamente para revisão."
           );
           onSaved(Number(id));
           return;
         }
-        await save.mutateAsync({ ...payload, id: Number(id), submitForReview: true });
+        await save.mutateAsync({
+          ...payload,
+          id: Number(id),
+          submitForReview: true,
+        });
         toast.success("Enviado para revisão");
       } else {
         toast.success("Rascunho salvo. A publicação exige revisão.");
@@ -212,8 +239,14 @@ export default function PortfolioEditor({
     }
   }
   async function upload(file: File | undefined) {
-    if (!file || !initial?.id) return;
-    const kind: "photo" | "video" = file.type.startsWith("video/") ? "video" : "photo";
+    if (!file) return;
+    if (!initial?.id) {
+      toast.error("Salve o rascunho antes de adicionar fotos ou vídeos");
+      return;
+    }
+    const kind: "photo" | "video" = file.type.startsWith("video/")
+      ? "video"
+      : "photo";
     if (file.size > (kind === "video" ? 100 : 12) * 1024 * 1024) {
       toast.error("Arquivo acima do limite: fotos 12 MB e vídeos 100 MB");
       return;
@@ -241,22 +274,8 @@ export default function PortfolioEditor({
           data,
         }),
       });
-      const result = await res.json();
+      const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result.error || "Falha no envio");
-      const mediaInput = {
-        profileId: initial.id,
-        kind,
-        storageKey: result.key,
-        url: result.url,
-        mimeType: file.type,
-        isPremium: false as const,
-        sortOrder: media.length,
-      };
-      if (admin) {
-        await adminAdd.mutateAsync({ ...mediaInput, ownerId: ownerId! });
-      } else {
-        await add.mutateAsync(mediaInput);
-      }
       toast.success("Arquivo recebido para revisão");
       onSaved(initial.id);
     } catch (e) {
@@ -267,35 +286,197 @@ export default function PortfolioEditor({
   }
   return (
     <div className="studio-editor">
+      {!initial?.id && (
+        <div className="studio-notice" role="status">
+          Comece preenchendo o que já souber e salve o rascunho. Os campos
+          restantes, o termo e as fotos/vídeos poderão ser adicionados depois,
+          retomando este mesmo anúncio na lista ao lado.
+        </div>
+      )}
       <div className="studio-fields">
-        {[
-          ["stageName", "Nome artístico exibido", "Ex.: Marina Alves"],
-          ["slug", "Slug do perfil (URL pública)", "Ex.: marina-alves"],
-          ["city", "Cidade de atendimento", "Ex.: Brasília"],
-          ["region", "Estado / região", "Ex.: Distrito Federal"],
-          ["locationNote", "Localização aproximada", "Ex.: Asa Sul e região — nunca informe endereço privado"],
-          ["age", "Idade pública", "Ex.: 28"],
-          ["languages", "Idiomas", "Ex.: Português, Inglês"],
-          ["phone", "Telefone para ligação — DDI e DDD", "Ex.: +55 61 99999-9999"],
-          ["whatsapp", "WhatsApp (opcional)", "Se vazio, usa o telefone informado"],
-          ["availabilityLabel", "Horários e disponibilidade", "Ex.: Todos os dias, das 10h às 22h"],
-          ["attributes", "Características do anúncio", "Ex.: Com local, externo, discreta"],
-          ["preferences", "Preferências / modalidades", "Ex.: Virtual, casal, viagens"],
-          ["contactOptions", "Formas de contato autorizadas", "Ex.: WhatsApp, ligação"],
-        ].map(([key, label, placeholder]) => (
-          <label key={key}>
-            {label}
-            <input
-              maxLength={key === "stageName" ? 120 : 180}
-              type={key === "age" ? "number" : "text"}
-              min={key === "age" ? 18 : undefined}
-              max={key === "age" ? 99 : undefined}
-              placeholder={placeholder}
-              value={(form as any)[key]}
-              onChange={e => update(key, e.target.value)}
-            />
-          </label>
-        ))}
+        <label>
+          Nome artístico exibido
+          <input
+            maxLength={120}
+            placeholder="Ex.: Marina Alves"
+            value={form.stageName}
+            onChange={e => update("stageName", e.target.value)}
+          />
+        </label>
+        <label>
+          Slug do perfil (URL pública)
+          <input
+            maxLength={160}
+            placeholder="Ex.: marina-alves"
+            value={form.slug}
+            onChange={e => update("slug", e.target.value)}
+          />
+        </label>
+        <label>
+          Cidade de atendimento
+          <input
+            maxLength={120}
+            placeholder="Ex.: Brasília"
+            value={form.city}
+            onChange={e => update("city", e.target.value)}
+          />
+        </label>
+        <label>
+          Estado / região
+          <select
+            value={form.region}
+            onChange={e => update("region", e.target.value)}
+          >
+            <option value="">Selecione o estado</option>
+            {brazilianStateOptions.map(([code, label]) => (
+              <option key={code} value={label}>
+                {label}
+              </option>
+            ))}
+            {form.region &&
+              !(
+                brazilianStateOptions as readonly (readonly [string, string])[]
+              ).some(([, label]) => label === form.region) && (
+                <option value={form.region}>{form.region} (legado)</option>
+              )}
+          </select>
+        </label>
+        <label>
+          Localização aproximada
+          <input
+            maxLength={180}
+            placeholder="Ex.: Asa Sul e região — nunca informe endereço privado"
+            value={form.locationNote}
+            onChange={e => update("locationNote", e.target.value)}
+          />
+        </label>
+        <label>
+          Idade pública
+          <input
+            type="number"
+            min={18}
+            max={99}
+            placeholder="Ex.: 28"
+            value={form.age}
+            onChange={e => update("age", e.target.value)}
+          />
+        </label>
+        <label>
+          Idiomas
+          <select
+            className="studio-select-multiple"
+            multiple
+            size={4}
+            value={form.languages}
+            onChange={e => update("languages", selectedValues(e))}
+          >
+            {withLegacyValues(languageOptions, form.languages).map(option => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          <small>Use Ctrl/Cmd para escolher mais de um.</small>
+        </label>
+        <label>
+          Telefone para ligação — DDI e DDD
+          <input
+            maxLength={40}
+            placeholder="Ex.: +55 61 99999-9999"
+            value={form.phone}
+            onChange={e => update("phone", e.target.value)}
+          />
+        </label>
+        <label>
+          WhatsApp (opcional)
+          <input
+            maxLength={40}
+            placeholder="Se vazio, usa o telefone informado"
+            value={form.whatsapp}
+            onChange={e => update("whatsapp", e.target.value)}
+          />
+        </label>
+        <label>
+          Horários e disponibilidade
+          <input
+            maxLength={160}
+            placeholder="Ex.: Todos os dias, das 10h às 22h"
+            value={form.availabilityLabel}
+            onChange={e => update("availabilityLabel", e.target.value)}
+          />
+        </label>
+        <label>
+          Características do anúncio
+          <select
+            className="studio-select-multiple"
+            multiple
+            size={4}
+            value={form.attributes}
+            onChange={e => update("attributes", selectedValues(e))}
+          >
+            {withLegacyValues(profileAttributeOptions, form.attributes).map(
+              option => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              )
+            )}
+          </select>
+        </label>
+        <label>
+          Preferências / modalidades
+          <select
+            className="studio-select-multiple"
+            multiple
+            size={4}
+            value={form.preferences}
+            onChange={e => update("preferences", selectedValues(e))}
+          >
+            {withLegacyValues(profilePreferenceOptions, form.preferences).map(
+              option => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              )
+            )}
+          </select>
+        </label>
+        <label>
+          Formas de contato autorizadas
+          <select
+            className="studio-select-multiple"
+            multiple
+            size={3}
+            value={form.contactOptions}
+            onChange={e => update("contactOptions", selectedValues(e))}
+          >
+            {withLegacyValues(contactMethodOptions, form.contactOptions).map(
+              option => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              )
+            )}
+          </select>
+        </label>
+        <label>
+          Formas de pagamento aceitas
+          <select
+            className="studio-select-multiple"
+            multiple
+            size={4}
+            value={form.paymentMethods}
+            onChange={e => update("paymentMethods", selectedValues(e))}
+          >
+            {withLegacyValues(paymentMethodOptions, form.paymentMethods).map(
+              option => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              )
+            )}
+          </select>
+        </label>
       </div>
       <label>
         Descrição do anúncio
@@ -309,25 +490,19 @@ export default function PortfolioEditor({
       </label>
       <fieldset>
         <legend>Tipo e categoria do anúncio</legend>
-        <div className="studio-actions">
-          {portfolioCategories.map(c => (
-            <label className="studio-check" key={c}>
-              <input
-                type="checkbox"
-                checked={form.categories.includes(c)}
-                onChange={e =>
-                  update(
-                    "categories",
-                    e.target.checked
-                      ? [...form.categories, c]
-                      : form.categories.filter((v: string) => v !== c)
-                  )
-                }
-              />
-              {c}
-            </label>
+        <select
+          className="studio-select-multiple"
+          multiple
+          size={5}
+          value={form.categories}
+          onChange={e => update("categories", selectedValues(e))}
+        >
+          {portfolioCategories.map(category => (
+            <option key={category} value={category}>
+              {category}
+            </option>
           ))}
-        </div>
+        </select>
       </fieldset>
       <label>
         Valor a partir de (R$ por hora)
@@ -341,59 +516,68 @@ export default function PortfolioEditor({
       </label>
       <fieldset>
         <legend>Local de atendimento</legend>
-        <div className="studio-actions">
+        <select
+          className="studio-select-multiple"
+          multiple
+          size={5}
+          value={form.attendancePlaces}
+          onChange={e => update("attendancePlaces", selectedValues(e))}
+        >
           {attendancePlaceOptions.map(place => (
-            <label className="studio-check" key={place}>
-              <input
-                type="checkbox"
-                checked={form.attendancePlaces.includes(place)}
-                onChange={e =>
-                  update(
-                    "attendancePlaces",
-                    e.target.checked
-                      ? [...form.attendancePlaces, place]
-                      : form.attendancePlaces.filter(v => v !== place)
-                  )
-                }
-              />
+            <option key={place} value={place}>
               {place}
-            </label>
+            </option>
           ))}
-        </div>
+        </select>
       </fieldset>
       <fieldset>
         <legend>Serviços oferecidos</legend>
-        <div className="studio-actions">
+        <select
+          className="studio-select-multiple"
+          multiple
+          size={5}
+          value={form.services}
+          onChange={e => update("services", selectedValues(e))}
+        >
           {serviceOptions.map(service => (
-            <label className="studio-check" key={service}>
-              <input
-                type="checkbox"
-                checked={form.services.includes(service)}
-                onChange={e =>
-                  update(
-                    "services",
-                    e.target.checked
-                      ? [...form.services, service]
-                      : form.services.filter(v => v !== service)
-                  )
-                }
-              />
+            <option key={service} value={service}>
               {service}
-            </label>
+            </option>
           ))}
-        </div>
+        </select>
       </fieldset>
       <p className="studio-muted">
-        Os contatos ficam protegidos durante o cadastro e só podem gerar ligação ou WhatsApp pelo fluxo autorizado após aprovação e publicação. {" "}
+        Seletores com múltipla escolha permitem combinar opções sem digitar
+        texto livre.
+      </p>
+      <p className="studio-muted">
+        Os contatos ficam protegidos durante o cadastro e só podem gerar ligação
+        ou WhatsApp pelo fluxo autorizado após aprovação e publicação.{" "}
         {links.tel
           ? "Telefone válido para ligação."
           : "Informe um telefone válido."}{" "}
         {links.whatsapp ? "Link de WhatsApp será gerado automaticamente." : ""}
       </p>
       {(links.tel || links.whatsapp) && (
-        <div className="studio-actions" aria-label="Prévia privada dos links de contato">
-          {links.tel && <a className="studio-cta" href={links.tel}>Pré-visualizar ligação</a>}
-          {links.whatsapp && <a className="studio-cta" href={links.whatsapp} target="_blank" rel="noreferrer">Pré-visualizar WhatsApp</a>}
+        <div
+          className="studio-actions"
+          aria-label="Prévia privada dos links de contato"
+        >
+          {links.tel && (
+            <a className="studio-cta" href={links.tel}>
+              Pré-visualizar ligação
+            </a>
+          )}
+          {links.whatsapp && (
+            <a
+              className="studio-cta"
+              href={links.whatsapp}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Pré-visualizar WhatsApp
+            </a>
+          )}
         </div>
       )}
       <label className="studio-check">
@@ -415,6 +599,10 @@ export default function PortfolioEditor({
           : "Confirmo que tenho 18 anos ou mais, sou responsável por este anúncio e tenho autorização para usar estas informações e arquivos."}{" "}
         {portfolioPolicy}
       </label>
+      <p className="studio-muted">
+        O aceite acima é necessário para enviar à revisão e adicionar mídia. Ele
+        não é necessário para salvar um rascunho parcial.
+      </p>
       <div className="studio-actions">
         <button disabled={busy} onClick={() => submit(false)}>
           Salvar rascunho
@@ -433,28 +621,42 @@ export default function PortfolioEditor({
         <h3>{portfolioTermsTitle}</h3>
         {!initial?.id ? (
           <p className="studio-muted">
-            Salve o rascunho primeiro. O aceite será vinculado ao conteúdo atual do perfil e às mídias cadastradas.
+            Salve o rascunho primeiro. O aceite será vinculado ao conteúdo atual
+            do perfil e às mídias cadastradas.
           </p>
         ) : admin ? (
           <p className="studio-muted">
-            O administrador prepara o conteúdo, mas somente o titular pode confirmar maioridade, direitos, responsabilidade e aceite contratual.
+            O administrador prepara o conteúdo, mas somente o titular pode
+            confirmar maioridade, direitos, responsabilidade e aceite
+            contratual.
           </p>
         ) : (
           <>
-            <p className={ownerTerms.data?.current ? "studio-notice" : "studio-muted"}>
+            <p
+              className={
+                ownerTerms.data?.current ? "studio-notice" : "studio-muted"
+              }
+            >
               {ownerTerms.data?.current
                 ? `Aceite vigente registrado em ${new Date(ownerTerms.data.acceptedAt!).toLocaleString("pt-BR")}.`
                 : "Leia e confirme o termo para o conteúdo atual deste anúncio."}
             </p>
             <ol className="studio-terms">
-              {portfolioTermsClauses.map(clause => <li key={clause}>{clause}</li>)}
+              {portfolioTermsClauses.map(clause => (
+                <li key={clause}>{clause}</li>
+              ))}
             </ol>
             <p className="studio-muted">Versão {portfolioTermsVersion}</p>
             <label className="studio-check">
               <input
                 type="checkbox"
                 checked={termsChecks.adultConfirmed}
-                onChange={e => setTermsChecks(v => ({ ...v, adultConfirmed: e.target.checked }))}
+                onChange={e =>
+                  setTermsChecks(v => ({
+                    ...v,
+                    adultConfirmed: e.target.checked,
+                  }))
+                }
               />
               Confirmo que tenho 18 anos ou mais.
             </label>
@@ -462,17 +664,29 @@ export default function PortfolioEditor({
               <input
                 type="checkbox"
                 checked={termsChecks.rightsConfirmed}
-                onChange={e => setTermsChecks(v => ({ ...v, rightsConfirmed: e.target.checked }))}
+                onChange={e =>
+                  setTermsChecks(v => ({
+                    ...v,
+                    rightsConfirmed: e.target.checked,
+                  }))
+                }
               />
-              Confirmo que possuo os direitos e autorizações necessários sobre os dados, fotos e vídeos.
+              Confirmo que possuo os direitos e autorizações necessários sobre
+              os dados, fotos e vídeos.
             </label>
             <label className="studio-check">
               <input
                 type="checkbox"
                 checked={termsChecks.responsibilityConfirmed}
-                onChange={e => setTermsChecks(v => ({ ...v, responsibilityConfirmed: e.target.checked }))}
+                onChange={e =>
+                  setTermsChecks(v => ({
+                    ...v,
+                    responsibilityConfirmed: e.target.checked,
+                  }))
+                }
               />
-              Assumo a responsabilidade pelo conteúdo que envio ou autorizo publicar.
+              Assumo a responsabilidade pelo conteúdo que envio ou autorizo
+              publicar.
             </label>
             <button
               className="primary"
@@ -491,7 +705,11 @@ export default function PortfolioEditor({
                     responsibilityConfirmed: true,
                   });
                   await ownerTerms.refetch();
-                  setTermsChecks({ adultConfirmed: false, rightsConfirmed: false, responsibilityConfirmed: false });
+                  setTermsChecks({
+                    adultConfirmed: false,
+                    rightsConfirmed: false,
+                    responsibilityConfirmed: false,
+                  });
                   toast.success("Termo registrado para o conteúdo atual");
                 } catch (e) {
                   toast.error((e as Error).message);
@@ -510,9 +728,11 @@ export default function PortfolioEditor({
         ) : (
           <>
             <label>
-              {admin ? "Adicionar arquivo em nome do titular" : "Adicionar arquivo"}
+              {admin
+                ? "Adicionar arquivo em nome do titular"
+                : "Adicionar arquivo"}
               <input
-                disabled={busy}
+                disabled={busy || !consent}
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm,video/quicktime"
                 onChange={e => {
@@ -522,8 +742,12 @@ export default function PortfolioEditor({
               />
             </label>
             <p className="studio-muted">
-              Imagens até 12 MB e vídeos até 100 MB. Arquivos novos ficam
-              privados até a revisão. {admin ? "O titular ainda precisa revisar o material e aceitar o termo." : ""}
+              {consent
+                ? "Imagens até 12 MB e vídeos até 100 MB. Arquivos novos ficam privados até a revisão."
+                : "Marque a autorização do conteúdo acima para liberar o envio de fotos e vídeos."}{" "}
+              {admin
+                ? "O titular ainda precisa revisar o material e aceitar o termo."
+                : ""}
             </p>
             <div className="studio-media">
               {media.map((m, index) => {
@@ -532,111 +756,116 @@ export default function PortfolioEditor({
                   description: m.description || "",
                 };
                 return (
-                <article key={m.id}>
-                  {m.kind === "photo" ? (
-                    <img
-                      src={`/api/media-preview/${m.id}`}
-                      alt={draft.title || "Foto do anúncio"}
-                    />
-                  ) : (
-                    <video
-                      src={`/api/media-preview/${m.id}`}
-                      controls
-                      preload="metadata"
-                    />
-                  )}
-                  <p>
-                    {m.status} · {m.kind === "photo" ? "Foto" : "Vídeo"}
-                  </p>
-                  {!admin && (
-                    <div className="studio-fields">
-                      <label>
-                        Título da mídia
-                        <input
-                          maxLength={160}
-                          value={draft.title}
-                          onChange={e =>
-                            setMediaEdits(current => ({
-                              ...current,
-                              [m.id]: { ...draft, title: e.target.value },
-                            }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        Descrição da mídia
-                        <textarea
-                          rows={3}
-                          maxLength={2000}
-                          value={draft.description}
-                          onChange={e =>
-                            setMediaEdits(current => ({
-                              ...current,
-                              [m.id]: { ...draft, description: e.target.value },
-                            }))
-                          }
-                        />
-                      </label>
-                      <div className="studio-actions">
-                        <button
-                          disabled={busy || updateMediaMetadata.isPending}
-                          onClick={() => void saveMediaMetadata(m)}
-                        >
-                          Salvar metadados
-                        </button>
-                        <button
-                          disabled={busy || reorderMedia.isPending || index === 0}
-                          onClick={() => void moveMedia(index, -1)}
-                        >
-                          Subir
-                        </button>
-                        <button
-                          disabled={
-                            busy ||
-                            reorderMedia.isPending ||
-                            index === media.length - 1
-                          }
-                          onClick={() => void moveMedia(index, 1)}
-                        >
-                          Descer
-                        </button>
+                  <article key={m.id}>
+                    {m.kind === "photo" ? (
+                      <img
+                        src={`/api/media-preview/${m.id}`}
+                        alt={draft.title || "Foto do anúncio"}
+                      />
+                    ) : (
+                      <video
+                        src={`/api/media-preview/${m.id}`}
+                        controls
+                        preload="metadata"
+                      />
+                    )}
+                    <p>
+                      {m.status} · {m.kind === "photo" ? "Foto" : "Vídeo"}
+                    </p>
+                    {!admin && (
+                      <div className="studio-fields">
+                        <label>
+                          Título da mídia
+                          <input
+                            maxLength={160}
+                            value={draft.title}
+                            onChange={e =>
+                              setMediaEdits(current => ({
+                                ...current,
+                                [m.id]: { ...draft, title: e.target.value },
+                              }))
+                            }
+                          />
+                        </label>
+                        <label>
+                          Descrição da mídia
+                          <textarea
+                            rows={3}
+                            maxLength={2000}
+                            value={draft.description}
+                            onChange={e =>
+                              setMediaEdits(current => ({
+                                ...current,
+                                [m.id]: {
+                                  ...draft,
+                                  description: e.target.value,
+                                },
+                              }))
+                            }
+                          />
+                        </label>
+                        <div className="studio-actions">
+                          <button
+                            disabled={busy || updateMediaMetadata.isPending}
+                            onClick={() => void saveMediaMetadata(m)}
+                          >
+                            Salvar metadados
+                          </button>
+                          <button
+                            disabled={
+                              busy || reorderMedia.isPending || index === 0
+                            }
+                            onClick={() => void moveMedia(index, -1)}
+                          >
+                            Subir
+                          </button>
+                          <button
+                            disabled={
+                              busy ||
+                              reorderMedia.isPending ||
+                              index === media.length - 1
+                            }
+                            onClick={() => void moveMedia(index, 1)}
+                          >
+                            Descer
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {!admin && (
-                    <div className="studio-actions">
-                      {m.kind === "photo" && (
+                    )}
+                    {!admin && (
+                      <div className="studio-actions">
+                        {m.kind === "photo" && (
+                          <button
+                            disabled={busy || cover.isPending}
+                            onClick={async () => {
+                              try {
+                                await cover.mutateAsync({ id: m.id });
+                                toast.success("Capa atualizada");
+                                onSaved(initial.id);
+                              } catch (e) {
+                                toast.error((e as Error).message);
+                              }
+                            }}
+                          >
+                            Usar como capa
+                          </button>
+                        )}
                         <button
-                          disabled={busy || cover.isPending}
+                          disabled={busy || hide.isPending}
                           onClick={async () => {
                             try {
-                              await cover.mutateAsync({ id: m.id });
-                              toast.success("Capa atualizada");
+                              await hide.mutateAsync({ id: m.id });
                               onSaved(initial.id);
                             } catch (e) {
                               toast.error((e as Error).message);
                             }
                           }}
                         >
-                          Usar como capa
+                          Ocultar arquivo
                         </button>
-                      )}
-                      <button
-                        disabled={busy || hide.isPending}
-                        onClick={async () => {
-                          try {
-                            await hide.mutateAsync({ id: m.id });
-                            onSaved(initial.id);
-                          } catch (e) {
-                            toast.error((e as Error).message);
-                          }
-                        }}
-                      >
-                        Ocultar arquivo
-                      </button>
-                    </div>
-                  )}
-                </article>
+                      </div>
+                    )}
+                  </article>
                 );
               })}
             </div>

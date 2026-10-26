@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -16,25 +16,88 @@ const identityLabels: Record<string, string> = {
   error: "Erro na verificação",
 };
 
+function AccountPanel({ user }: { user: any }) {
+  const utils = trpc.useUtils();
+  const [name, setName] = useState(user?.name || "");
+  const updateAccount = trpc.auth.updateAccount.useMutation({
+    onSuccess: async () => {
+      toast.success("Dados da conta atualizados");
+      await utils.auth.me.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  useEffect(() => {
+    setName(user?.name || "");
+  }, [user?.name]);
+
+  return (
+    <section className="studio-panel" aria-labelledby="owner-account-title">
+      <p className="studio-kicker">Dados da conta</p>
+      <h2 id="owner-account-title">Seus dados de acesso</h2>
+      <p className="studio-muted">
+        Atualize o nome da conta aqui. O e-mail de acesso é exibido somente para
+        conferência e não é alterado nesta tela.
+      </p>
+      <form
+        className="studio-account-form"
+        onSubmit={event => {
+          event.preventDefault();
+          updateAccount.mutate({ name });
+        }}
+      >
+        <label>
+          Nome da conta
+          <input
+            autoComplete="name"
+            value={name}
+            onChange={event => setName(event.target.value)}
+          />
+        </label>
+        <label>
+          E-mail de acesso — somente leitura
+          <input value={user?.email || "—"} readOnly aria-readonly="true" />
+        </label>
+        <div className="studio-actions">
+          <button
+            className="primary"
+            disabled={updateAccount.isPending || name.trim().length < 2}
+          >
+            {updateAccount.isPending ? "Salvando…" : "Salvar dados"}
+          </button>
+          <Link href="/conta">Mais opções da conta</Link>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 function IdentityPanel() {
   const identity = trpc.profiles.identity.useQuery();
   const request = trpc.profiles.requestIdentity.useMutation({
     onSuccess: async () => {
-      toast.success("Solicitação enviada. A equipe entrará em contato por e-mail.");
+      toast.success(
+        "Solicitação enviada. A equipe entrará em contato por e-mail."
+      );
       await identity.refetch();
     },
     onError: error => toast.error(error.message),
   });
   const row = identity.data;
   const expired = Boolean(
-    row?.status === "approved" && row.expiresAt && new Date(row.expiresAt) <= new Date()
+    row?.status === "approved" &&
+      row.expiresAt &&
+      new Date(row.expiresAt) <= new Date()
   );
   const status = expired ? "expired" : row?.status;
-  const canRequest = !row || status === "rejected" || status === "expired" || status === "error";
+  const canRequest =
+    !row || status === "rejected" || status === "expired" || status === "error";
   return (
     <section className="studio-panel" aria-label="Verificação de identidade">
       <p className="studio-kicker">Verificação de identidade</p>
-      <h2>{status ? identityLabels[status] : "Verificação ainda não solicitada"}</h2>
+      <h2>
+        {status ? identityLabels[status] : "Verificação ainda não solicitada"}
+      </h2>
       <p className="studio-muted">
         A verificação é exigida para enviar o anúncio para revisão e libera o
         selo “Identidade verificada”. Nossa equipe confirma seus dados em uma
@@ -57,15 +120,26 @@ function IdentityPanel() {
 }
 
 const deltaLabel = (current: number, previous: number) => {
-  if (previous === 0) return current > 0 ? "novo período com atividade" : "sem atividade";
+  if (previous === 0)
+    return current > 0 ? "novo período com atividade" : "sem atividade";
   const pct = Math.round(((current - previous) / previous) * 100);
   return `${pct >= 0 ? "+" : ""}${pct}% vs. período anterior`;
 };
 
-function AvailabilityPanel({ profile, onChanged }: { profile: any; onChanged: () => void }) {
+function AvailabilityPanel({
+  profile,
+  onChanged,
+}: {
+  profile: any;
+  onChanged: () => void;
+}) {
   const set = trpc.profiles.setAvailability.useMutation({
-    onSuccess: (result) => {
-      toast.success(result.isAvailableNow ? "Você aparece como disponível agora" : "Disponibilidade desligada");
+    onSuccess: result => {
+      toast.success(
+        result.isAvailableNow
+          ? "Você aparece como disponível agora"
+          : "Disponibilidade desligada"
+      );
       onChanged();
     },
     onError: error => toast.error(error.message),
@@ -76,28 +150,54 @@ function AvailabilityPanel({ profile, onChanged }: { profile: any; onChanged: ()
   return (
     <section className="studio-panel" aria-label="Disponível agora">
       <p className="studio-kicker">Disponível agora</p>
-      <h2>{active ? "Você está aparecendo como disponível" : "Você não está marcada como disponível"}</h2>
+      <h2>
+        {active
+          ? "Você está aparecendo como disponível"
+          : "Você não está marcada como disponível"}
+      </h2>
       {active && profile.availableUntil && (
-        <p className="studio-muted">Até {new Date(profile.availableUntil).toLocaleString("pt-BR")}.</p>
+        <p className="studio-muted">
+          Até {new Date(profile.availableUntil).toLocaleString("pt-BR")}.
+        </p>
       )}
       <div className="studio-actions">
         {[2, 4, 8, 12].map(hours => (
-          <button key={hours} disabled={set.isPending} onClick={() => set.mutate({ id: profile.id, available: true, hours })}>
+          <button
+            key={hours}
+            disabled={set.isPending}
+            onClick={() =>
+              set.mutate({ id: profile.id, available: true, hours })
+            }
+          >
             Por {hours}h
           </button>
         ))}
         {active && (
-          <button className="danger" disabled={set.isPending} onClick={() => set.mutate({ id: profile.id, available: false })}>
+          <button
+            className="danger"
+            disabled={set.isPending}
+            onClick={() => set.mutate({ id: profile.id, available: false })}
+          >
             Desligar
           </button>
         )}
       </div>
-      <small className="studio-muted">Esta troca é imediata e não exige nova revisão.</small>
+      <small className="studio-muted">
+        Esta troca é imediata e não exige nova revisão.
+      </small>
     </section>
   );
 }
 
-function QualityPanel({ profile, media, identityVerified }: { profile: any; media: any[]; identityVerified: boolean }) {
+function QualityPanel({
+  profile,
+  media,
+  identityVerified,
+}: {
+  profile: any;
+  media: any[];
+  identityVerified: boolean;
+}) {
   const approved = media.filter(item => item.status === "approved");
   const result = evaluateListingQuality({
     description: profile.description,
@@ -131,7 +231,12 @@ function QualityPanel({ profile, media, identityVerified }: { profile: any; medi
 
 function SubscriptionPanel() {
   const mine = trpc.plans.mine.useQuery();
-  const labels: Record<string, string> = { pending: "Pedido em análise", active: "Ativo", cancelled: "Encerrado", expired: "Expirado" };
+  const labels: Record<string, string> = {
+    pending: "Pedido em análise",
+    active: "Ativo",
+    cancelled: "Encerrado",
+    expired: "Expirado",
+  };
   return (
     <section className="studio-panel" aria-label="Meu plano">
       <p className="studio-kicker">Meu plano</p>
@@ -149,7 +254,9 @@ function SubscriptionPanel() {
       ) : (
         <p>Você ainda não tem plano de destaque.</p>
       )}
-      <Link className="studio-cta" href="/planos">Ver planos</Link>
+      <Link className="studio-cta" href="/planos">
+        Ver planos
+      </Link>
     </section>
   );
 }
@@ -182,16 +289,30 @@ function StatsPanel({ profileId }: { profileId: number }) {
         <>
           <p>
             <strong>{stats.data.totals.views}</strong> visualizações ·{" "}
-            <strong>{stats.data.totals.contactClicks}</strong> cliques para contato
+            <strong>{stats.data.totals.contactClicks}</strong> cliques para
+            contato
           </p>
           <small className="studio-muted">
-            Visualizações: {deltaLabel(stats.data.totals.views, stats.data.previousTotals.views)} · Contatos:{" "}
-            {deltaLabel(stats.data.totals.contactClicks, stats.data.previousTotals.contactClicks)}
+            Visualizações:{" "}
+            {deltaLabel(
+              stats.data.totals.views,
+              stats.data.previousTotals.views
+            )}{" "}
+            · Contatos:{" "}
+            {deltaLabel(
+              stats.data.totals.contactClicks,
+              stats.data.previousTotals.contactClicks
+            )}
           </small>
           <div
             role="img"
             aria-label={`Visualizações por dia nos últimos ${stats.data.days} dias`}
-            style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 64 }}
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 2,
+              height: 64,
+            }}
           >
             {stats.data.daily.map(d => (
               <span
@@ -219,8 +340,17 @@ function StatsPanel({ profileId }: { profileId: number }) {
 
 export default function OwnerDashboard() {
   const { user, loading, logout } = useAuth();
+  const [location, navigate] = useLocation();
   const [id, setId] = useState<number | null>(null);
   const [version, setVersion] = useState(0);
+  useEffect(() => {
+    const profileId = Number(
+      new URLSearchParams(location.split("?")[1] || "").get("profileId")
+    );
+    if (Number.isInteger(profileId) && profileId > 0 && profileId !== id) {
+      setId(profileId);
+    }
+  }, [location, id]);
   const mine = trpc.profiles.mine.useQuery(undefined, {
     enabled: !!user && !user.mustChangePassword,
   });
@@ -230,7 +360,9 @@ export default function OwnerDashboard() {
   );
   const readiness = trpc.profiles.publicationReadiness.useQuery(
     { id: id || 0 },
-    { enabled: Boolean(id) && !user?.mustChangePassword }
+    {
+      enabled: Boolean(id && detail.data?.profile) && !user?.mustChangePassword,
+    }
   );
   const identity = trpc.profiles.identity.useQuery(undefined, {
     enabled: !!user && !user.mustChangePassword,
@@ -239,21 +371,30 @@ export default function OwnerDashboard() {
     onSuccess: async () => {
       toast.success("Anúncio arquivado");
       setId(null);
+      navigate("/titular");
       await mine.refetch();
     },
     onError: error => toast.error(error.message),
   });
   async function saved(next: number) {
     setId(next);
+    navigate(`/titular?profileId=${next}`);
     await mine.refetch();
     if (id === next) await detail.refetch();
     setVersion(v => v + 1);
   }
   return (
     <div className="studio">
-      <Seo title="Meus anúncios — Ero Models" description="Área privada do titular dos anúncios." noindex />
+      <Seo
+        title="Meus anúncios — Ero Models"
+        description="Área privada do titular dos anúncios."
+        noindex
+      />
       <StudioHeader minimal>
-        <nav aria-label="Navegação do titular" className="studio-header-account-nav">
+        <nav
+          aria-label="Navegação do titular"
+          className="studio-header-account-nav"
+        >
           <Link href="/conta">Minha conta</Link>
           <Link href="/">Explorar anúncios</Link>
           {user && <button onClick={() => void logout()}>Sair</button>}
@@ -263,8 +404,8 @@ export default function OwnerDashboard() {
         <p className="studio-kicker">Área do titular</p>
         <h1>Seu anúncio, sob seu controle.</h1>
         <p className="studio-muted">
-          Prepare seu anúncio adulto. Você controla as informações, fotos e vídeos;
-          a publicação passa por revisão.
+          Prepare seu anúncio adulto. Você controla as informações, fotos e
+          vídeos; a publicação passa por revisão.
         </p>
         {loading ? (
           <p>Carregando…</p>
@@ -280,6 +421,7 @@ export default function OwnerDashboard() {
               <button
                 onClick={() => {
                   setId(null);
+                  navigate("/titular");
                   setVersion(v => v + 1);
                 }}
               >
@@ -287,6 +429,7 @@ export default function OwnerDashboard() {
               </button>
               <Link href="/alterar-senha?returnTo=/titular">Alterar senha</Link>
             </div>
+            <AccountPanel user={user} />
             <IdentityPanel />
             <SubscriptionPanel />
             <div className="studio-split">
@@ -301,13 +444,18 @@ export default function OwnerDashboard() {
                     <button
                       className={`studio-list-item ${id === p.id ? "selected" : ""}`}
                       key={p.id}
-                      onClick={() => setId(p.id)}
+                      onClick={() => {
+                        setId(p.id);
+                        navigate(`/titular?profileId=${p.id}`);
+                      }}
                     >
                       <strong>{p.stageName}</strong>
                       <small>
                         {p.city} · {portfolioPublicationLabel(p)}
                       </small>
-                      <small>{p.rejectionReason || "Atualizado recentemente"}</small>
+                      <small>
+                        {p.rejectionReason || "Atualizado recentemente"}
+                      </small>
                     </button>
                   ))
                 ) : (
@@ -317,21 +465,44 @@ export default function OwnerDashboard() {
               <section className="studio-panel">
                 {id && detail.isLoading ? (
                   <p>Carregando ficha…</p>
-                ) : detail.error ? (
-                  <p role="alert">{detail.error.message}</p>
+                ) : detail.error || (id && !detail.data?.profile) ? (
+                  <section className="studio-panel" role="alert">
+                    <h2>Anúncio não encontrado</h2>
+                    <p>
+                      Este anúncio não pertence à conta atual, foi arquivado ou
+                      não está disponível. Nenhum cadastro novo foi criado.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setId(null);
+                        navigate("/titular");
+                      }}
+                    >
+                      Voltar para meus anúncios
+                    </button>
+                  </section>
                 ) : (
                   <>
                     {id && detail.data?.profile && (
-                      <section className="studio-panel" aria-label="Status de publicação">
+                      <section
+                        className="studio-panel"
+                        aria-label="Status de publicação"
+                      >
                         <p className="studio-kicker">Status operacional</p>
-                        <h2>{portfolioPublicationLabel(detail.data.profile)}</h2>
+                        <h2>
+                          {portfolioPublicationLabel(detail.data.profile)}
+                        </h2>
                         <p>
                           {detail.data.profile.isPublished
                             ? "Publicado na vitrine."
-                            : detail.data.profile.rejectionReason || "Ainda não publicado."}
+                            : detail.data.profile.rejectionReason ||
+                              "Ainda não publicado."}
                         </p>
                         {detail.data.profile.isPublished && (
-                          <Link className="studio-cta" href={`/perfil/${detail.data.profile.slug}`}>
+                          <Link
+                            className="studio-cta"
+                            href={`/perfil/${detail.data.profile.slug}`}
+                          >
                             Abrir página pública
                           </Link>
                         )}
@@ -340,11 +511,18 @@ export default function OwnerDashboard() {
                             className="danger"
                             disabled={archive.isPending}
                             onClick={() => {
-                              if (!window.confirm("Arquivar este anúncio e tirá-lo da vitrine?")) return;
+                              if (
+                                !window.confirm(
+                                  "Arquivar este anúncio e tirá-lo da vitrine?"
+                                )
+                              )
+                                return;
                               archive.mutate({ id, confirmation: "EXCLUIR" });
                             }}
                           >
-                            {archive.isPending ? "Arquivando…" : "Arquivar anúncio"}
+                            {archive.isPending
+                              ? "Arquivando…"
+                              : "Arquivar anúncio"}
                           </button>
                         )}
                         {detail.data.profile.isPublished && (
@@ -353,11 +531,15 @@ export default function OwnerDashboard() {
                             onChanged={() => void detail.refetch()}
                           />
                         )}
-                        {detail.data.profile.isPublished && <StatsPanel profileId={id} />}
+                        {detail.data.profile.isPublished && (
+                          <StatsPanel profileId={id} />
+                        )}
                         <QualityPanel
                           profile={detail.data.profile}
                           media={detail.data.media ?? []}
-                          identityVerified={identity.data?.status === "approved"}
+                          identityVerified={
+                            identity.data?.status === "approved"
+                          }
                         />
                         {readiness.isLoading ? (
                           <p>Calculando checklist…</p>
@@ -365,10 +547,26 @@ export default function OwnerDashboard() {
                           <div>
                             <h3>Checklist de publicação</h3>
                             <ul>
-                              <li>{readiness.data.terms.current ? "✓ Termo vigente aceito" : "○ Aceite do termo ainda pendente"}</li>
-                              <li>{readiness.data.approvedMediaCount > 0 ? "✓ Mídia pública aprovada" : "○ Aprove ao menos uma mídia pública"}</li>
-                              <li>{readiness.data.pendingMediaCount === 0 ? "✓ Sem mídia aguardando moderação" : `○ ${readiness.data.pendingMediaCount} mídia(s) aguardando moderação`}</li>
-                              {readiness.data.publicationBlockers.map(blocker => <li key={blocker}>○ {blocker}</li>)}
+                              <li>
+                                {readiness.data.terms.current
+                                  ? "✓ Termo vigente aceito"
+                                  : "○ Aceite do termo ainda pendente"}
+                              </li>
+                              <li>
+                                {readiness.data.approvedMediaCount > 0
+                                  ? "✓ Mídia pública aprovada"
+                                  : "○ Aprove ao menos uma mídia pública"}
+                              </li>
+                              <li>
+                                {readiness.data.pendingMediaCount === 0
+                                  ? "✓ Sem mídia aguardando moderação"
+                                  : `○ ${readiness.data.pendingMediaCount} mídia(s) aguardando moderação`}
+                              </li>
+                              {readiness.data.publicationBlockers.map(
+                                blocker => (
+                                  <li key={blocker}>○ {blocker}</li>
+                                )
+                              )}
                             </ul>
                           </div>
                         ) : null}

@@ -144,9 +144,17 @@ export default function ClientDashboard() {
               <Link href="/privacidade">Privacidade e dados</Link>
             </div>
 
-            <section className="studio-panel" aria-labelledby="account-data-title">
-              <p className="studio-kicker">Dados da conta</p>
-              <h2 id="account-data-title">Preferências de acesso</h2>
+            <section
+              className="studio-panel"
+              aria-labelledby="account-data-title"
+            >
+              <p className="studio-kicker">Dados pessoais da conta</p>
+              <h2 id="account-data-title">Nome e acesso</h2>
+              <p className="studio-muted">
+                O nome pode ser atualizado aqui. O e-mail de acesso é imutável
+                nesta área; telefone, localização, fotos e descrição pertencem
+                ao anúncio do titular.
+              </p>
               <form
                 className="studio-account-form"
                 onSubmit={event => {
@@ -164,15 +172,26 @@ export default function ClientDashboard() {
                 </label>
                 <label>
                   E-mail de acesso
-                  <input value={user.email || "—"} readOnly aria-readonly="true" />
+                  <input
+                    value={user.email || "—"}
+                    readOnly
+                    aria-readonly="true"
+                  />
                 </label>
-                <button className="primary" disabled={updateAccount.isPending || name.trim().length < 2}>
+                <button
+                  className="primary"
+                  disabled={updateAccount.isPending || name.trim().length < 2}
+                >
                   {updateAccount.isPending ? "Salvando…" : "Salvar dados"}
                 </button>
+                <Link href="/titular">Gerenciar meus anúncios</Link>
               </form>
             </section>
 
-            <section className="studio-panel studio-danger-zone" aria-labelledby="close-account-title">
+            <section
+              className="studio-panel studio-danger-zone"
+              aria-labelledby="close-account-title"
+            >
               <p className="studio-kicker">Zona de segurança</p>
               <h2 id="close-account-title">Encerrar minha conta</h2>
               <p>

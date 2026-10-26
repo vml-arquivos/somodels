@@ -26,18 +26,11 @@ const contactLabels: Record<ContactMethod, string> = {
 
 function isContactMethod(value: unknown): value is ContactMethod {
   return (
-    typeof value === "string" &&
-    contactMethods.includes(value as ContactMethod)
+    typeof value === "string" && contactMethods.includes(value as ContactMethod)
   );
 }
 
-function DetailList({
-  title,
-  items,
-}: {
-  title: string;
-  items: unknown;
-}) {
+function DetailList({ title, items }: { title: string; items: unknown }) {
   const values = Array.isArray(items)
     ? items.filter(value => typeof value === "string" && value.trim())
     : [];
@@ -119,7 +112,8 @@ export default function ProfilePage() {
   });
   const contact = trpc.safety.contactIntent.useMutation({
     onSuccess: response => {
-      if (response.href.startsWith("tel:")) window.location.href = response.href;
+      if (response.href.startsWith("tel:"))
+        window.location.href = response.href;
       else window.open(response.href, "_blank", "noopener,noreferrer");
     },
     onError: error => toast.error(error.message),
@@ -134,8 +128,9 @@ export default function ProfilePage() {
   }, [publicProfileId, slug]);
 
   const availableContactMethods = useMemo<ContactMethod[]>(() => {
-    const methods = (data?.profile as { availableContactMethods?: unknown[] } | undefined)
-      ?.availableContactMethods ?? [];
+    const methods =
+      (data?.profile as { availableContactMethods?: unknown[] } | undefined)
+        ?.availableContactMethods ?? [];
     return methods.filter(isContactMethod);
   }, [data]);
 
@@ -143,7 +138,8 @@ export default function ProfilePage() {
     await utils.safety.invalidate();
   };
 
-  if (!adultAccess.ready) return <AdultGate access={adultAccess}>{null}</AdultGate>;
+  if (!adultAccess.ready)
+    return <AdultGate access={adultAccess}>{null}</AdultGate>;
 
   return (
     <div className="studio">
@@ -157,20 +153,28 @@ export default function ProfilePage() {
         ) : !data ? (
           <section className="studio-panel">
             <h1>Anúncio indisponível</h1>
-            <p>Este anúncio pode estar em revisão, inativo ou ainda não publicado.</p>
+            <p>
+              Este anúncio pode estar em revisão, inativo ou ainda não
+              publicado.
+            </p>
           </section>
         ) : (
           <>
             <Seo
               title={`${data.profile.stageName} — Ero Models`}
-              description={data.profile.description || "Anúncio adulto na Ero Models"}
+              description={
+                data.profile.description || "Anúncio adulto na Ero Models"
+              }
               path={`/perfil/${slug}`}
               image={data.profile.avatarUrl || undefined}
               jsonLd={{
                 "@context": "https://schema.org",
                 "@type": "ProfilePage",
                 name: data.profile.stageName,
-                url: new URL(`/perfil/${slug}`, window.location.origin).toString(),
+                url: new URL(
+                  `/perfil/${slug}`,
+                  window.location.origin
+                ).toString(),
                 dateModified: new Date(data.profile.updatedAt).toISOString(),
                 mainEntity: {
                   "@type": "Person",
@@ -200,13 +204,16 @@ export default function ProfilePage() {
                   )}
                   <span className="studio-listing-age">+18</span>
                   {data.profile.isAvailableNow && (
-                    <span className="studio-listing-availability">Disponível agora</span>
+                    <span className="studio-listing-availability">
+                      Disponível agora
+                    </span>
                   )}
                 </div>
               </div>
               <div>
                 <p className="studio-kicker">
-                  {(data.profile.categories || []).join(" · ") || "Acompanhante"}
+                  {(data.profile.categories || []).join(" · ") ||
+                    "Acompanhante"}
                 </p>
                 <h1>{data.profile.stageName}</h1>
                 <p className="studio-profile-location">
@@ -221,7 +228,9 @@ export default function ProfilePage() {
                 )}
                 {typeof data.profile.priceFromCents === "number" && (
                   <p className="studio-listing-price">
-                    A partir de <strong>{formatBRL(data.profile.priceFromCents)}</strong> por hora
+                    A partir de{" "}
+                    <strong>{formatBRL(data.profile.priceFromCents)}</strong>{" "}
+                    por hora
                   </p>
                 )}
                 {data.profile.availabilityLabel && (
@@ -234,14 +243,22 @@ export default function ProfilePage() {
                     "O titular ainda não adicionou uma apresentação pública para este anúncio."}
                 </p>
 
-                <div className="studio-actions" aria-label="Ações de segurança do anúncio">
+                <div
+                  className="studio-actions"
+                  aria-label="Ações de segurança do anúncio"
+                >
                   {user && flags?.favoritesEnabled && (
                     <button
                       disabled={favorite.isPending || unfavorite.isPending}
                       onClick={async () => {
                         if (favoriteStatus.data?.favorited)
-                          await unfavorite.mutateAsync({ profileId: data.profile.id });
-                        else await favorite.mutateAsync({ profileId: data.profile.id });
+                          await unfavorite.mutateAsync({
+                            profileId: data.profile.id,
+                          });
+                        else
+                          await favorite.mutateAsync({
+                            profileId: data.profile.id,
+                          });
                         await refreshSafety();
                       }}
                     >
@@ -286,43 +303,57 @@ export default function ProfilePage() {
                   flags?.secureContactEnabled &&
                   settings.data?.showContact === true &&
                   !blockStatus.data?.blocked && (
-                  <section className="studio-contact-panel" aria-label="Contato do anúncio">
-                    <p className="studio-kicker">Contato direto</p>
-                    <h2>Fale com este anúncio</h2>
-                    <p className="studio-muted">
-                      A saída para o canal externo é registrada para segurança. A
-                      conversa passa a ocorrer fora da Ero Models.
-                    </p>
-                    {availableContactMethods.length ? (
-                      <div className="studio-actions">
-                        {availableContactMethods.map(method => (
-                          <button
-                            className="studio-cta"
-                            key={method}
-                            disabled={contact.isPending}
-                            onClick={() =>
-                              contact.mutate({ profileId: data.profile.id, method })
-                            }
-                          >
-                            {contactLabels[method]}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p>Nenhum canal autorizado está disponível neste momento.</p>
-                    )}
-                  </section>
-                )}
+                    <section
+                      className="studio-contact-panel"
+                      aria-label="Contato do anúncio"
+                    >
+                      <p className="studio-kicker">Contato direto</p>
+                      <h2>Fale com este anúncio</h2>
+                      <p className="studio-muted">
+                        A saída para o canal externo é registrada para
+                        segurança. A conversa passa a ocorrer fora da Ero
+                        Models.
+                      </p>
+                      {availableContactMethods.length ? (
+                        <div className="studio-actions">
+                          {availableContactMethods.map(method => (
+                            <button
+                              className="studio-cta"
+                              key={method}
+                              disabled={contact.isPending}
+                              onClick={() =>
+                                contact.mutate({
+                                  profileId: data.profile.id,
+                                  method,
+                                })
+                              }
+                            >
+                              {contactLabels[method]}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>
+                          Nenhum canal autorizado está disponível neste momento.
+                        </p>
+                      )}
+                    </section>
+                  )}
 
                 {reportOpen && user && flags?.reportsEnabled && (
-                  <section className="studio-panel" aria-label="Formulário de denúncia">
+                  <section
+                    className="studio-panel"
+                    aria-label="Formulário de denúncia"
+                  >
                     <h3>Denunciar este anúncio</h3>
                     <label>
                       Categoria
                       <select
                         value={reportCategory}
                         onChange={event =>
-                          setReportCategory(event.target.value as ReportCategory)
+                          setReportCategory(
+                            event.target.value as ReportCategory
+                          )
                         }
                       >
                         {reportCategories.map(category => (
@@ -338,14 +369,19 @@ export default function ProfilePage() {
                         rows={5}
                         maxLength={200}
                         value={reportDescription}
-                        onChange={event => setReportDescription(event.target.value)}
+                        onChange={event =>
+                          setReportDescription(event.target.value)
+                        }
                         placeholder="Explique objetivamente o que aconteceu. Não inclua documentos, senhas ou dados sensíveis."
                       />
                     </label>
                     <div className="studio-actions">
                       <button
                         className="primary"
-                        disabled={report.isPending || reportDescription.trim().length < 10}
+                        disabled={
+                          report.isPending ||
+                          reportDescription.trim().length < 10
+                        }
                         onClick={() =>
                           report.mutate({
                             profileId: data.profile.id,
@@ -356,14 +392,19 @@ export default function ProfilePage() {
                       >
                         Enviar denúncia
                       </button>
-                      <button onClick={() => setReportOpen(false)}>Cancelar</button>
+                      <button onClick={() => setReportOpen(false)}>
+                        Cancelar
+                      </button>
                     </div>
                   </section>
                 )}
               </div>
             </section>
 
-            <section className="studio-profile-details" aria-labelledby="details-title">
+            <section
+              className="studio-profile-details"
+              aria-labelledby="details-title"
+            >
               <div className="studio-panel">
                 <p className="studio-kicker">Informações públicas</p>
                 <h2 id="details-title">Especificações do anúncio</h2>
@@ -389,15 +430,35 @@ export default function ProfilePage() {
                   <dd>
                     {data.profile.isAvailableNow
                       ? "Disponível agora"
-                      : data.profile.availabilityLabel || "Consultar no contato"}
+                      : data.profile.availabilityLabel ||
+                        "Consultar no contato"}
                   </dd>
-                  <DetailList title="Categorias" items={data.profile.categories} />
-                  <DetailList title="Local de atendimento" items={data.profile.attendancePlaces} />
+                  <DetailList
+                    title="Categorias"
+                    items={data.profile.categories}
+                  />
+                  <DetailList
+                    title="Local de atendimento"
+                    items={data.profile.attendancePlaces}
+                  />
                   <DetailList title="Serviços" items={data.profile.services} />
-                  <DetailList title="Características" items={data.profile.attributes} />
+                  <DetailList
+                    title="Características"
+                    items={data.profile.attributes}
+                  />
                   <DetailList title="Idiomas" items={data.profile.languages} />
-                  <DetailList title="Preferências" items={data.profile.preferences} />
-                  <DetailList title="Formas de atendimento" items={data.profile.contactOptions} />
+                  <DetailList
+                    title="Preferências"
+                    items={data.profile.preferences}
+                  />
+                  <DetailList
+                    title="Formas de atendimento"
+                    items={data.profile.contactOptions}
+                  />
+                  <DetailList
+                    title="Formas de pagamento"
+                    items={data.profile.paymentMethods}
+                  />
                 </dl>
               </div>
               <div className="studio-panel studio-profile-trust">
@@ -425,34 +486,54 @@ export default function ProfilePage() {
                 {data.media
                   .filter(media => media.isPremium || media.url)
                   .map(media => (
-                    <figure key={media.id}>
+                    <figure
+                      key={media.id}
+                      className={`studio-profile-media-card ${media.kind === "video" ? "is-video" : ""}`}
+                    >
                       {media.isPremium ? (
                         <div className="studio-panel" role="status">
                           <p className="studio-kicker">Conteúdo reservado</p>
-                          <strong>Este conteúdo premium não está disponível</strong>
+                          <strong>
+                            Este conteúdo premium não está disponível
+                          </strong>
                           <p className="studio-muted">
-                            A plataforma ainda não oferece checkout ou liberação paga.
+                            A plataforma ainda não oferece checkout ou liberação
+                            paga.
                           </p>
                         </div>
-                      ) : media.kind === "photo" ? (
-                        <img
-                          src={media.url!}
-                          alt={media.title || `Foto de ${data.profile.stageName}`}
-                          loading="lazy"
-                        />
                       ) : (
-                        <video
-                          src={media.url!}
-                          controls
-                          preload="metadata"
-                          aria-label={media.title || `Vídeo de ${data.profile.stageName}`}
-                        />
+                        <>
+                          {media.kind === "photo" ? (
+                            <img
+                              src={media.url!}
+                              alt={
+                                media.title ||
+                                `Foto de ${data.profile.stageName}`
+                              }
+                              loading="lazy"
+                            />
+                          ) : (
+                            <video
+                              src={media.url!}
+                              controls
+                              preload="metadata"
+                              aria-label={
+                                media.title ||
+                                `Vídeo de ${data.profile.stageName}`
+                              }
+                            />
+                          )}
+                          {media.kind === "video" && (
+                            <span className="studio-media-kind">Vídeo</span>
+                          )}
+                        </>
                       )}
                       {media.title && <figcaption>{media.title}</figcaption>}
                     </figure>
                   ))}
               </div>
-              {!data.media.filter(media => media.isPremium || media.url).length && (
+              {!data.media.filter(media => media.isPremium || media.url)
+                .length && (
                 <div className="studio-panel">
                   <p>Este anúncio ainda não possui mídia pública aprovada.</p>
                 </div>

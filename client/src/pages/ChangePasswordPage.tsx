@@ -5,17 +5,27 @@ import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
 export default function ChangePasswordPage() {
   const [, navigate] = useLocation();
+  const requested = new URLSearchParams(window.location.search).get("returnTo");
+  const safeReturn =
+    requested && /^\/(admin|titular|conta|cliente)(\?|$)/.test(requested)
+      ? requested
+      : "/conta";
   const [currentPassword, setCurrentPassword] = useState(""),
     [nextPassword, setNextPassword] = useState(""),
     [confirmation, setConfirmation] = useState(""),
     [error, setError] = useState("");
   const change = trpc.auth.changePassword.useMutation({
-    onSuccess: () => navigate("/login"),
+    onSuccess: () =>
+      navigate(`/login?returnTo=${encodeURIComponent(safeReturn)}`),
     onError: e => setError(e.message),
   });
   return (
     <div className="studio">
-      <Seo title="Alterar senha — Ero Models" description="Área privada de alteração de senha." noindex />
+      <Seo
+        title="Alterar senha — Ero Models"
+        description="Área privada de alteração de senha."
+        noindex
+      />
       <StudioHeader />
       <main className="studio-main studio-narrow">
         <section className="studio-panel">

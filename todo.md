@@ -22,6 +22,10 @@
 - [x] Criar revisão, aprovação, suspensão e destaque administrativo de perfis
 - [x] Criar revisão e aprovação administrativa de mídias
 - [x] Criar painel do titular para dados, mídia e status de publicação
+- [x] Permitir editar e salvar dados pessoais da conta também a partir da área do titular, com e-mail somente leitura e atualização auditada do nome
+- [x] Permitir salvar rascunho parcial sem exigir aceite contratual final, listar rascunhos por status e retomar a edição sem reiniciar o formulário
+- [x] Separar claramente salvar rascunho, enviar para revisão e ativação após aprovação, exibindo bloqueios acionáveis em vez de falhas silenciosas
+- [x] Corrigir o fluxo de upload para enviar fotos/vídeos autorizados, criar o registro de mídia, recarregar a galeria e exibir erro específico para identidade, storage, formato e limite
 - [x] Criar painel administrativo para perfis, mídias, filtros e estados
 - [x] Implementar schema Drizzle, migrations e execução/verificação no banco
 - [x] Implementar helpers de banco, procedimentos tRPC e validações de entrada
@@ -52,6 +56,7 @@
 - [x] Implementar canonical e metadados dinâmicos por rota/cidade; os metadados atuais são apenas estáticos no HTML base
 - [x] Gerar e anexar o ZIP final após a conclusão das validações
 - [ ] Ampliar testes para autorização de titular/admin, validação Zod, filtros, moderação e mídia; a cobertura atual é inicial
+- [ ] Adicionar regressões para rascunho parcial, retomada, ownership, envio de revisão e criação de mídia
 
 ## Etapa de preparação para produção
 
