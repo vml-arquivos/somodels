@@ -230,8 +230,9 @@ async function startServer() {
         res.setHeader("Retry-After", String(rate.retryAfterSeconds));
         return res.status(429).json({ error: rateLimitMessage(rate.retryAfterSeconds) });
       }
-      const { profileId, kind, filename, contentType, data } = req.body ?? {};
+      const { profileId, kind, filename, contentType, data, consent } = req.body ?? {};
       if (!profileId || !kind || !filename || !contentType || typeof data !== "string") return res.status(400).json({ error: "Dados de upload incompletos" });
+      if (consent !== true) return res.status(400).json({ error: "Confirme a autorização do conteúdo antes do envio" });
       if (!["photo", "video"].includes(kind)) return res.status(400).json({ error: "Tipo de mídia inválido" });
       const managedProfile = await getAdminProfile(Number(profileId));
       // Equipe só envia mídia por outro titular com a permissão de editar anúncios.
@@ -278,7 +279,11 @@ async function startServer() {
           ctx.user.id,
           !isAdmin
         );
-        return res.json({ ...uploaded, mediaId });
+        return res.json({
+          ...uploaded,
+          mediaId,
+          autoApproved: ENV.ownerMediaAutoApprove && !isAdmin,
+        });
       } catch (error) {
         await storageDelete(uploaded.key).catch(cleanupError => {
           console.error(

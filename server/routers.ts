@@ -105,6 +105,7 @@ import {
   listPublicLocations,
   moderateMedia,
   moderateProfile,
+  publishOwnerProfile,
   saveProfile,
   writeAuditLog,
 } from "./db";
@@ -629,6 +630,9 @@ export const appRouter = router({
         if (!owned) throw new Error("Perfil não pertence à conta");
         return softDeleteProfile(input.id, ctx.user.id);
       }),
+    publishMine: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => publishOwnerProfile(ctx.user.id, input.id)),
     identity: protectedProcedure.query(({ ctx }) =>
       getIdentityVerification(ctx.user.id)
     ),
@@ -717,23 +721,6 @@ export const appRouter = router({
         }
         return saveProfile(ctx.user.id, data as any, id, submitForReview);
       }),
-  }),
-  media: router({
-    add: protectedProcedure
-      .input(
-        z.object({
-          profileId: z.number().int().positive(),
-          kind: z.enum(["photo", "video"]),
-          title: z.string().max(160).optional(),
-          description: z.string().max(2000).optional(),
-          storageKey: z.string().min(1).max(500),
-          url: z.string().startsWith("/manus-storage/").max(600),
-          mimeType: z.string().min(1).max(120),
-          isPremium: z.boolean().default(false),
-          sortOrder: z.number().int().min(0).max(1000).default(0),
-        })
-      )
-      .mutation(({ ctx, input }) => createMedia(ctx.user.id, input as any)),
   }),
   safety: router({
     favoriteStatus: protectedProcedure

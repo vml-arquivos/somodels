@@ -62,6 +62,10 @@ export const ENV = {
   ageAssuranceEnabled: readBoolean(process.env.AGE_ASSURANCE_ENABLED, false),
   identityVerificationEnabled: readBoolean(process.env.IDENTITY_VERIFICATION_ENABLED, false),
   secureContactEnabled: readBoolean(process.env.SECURE_CONTACT_ENABLED, false),
+  // O titular autenticado pode publicar a própria mídia sem fila manual. Os gates de identidade,
+  // termo, completude, feature flags e publicação continuam obrigatórios; defina false para exigir
+  // moderação manual de cada arquivo.
+  ownerMediaAutoApprove: readBoolean(process.env.OWNER_MEDIA_AUTO_APPROVE, true),
   sponsoredListingsEnabled: readBoolean(process.env.SPONSORED_LISTINGS_ENABLED, false),
   creatorContent18Enabled: readBoolean(process.env.CREATOR_CONTENT_18_ENABLED, false),
   favoritesEnabled: readBoolean(process.env.FAVORITES_ENABLED, false),
