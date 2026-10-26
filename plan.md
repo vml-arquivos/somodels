@@ -21,6 +21,14 @@ O screenshot reenviado é tratado como referência de ritmo, escala e composiç�
 
 O screenshot de produção mostrou que os defaults preservados deixaram a mudança visual pouco perceptível e que settings antigos ainda exibiam o branding “Só Models” no rodapé. Esta etapa aumenta a escala e o contraste tipográficos da landing, reforça a navegação e os cards, reduz a sensação de texto pequeno, normaliza branding legado sem migration e mantém as rotas de cliente, titular, admin e DEV sob as mesmas guards existentes.
 
+## Etapa 4 — navegação lateral administrativa
+
+**Status:** concluída no checkout local; `pnpm check`, 153 testes, build de produção e `git diff --check` aprovados. Nenhuma migration, flag ou segredo foi alterado.
+
+O painel administrativo agora usa um sidebar fixo no desktop e um drawer acessível no mobile/PWA. As áreas são agrupadas em Principal, Pessoas, Conteúdo, Atendimento, Comercial, Site e Sistema; cada função recebe somente seus itens já permitidos pelo contrato de RBAC. Usuários podem abrir cada seção por URL direta (`/admin/usuarios`, `/admin/anuncios`, `/admin/moderacao`, `/admin/denuncias`, `/admin/verificacoes`, `/admin/mensagens`, `/admin/planos`, `/admin/financeiro`, `/admin/pagina-inicial`, `/admin/prontidao`, `/admin/auditoria` e `/admin/seguranca`).
+
+Badges são calculados no servidor pela nova consulta `management.navigationCounts` e filtrados pelo escopo efetivo antes de chegar ao browser. O fallback `/admin/:section` retorna para `/admin` quando o slug não existe ou a função não tem permissão; a exigência de MFA continua travando o menu na área Segurança. O estado de recolhimento é local ao navegador, o drawer tem foco inicial, trap de Tab, Escape e retorno de foco, e os estilos têm prefixo `ad-` para não contaminar a vitrine pública.
+
 ## Objetivo
 
 Transformar a home em uma landing page editorial de marketplace adulto: hero visual forte, busca acionável, prova de segurança, descoberta por categorias/localidades, cadastro contextual de titulares e rodapé institucional. A referência enviada orienta ritmo, composição e hierarquia, mas não serão copiados marca, textos, imagens, métricas ou componentes de terceiros.

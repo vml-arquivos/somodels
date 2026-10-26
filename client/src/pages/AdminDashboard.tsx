@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -15,27 +15,19 @@ import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
 import MfaPanel from "@/components/MfaPanel";
 import UsersManager from "@/components/admin/UsersManager";
+import AdminSidebar from "@/components/admin/AdminSidebar";
 import {
   adminFunctions,
   allowedAdminTabs,
   type AdminScope,
   type AdminFunction,
 } from "@shared/admin-access";
-const tabs = {
-  overview: "Visão geral",
-  users: "Usuários",
-  profiles: "Anúncios",
-  moderation: "Moderação",
-  reports: "Denúncias",
-  identity: "Verificações",
-  plans: "Planos",
-  messages: "Mensagens",
-  readiness: "Prontidão",
-  security: "Segurança",
-  finance: "Financeiro",
-  settings: "Página inicial",
-  audit: "Auditoria",
-};
+import {
+  adminPathForTab,
+  adminTabFromPath,
+  type AdminNavigationBadgeCounts,
+  type AdminTabKey,
+} from "@shared/admin-navigation";
 const money = (n: unknown) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
     Number(n || 0) / 100
@@ -51,7 +43,9 @@ function Failure({ error }: { error: any }) {
 export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
   const utils = trpc.useUtils();
-  const [tab, setTab] = useState<keyof typeof tabs>("overview"),
+  const [location, setLocation] = useLocation();
+  const initialTab = adminTabFromPath(location) || "overview";
+  const [tab, setTab] = useState<AdminTabKey>(initialTab),
     [profileSearch, setProfileSearch] = useState(""),
     [profileLifecycle, setProfileLifecycle] = useState<
       "all" | "active" | "inactive" | "deleted"
@@ -80,53 +74,94 @@ export default function AdminDashboard() {
     [editingProfile, setEditingProfile] = useState(false),
     [reason, setReason] = useState(""),
     [confirmed, setConfirmed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem("ero-admin-sidebar-collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const allowed = !!user && user.isAdmin && !user.mustChangePassword;
   // Áreas liberadas à função do usuário (o servidor também bloqueia cada rota).
   const scopes = ((user as any)?.adminScopes ?? []) as AdminScope[];
   const can = (scope: AdminScope) => scopes.includes(scope);
-  const visibleTabs = allowedAdminTabs(scopes);
+  const visibleTabs = allowedAdminTabs(scopes) as AdminTabKey[];
   const functionLabel =
     user?.role === "admin" && (user as any)?.adminFunction
       ? adminFunctions[(user as any).adminFunction as AdminFunction]?.label
       : null;
   const mfaStatus = trpc.auth.mfaStatus.useQuery(undefined, { enabled: allowed });
   const mfaPending = Boolean(mfaStatus.data?.required && !mfaStatus.data.enabled);
+  const dashboardReady =
+    allowed &&
+    mfaStatus.isSuccess &&
+    !mfaPending &&
+    visibleTabs.includes(tab);
+  const navigationCounts = trpc.management.navigationCounts.useQuery(undefined, {
+    enabled: dashboardReady,
+  });
+  const navigateToTab = (next: AdminTabKey) => {
+    setTab(next);
+    setLocation(adminPathForTab(next));
+    setDrawerOpen(false);
+  };
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        "ero-admin-sidebar-collapsed",
+        sidebarCollapsed ? "1" : "0"
+      );
+    } catch {
+      // Preferir o menu expandido se o navegador bloquear o armazenamento.
+    }
+  }, [sidebarCollapsed]);
   useEffect(() => {
     // Administrador sem MFA só consegue usar a aba de segurança até ativar.
-    if (mfaPending) setTab("security");
-  }, [mfaPending]);
-  useEffect(() => {
-    // Se a função não enxerga a aba atual, volta para a visão geral.
-    if (allowed && !visibleTabs.includes(tab)) setTab("overview");
-  }, [allowed, tab, visibleTabs.join("|")]);
+    if (!allowed) return;
+    if (mfaPending) {
+      if (tab !== "security") setTab("security");
+      if (location !== adminPathForTab("security"))
+        setLocation(adminPathForTab("security"));
+      return;
+    }
+    const requested = adminTabFromPath(location);
+    if (!requested || !visibleTabs.includes(requested)) {
+      if (tab !== "overview") setTab("overview");
+      if (location !== adminPathForTab("overview"))
+        setLocation(adminPathForTab("overview"));
+      return;
+    }
+    if (tab !== requested) setTab(requested);
+  }, [allowed, location, mfaPending, tab, visibleTabs.join("|")]);
   const overview = trpc.management.overview.useQuery(undefined, {
-    enabled: allowed && tab === "overview",
+    enabled: dashboardReady && tab === "overview",
   });
   const profiles = trpc.admin.profiles.useQuery(
     { search: profileSearch || undefined, lifecycle: profileLifecycle },
-    { enabled: allowed && (tab === "profiles" || tab === "moderation") }
+    { enabled: dashboardReady && (tab === "profiles" || tab === "moderation") }
   );
   const profile = trpc.admin.profileDetail.useQuery(
     { id: pid || 0 },
     {
-      enabled: allowed && !!pid && (tab === "profiles" || tab === "moderation"),
+      enabled: dashboardReady && !!pid && (tab === "profiles" || tab === "moderation"),
     }
   );
   const profileReadiness = trpc.admin.profileReadiness.useQuery(
     { id: pid || 0 },
     {
-      enabled: allowed && !!pid && (tab === "profiles" || tab === "moderation"),
+      enabled: dashboardReady && !!pid && (tab === "profiles" || tab === "moderation"),
     }
   );
   const pendingMedia = trpc.admin.pendingMedia.useQuery(undefined, {
-    enabled: allowed && tab === "moderation",
+    enabled: dashboardReady && tab === "moderation",
   });
   const reports = trpc.safety.adminReports.useQuery(undefined, {
-    enabled: allowed && tab === "reports",
+    enabled: dashboardReady && tab === "reports",
   });
   const identityQueue = trpc.admin.identityQueue.useQuery(
     { status: "pending" },
-    { enabled: allowed && tab === "identity" }
+    { enabled: dashboardReady && tab === "identity" }
   );
   const reviewIdentity = trpc.admin.reviewIdentity.useMutation({
     onSuccess: async () => {
@@ -135,15 +170,15 @@ export default function AdminDashboard() {
     },
   });
   const plansQuery = trpc.admin.plans.useQuery(undefined, {
-    enabled: allowed && tab === "plans",
+    enabled: dashboardReady && tab === "plans",
   });
   const subsQuery = trpc.admin.subscriptions.useQuery(undefined, {
-    enabled: allowed && tab === "plans",
+    enabled: dashboardReady && tab === "plans",
   });
   const [messageFilter, setMessageFilter] = useState<"new" | "handled">("new");
   const messagesQuery = trpc.admin.contactMessages.useQuery(
     { status: messageFilter },
-    { enabled: allowed && tab === "messages" }
+    { enabled: dashboardReady && tab === "messages" }
   );
   const handleMessage = trpc.admin.handleContactMessage.useMutation({
     onSuccess: async () => {
@@ -153,7 +188,7 @@ export default function AdminDashboard() {
     onError: error => toast.error(error.message),
   });
   const readinessQuery = trpc.admin.readiness.useQuery(undefined, {
-    enabled: allowed && tab === "readiness",
+    enabled: dashboardReady && tab === "readiness",
   });
   const savePlanMutation = trpc.admin.savePlan.useMutation({
     onSuccess: async () => {
@@ -181,14 +216,14 @@ export default function AdminDashboard() {
     onError: error => toast.error(error.message),
   });
   const finance = trpc.management.finance.useQuery(undefined, {
-    enabled: allowed && tab === "finance",
+    enabled: dashboardReady && tab === "finance",
   });
   const settings = trpc.management.settings.useQuery(undefined, {
-    enabled: allowed && tab === "settings",
+    enabled: dashboardReady && tab === "settings",
   });
   const audit = trpc.management.audit.useQuery(
     { page: auditPage },
-    { enabled: allowed && tab === "audit" }
+    { enabled: dashboardReady && tab === "audit" }
   );
   const [site, setSite] = useState(defaultSiteSettings);
   const [entry, setEntry] = useState({
@@ -295,8 +330,26 @@ export default function AdminDashboard() {
       <StudioHeader minimal>
         <button onClick={() => logout()}>Sair</button>
       </StudioHeader>
-      <main className="studio-main">
-        <div className="studio-title">
+      <div
+        className={`ad-layout ${sidebarCollapsed ? "is-collapsed" : ""} ${
+          allowed ? "" : "ad-layout-plain"
+        }`}
+      >
+        {allowed && (
+          <AdminSidebar
+            activeTab={tab}
+            badges={navigationCounts.data as AdminNavigationBadgeCounts | undefined}
+            collapsed={sidebarCollapsed}
+            drawerOpen={drawerOpen}
+            mfaPending={mfaPending}
+            scopes={scopes}
+            onCollapsedChange={setSidebarCollapsed}
+            onDrawerChange={setDrawerOpen}
+          />
+        )}
+        <div className="ad-content">
+          <main className="studio-main ad-main">
+        <div className="studio-title ad-page-header">
           <div>
             <p className="studio-kicker">
               Administração · {functionLabel || user?.role || "acesso restrito"}
@@ -338,22 +391,6 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <>
-            <nav className="studio-tabs">
-              {Object.entries(tabs)
-                .filter(([key]) => visibleTabs.includes(key))
-                .map(([key, label]) => (
-                <button
-                  aria-current={tab === key ? "page" : undefined}
-                  className={tab === key ? "primary" : ""}
-                  key={key}
-                  onClick={() => {
-                    setTab(key as any);
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
             {tab === "overview" && (
               <>
                 <Failure error={overview.error} />
@@ -430,7 +467,7 @@ export default function AdminDashboard() {
                 canDelete={can("users:delete")}
                 onOpenProfile={profileId => {
                   chooseProfile(profileId);
-                  setTab("profiles");
+                  navigateToTab("profiles");
                 }}
               />
             )}
@@ -668,96 +705,102 @@ export default function AdminDashboard() {
                                     />
                                   )}
                                   <p>{m.status}</p>
-                                  <div className="studio-actions">
-                                    <button
-                                      disabled={media.isPending}
-                                      onClick={() =>
-                                        media.mutate({
-                                          id: m.id,
-                                          status: "approved",
-                                        })
-                                      }
-                                    >
-                                      Aprovar mídia
-                                    </button>
-                                    <button
-                                      disabled={media.isPending}
-                                      onClick={() =>
-                                        media.mutate({
-                                          id: m.id,
-                                          status: "private",
-                                        })
-                                      }
-                                    >
-                                      Ocultar mídia
-                                    </button>
-                                  </div>
+                                  {can("moderation") && (
+                                    <div className="studio-actions">
+                                      <button
+                                        disabled={media.isPending}
+                                        onClick={() =>
+                                          media.mutate({
+                                            id: m.id,
+                                            status: "approved",
+                                          })
+                                        }
+                                      >
+                                        Aprovar mídia
+                                      </button>
+                                      <button
+                                        disabled={media.isPending}
+                                        onClick={() =>
+                                          media.mutate({
+                                            id: m.id,
+                                            status: "private",
+                                          })
+                                        }
+                                      >
+                                        Ocultar mídia
+                                      </button>
+                                    </div>
+                                  )}
                                 </article>
                               ))}
                             </div>
-                            <label className="studio-check">
-                              <input
-                                type="checkbox"
-                                checked={confirmed}
-                                onChange={e => setConfirmed(e.target.checked)}
-                              />
-                              Revisei o anúncio, as mídias e as autorizações.{" "}
-                              {portfolioPolicy}
-                            </label>
-                            <label>
-                              Justificativa da ação administrativa
-                              <input
-                                value={reason}
-                                onChange={e => setReason(e.target.value)}
-                                maxLength={500}
-                                placeholder="Obrigatório para inativar, suspender ou solicitar ajustes"
-                              />
-                            </label>
-                            <div className="studio-actions">
-                              <button
-                                className="primary"
-                                disabled={!confirmed || moderate.isPending}
-                                onClick={() =>
-                                  moderate.mutate({
-                                    id: pid!,
-                                    status: "approved",
-                                    portfolioConfirmed: true,
-                                  })
-                                }
-                              >
-                                Aprovar publicação
-                              </button>
-                              <button
-                                disabled={
-                                  moderate.isPending ||
-                                  reason.trim().length < 10
-                                }
-                                onClick={() =>
-                                  moderate.mutate({
-                                    id: pid!,
-                                    status: "suspended",
-                                    rejectionReason: reason,
-                                  })
-                                }
-                              >
-                                Ocultar / suspender
-                              </button>
-                              <button
-                                disabled={
-                                  moderate.isPending ||
-                                  reason.trim().length < 10
-                                }
-                                onClick={() =>
-                                  moderate.mutate({
-                                    id: pid!,
-                                    status: "rejected",
-                                    rejectionReason: reason,
-                                  })
-                                }
-                              >
-                                Solicitar ajustes
-                              </button>
-                            </div>
+                            {can("moderation") && (
+                              <>
+                                <label className="studio-check">
+                                  <input
+                                    type="checkbox"
+                                    checked={confirmed}
+                                    onChange={e => setConfirmed(e.target.checked)}
+                                  />
+                                  Revisei o anúncio, as mídias e as autorizações.{" "}
+                                  {portfolioPolicy}
+                                </label>
+                                <label>
+                                  Justificativa da ação administrativa
+                                  <input
+                                    value={reason}
+                                    onChange={e => setReason(e.target.value)}
+                                    maxLength={500}
+                                    placeholder="Obrigatório para inativar, suspender ou solicitar ajustes"
+                                  />
+                                </label>
+                                <div className="studio-actions">
+                                  <button
+                                    className="primary"
+                                    disabled={!confirmed || moderate.isPending}
+                                    onClick={() =>
+                                      moderate.mutate({
+                                        id: pid!,
+                                        status: "approved",
+                                        portfolioConfirmed: true,
+                                      })
+                                    }
+                                  >
+                                    Aprovar publicação
+                                  </button>
+                                  <button
+                                    disabled={
+                                      moderate.isPending ||
+                                      reason.trim().length < 10
+                                    }
+                                    onClick={() =>
+                                      moderate.mutate({
+                                        id: pid!,
+                                        status: "suspended",
+                                        rejectionReason: reason,
+                                      })
+                                    }
+                                  >
+                                    Ocultar / suspender
+                                  </button>
+                                  <button
+                                    disabled={
+                                      moderate.isPending ||
+                                      reason.trim().length < 10
+                                    }
+                                    onClick={() =>
+                                      moderate.mutate({
+                                        id: pid!,
+                                        status: "rejected",
+                                        rejectionReason: reason,
+                                      })
+                                    }
+                                  >
+                                    Solicitar ajustes
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </>
                         )}
                       </>
@@ -1503,7 +1546,9 @@ export default function AdminDashboard() {
             )}
           </>
         )}
-      </main>
+          </main>
+        </div>
+      </div>
     </div>
   );
 }

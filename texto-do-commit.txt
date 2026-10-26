@@ -1,0 +1,10 @@
+feat(admin): add responsive role-aware sidebar navigation
+
+- adiciona sidebar fixo no desktop e drawer acessível no mobile/PWA;
+- agrupa áreas administrativas por função, com URLs diretas e fallback seguro;
+- filtra badges de pendências no servidor por escopo efetivo;
+- preserva o conteúdo das abas, queries, RBAC, MFA, tRPC, banco e migrations;
+- documenta os acessos em docs/ACCESS-MAP-2026-10-26.md;
+- validação: pnpm check, pnpm test (153 testes), pnpm build e git diff --check.
+
+Commit local de origem: 4217aa05e86236ccfdd6f4a962df5df8ea43bda3

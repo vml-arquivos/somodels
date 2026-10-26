@@ -46,8 +46,21 @@ function Router() {
       <Route path="/conta" component={ClientDashboard} />
       <Route path="/cliente" component={ClientDashboard} />
       <Route path="/titular" component={OwnerDashboard} />
-      <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/portfolio/novo" component={AdminNewPortfolioPage} />
+      <Route path="/admin/usuarios" component={AdminDashboard} />
+      <Route path="/admin/anuncios" component={AdminDashboard} />
+      <Route path="/admin/moderacao" component={AdminDashboard} />
+      <Route path="/admin/verificacoes" component={AdminDashboard} />
+      <Route path="/admin/denuncias" component={AdminDashboard} />
+      <Route path="/admin/mensagens" component={AdminDashboard} />
+      <Route path="/admin/planos" component={AdminDashboard} />
+      <Route path="/admin/financeiro" component={AdminDashboard} />
+      <Route path="/admin/pagina-inicial" component={AdminDashboard} />
+      <Route path="/admin/prontidao" component={AdminDashboard} />
+      <Route path="/admin/auditoria" component={AdminDashboard} />
+      <Route path="/admin/seguranca" component={AdminDashboard} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/:section" component={AdminDashboard} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

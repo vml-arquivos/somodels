@@ -3,13 +3,20 @@ import { readSiteSettings } from "./site-config";
 import { z } from "zod";
 import { and, eq, desc, sql, like, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { adminProcedure, publicProcedure, router, scopedProcedure } from "./_core/trpc";
+import {
+  adminProcedure,
+  adminScopesFor,
+  publicProcedure,
+  router,
+  scopedProcedure,
+} from "./_core/trpc";
 import {
   getDb,
   getAdminProfile,
   getUserById,
   saveProfile,
   createLocalUser,
+  getOperationalCounts,
 } from "./db";
 import {
   users,
@@ -24,6 +31,7 @@ import { createOpaqueToken, hashToken, hashPassword } from "./auth-crypto";
 import { assertPasswordPolicy } from "./auth";
 import { ENV } from "./_core/env";
 import { adminFunctionKeys } from "../shared/admin-access";
+import { adminNavigationBadges } from "../shared/admin-navigation";
 import { profileInputSchema } from "../shared/profile-schema";
 import { defaultSiteSettings, siteSettingsSchema } from "../shared/portfolio";
 import type { User } from "../drizzle/schema";
@@ -574,6 +582,10 @@ export const managementRouter = router({
       .map(([label, total]) => ({ label, total }))
       .sort((a, b) => b.total - a.total);
     return { accounts, portfolio, cities, states, types };
+  }),
+  navigationCounts: scopedProcedure().query(async ({ ctx }) => {
+    const counts = await getOperationalCounts();
+    return adminNavigationBadges(adminScopesFor(ctx.user), counts);
   }),
   audit: scopedProcedure("audit")
     .input(

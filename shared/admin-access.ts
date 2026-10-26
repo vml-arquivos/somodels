@@ -127,8 +127,10 @@ export const adminTabScopes: Record<string, readonly AdminScope[]> = {
   audit: ["audit"],
 };
 
-export function allowedAdminTabs(granted: readonly AdminScope[]) {
-  return Object.entries(adminTabScopes)
-    .filter(([, needed]) => hasAnyScope(granted, needed))
-    .map(([key]) => key);
+export type AdminTabKey = keyof typeof adminTabScopes;
+
+export function allowedAdminTabs(granted: readonly AdminScope[]): AdminTabKey[] {
+  return (Object.keys(adminTabScopes) as AdminTabKey[]).filter(key =>
+    hasAnyScope(granted, adminTabScopes[key])
+  );
 }

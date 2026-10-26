@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-26 — navegação lateral administrativa
+
+- painel administrativo reorganizado em sidebar fixo no desktop e drawer acessível no mobile/PWA, com agrupamentos Principal, Pessoas, Conteúdo, Atendimento, Comercial, Site e Sistema;
+- URLs diretas para cada área, fallback seguro de slug inexistente/sem permissão para `/admin`, recolhimento persistido apenas no navegador e foco inicial, trap de Tab, Escape e retorno de foco no drawer;
+- badges de pendências entregues por `management.navigationCounts`, filtrados no servidor pelo escopo efetivo para não revelar contadores de áreas não autorizadas; MFA pendente mantém o menu travado em Segurança;
+- preservados o conteúdo das abas, tRPC, RBAC, age gate, rotas públicas, banco, flags e migrations; validação local: `pnpm check`, 153 testes, `pnpm build` e `git diff --check` aprovados.
+- mapa de dashboards e entrada DEV documentado em `docs/ACCESS-MAP-2026-10-26.md`, sem salvar senha ou token no código, no ZIP ou no chat.
+
 ## 2026-10-26 — funções da equipe (moderador, suporte, financeiro, auditoria)
 
 - cada administrador pode ter uma função: Moderador (anúncios, moderação, denúncias, verificações), Suporte (contas e mensagens do Fale conosco), Financeiro (planos, assinaturas e caixa) ou Auditoria (somente leitura); sem função definida continua com acesso total, então nada muda para quem já é administrador;

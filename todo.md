@@ -11,6 +11,7 @@
 - [x] Refinar tipografia, espaçamento, hierarquia e harmonização visual da home para desktop, mobile e PWA, sem overflow horizontal e com foco/acessibilidade preservados
 - [x] Tornar configuráveis no painel admin todos os textos editoriais visíveis da home: navegação contextual, hero, busca, links rápidos, segurança, CTA de titular, catálogo, estados vazios, busca guiada, categorias, sobre e rodapé
 - [x] Preservar links funcionais, age gate, SEO, filtros, RBAC, tRPC e dados reais enquanto a copy é editada pelo admin sem HTML arbitrário ou hosts externos
+- [x] Reorganizar o painel admin em menu lateral responsivo com URLs diretas, badges filtrados por escopo, fallback seguro e drawer acessível
 - [x] Implementar busca textual e filtros por cidade, categoria e atributos
 - [x] Implementar localização e URLs públicas por cidade
 - [x] Criar página individual pública de perfil com estados de privacidade e indisponibilidade
@@ -20,7 +21,7 @@
 - [x] Criar revisão, aprovação, suspensão e destaque administrativo de perfis
 - [x] Criar revisão e aprovação administrativa de mídias
 - [x] Criar painel do titular para dados, mídia e status de publicação
-- [ ] Criar painel administrativo para perfis, mídias, filtros e estados
+- [x] Criar painel administrativo para perfis, mídias, filtros e estados
 - [x] Implementar schema Drizzle, migrations e execução/verificação no banco
 - [x] Implementar helpers de banco, procedimentos tRPC e validações de entrada
 - [x] Implementar uploads via storagePut sem gravar arquivos pesados no banco
@@ -31,7 +32,7 @@
 - [x] Executar check, build, testes e verificação visual responsiva
 - [x] Validar a nova landing page em desktop, mobile e PWA, preservando age gate, SEO, filtros e rotas privadas
 - [x] Corrigir a calibração visual pós-publicação e normalizar branding legado persistido
-- [ ] Provisionar/recuperar o acesso DEV da conta configurada no Coolify sem expor senha no chat
+- [x] Provisionar/recuperar o acesso DEV da conta configurada no Coolify sem expor senha no chat; mapa operacional em `docs/ACCESS-MAP-2026-10-26.md`
 - [x] Documentar análise do repositório, arquitetura, arquivos alterados, migrations, configuração e testes
 - [x] Criar ZIP final atualizado do projeto
 
@@ -48,7 +49,7 @@
 ## Correções de rastreamento
 
 - [x] Implementar canonical e metadados dinâmicos por rota/cidade; os metadados atuais são apenas estáticos no HTML base
-- [ ] Gerar e anexar o ZIP final após a conclusão das validações
+- [x] Gerar e anexar o ZIP final após a conclusão das validações
 - [ ] Ampliar testes para autorização de titular/admin, validação Zod, filtros, moderação e mídia; a cobertura atual é inicial
 
 ## Etapa de preparação para produção
