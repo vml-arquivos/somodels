@@ -34,6 +34,76 @@ export const portfolioTermsText = [
   ...portfolioTermsClauses.map((clause, index) => `${index + 1}. ${clause}`),
 ].join("\n\n");
 
+const brazilianAreaCodes = new Set([
+  "11",
+  "12",
+  "13",
+  "14",
+  "15",
+  "16",
+  "17",
+  "18",
+  "19",
+  "21",
+  "22",
+  "24",
+  "27",
+  "28",
+  "31",
+  "32",
+  "33",
+  "34",
+  "35",
+  "37",
+  "38",
+  "41",
+  "42",
+  "43",
+  "44",
+  "45",
+  "46",
+  "47",
+  "48",
+  "49",
+  "51",
+  "53",
+  "54",
+  "55",
+  "61",
+  "62",
+  "63",
+  "64",
+  "65",
+  "66",
+  "67",
+  "68",
+  "69",
+  "71",
+  "73",
+  "74",
+  "75",
+  "77",
+  "79",
+  "81",
+  "82",
+  "83",
+  "84",
+  "85",
+  "86",
+  "87",
+  "88",
+  "89",
+  "91",
+  "92",
+  "93",
+  "94",
+  "95",
+  "96",
+  "97",
+  "98",
+  "99",
+]);
+
 export function normalizePhone(value: string): string {
   const raw = value.trim();
   if (!raw) return "";
@@ -43,6 +113,17 @@ export function normalizePhone(value: string): string {
     digits = `55${digits}`;
   if (!/^[1-9]\d{9,14}$/.test(digits))
     throw new Error("Informe DDI, DDD e telefone válidos");
+  if (
+    digits.startsWith("55") &&
+    (digits.length === 12 || digits.length === 13)
+  ) {
+    const areaCode = digits.slice(2, 4);
+    const subscriber = digits.slice(4);
+    if (!brazilianAreaCodes.has(areaCode))
+      throw new Error("Informe um DDD brasileiro válido");
+    if (subscriber.length === 9 && !subscriber.startsWith("9"))
+      throw new Error("Celular brasileiro deve ter 9 dígitos e começar com 9");
+  }
   return `+${digits}`;
 }
 
@@ -234,9 +315,9 @@ export const defaultSiteSettings = {
   searchPlaceholder: "Nome, cidade ou palavra-chave",
   emptyTitle: "Nenhum anúncio publicado ainda",
   emptyText:
-    "A vitrine está pronta para receber os primeiros anúncios aprovados. O conteúdo publicado é cadastrado e revisado pelo painel administrativo.",
+    "A vitrine está pronta para receber os primeiros anúncios que concluírem os critérios automáticos de segurança.",
   about:
-    "A Ero Models é uma plataforma adulta de anúncios. Cada titular controla o que deseja publicar, e a operação mantém revisão, age gate, privacidade, moderação e canais de denúncia antes da abertura pública.",
+    "A Ero Models é uma plataforma adulta de anúncios. Cada titular controla o que deseja publicar, com age gate, privacidade, moderação e canais de denúncia disponíveis.",
   footer: "Ero Models • Portal adulto de anúncios para maiores de 18 anos.",
   showGallery: true,
   showAbout: true,
@@ -266,7 +347,7 @@ export const defaultSiteSettings = {
       locationPlaceholder: "Sua cidade",
       buttonText: "Encontrar acompanhantes",
       notes: [
-        "Publicação revisada",
+        "Publicação automática",
         "Contato autorizado",
         "Privacidade por padrão",
       ],
@@ -296,8 +377,8 @@ export const defaultSiteSettings = {
         },
         {
           marker: "01",
-          title: "Publicação revisada",
-          text: "Perfis e mídias passam por etapas de publicação e moderação.",
+          title: "Publicação com controles",
+          text: "Perfis e mídias passam pelos critérios automáticos e podem ser moderados.",
         },
         {
           marker: "02",
@@ -314,7 +395,7 @@ export const defaultSiteSettings = {
     holder: {
       kicker: "Para titulares",
       title: "Crie seu perfil e seja encontrado.",
-      text: "Um cadastro guiado para apresentar seu trabalho, controlar suas informações e enviar o perfil para revisão.",
+      text: "Um cadastro guiado para apresentar seu trabalho, controlar suas informações e publicar quando estiver pronto.",
       buttonText: "Começar cadastro",
       benefits: [
         "Nome artístico",
@@ -336,10 +417,10 @@ export const defaultSiteSettings = {
       listErrorText: "Não foi possível carregar os anúncios.",
       resultsEmptyTitle: "Nenhum anúncio publicado ainda",
       resultsEmptyText:
-        "A vitrine está pronta para receber os primeiros anúncios aprovados.",
+        "A vitrine está pronta para receber os primeiros anúncios publicados.",
       resultsEmptyButton: "Quero criar um perfil",
       launchKicker: "Em preparação",
-      launchTitle: "Os primeiros perfis aprovados chegam aqui.",
+      launchTitle: "Os primeiros perfis publicados chegam aqui.",
       launchText:
         "A vitrine está pronta para receber cadastros e publicar somente o que passar pelos critérios do ambiente.",
       launchButton: "Criar um perfil",
@@ -367,7 +448,7 @@ export const defaultSiteSettings = {
     about: {
       kicker: "Sobre a Ero Models",
       title: "Uma vitrine adulta para encontrar e ser encontrado.",
-      text: "A Ero Models é uma plataforma adulta de anúncios. Cada titular controla o que deseja publicar, e a operação mantém revisão, age gate, privacidade, moderação e canais de denúncia antes da abertura pública.",
+      text: "A Ero Models é uma plataforma adulta de anúncios. Cada titular controla o que deseja publicar, com age gate, privacidade, moderação e canais de denúncia disponíveis.",
       policyLink: "Conheça as regras de segurança",
     },
     footer: {
@@ -418,9 +499,23 @@ export type SiteSettings = z.infer<typeof siteSettingsSchema>;
 
 function normalizeLegacyBrand(value: unknown): unknown {
   if (typeof value === "string") {
-    return value
+    const branded = value
       .replace(/Só Models/gi, "Ero Models")
       .replace(/So Models/gi, "Ero Models");
+    const legacyDefaults: Record<string, string> = {
+      "Publicação revisada": "Publicação automática",
+      "Perfis e mídias passam por etapas de publicação e moderação.":
+        "Perfis e mídias passam pelos critérios automáticos e podem ser moderados.",
+      "Um cadastro guiado para apresentar seu trabalho, controlar suas informações e enviar o perfil para revisão.":
+        "Um cadastro guiado para apresentar seu trabalho, controlar suas informações e publicar quando estiver pronto.",
+      "A vitrine está pronta para receber os primeiros anúncios aprovados.":
+        "A vitrine está pronta para receber os primeiros anúncios publicados.",
+      "Os primeiros perfis aprovados chegam aqui.":
+        "Os primeiros perfis publicados chegam aqui.",
+      "A Ero Models é uma plataforma adulta de anúncios. Cada titular controla o que deseja publicar, e a operação mantém revisão, age gate, privacidade, moderação e canais de denúncia antes da abertura pública.":
+        "A Ero Models é uma plataforma adulta de anúncios. Cada titular controla o que deseja publicar, com age gate, privacidade, moderação e canais de denúncia disponíveis.",
+    };
+    return legacyDefaults[branded] ?? branded;
   }
   if (Array.isArray(value)) return value.map(normalizeLegacyBrand);
   if (value && typeof value === "object") {

@@ -60,4 +60,26 @@ describe("site settings normalization", () => {
     expect(settings.home.footer.signature).toContain("Ero Models");
     expect(settings.home.footer.tagline).not.toMatch(/Só Models|So Models/i);
   });
+
+  it("updates former default copy to describe automatic publication controls", () => {
+    const settings = normalizeSiteSettings({
+      home: {
+        hero: {
+          notes: [
+            "Publicação revisada",
+            "Contato autorizado",
+            "Privacidade por padrão",
+          ],
+        },
+        holder: {
+          text: "Um cadastro guiado para apresentar seu trabalho, controlar suas informações e enviar o perfil para revisão.",
+        },
+      },
+    });
+
+    expect(settings.home.hero.notes[0]).toBe("Publicação automática");
+    expect(settings.home.holder.text).toContain(
+      "publicar quando estiver pronto"
+    );
+  });
 });

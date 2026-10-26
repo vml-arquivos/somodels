@@ -1,6 +1,20 @@
-import { contactLinks, defaultSiteSettings, portfolioCategories } from "../shared/portfolio";
+import {
+  contactLinks,
+  defaultSiteSettings,
+  portfolioCategories,
+} from "../shared/portfolio";
 import { createHash, randomUUID } from "node:crypto";
-import { and, asc, desc, eq, getTableColumns, like, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  like,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   ageVerifications,
@@ -28,8 +42,16 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV, isAgeVerificationConfigured } from "./_core/env";
-import { assertIdentityReviewAllowed, identityValidityDays } from "./identity-review";
-import { decryptSecret, encryptSecret, generateTotpSecret, verifyTotp } from "./totp";
+import {
+  assertIdentityReviewAllowed,
+  identityValidityDays,
+} from "./identity-review";
+import {
+  decryptSecret,
+  encryptSecret,
+  generateTotpSecret,
+  verifyTotp,
+} from "./totp";
 import {
   canActOnProfile,
   decodeReportReason,
@@ -44,6 +66,15 @@ import {
   evaluateProfileTermsAcceptance,
 } from "./profile-terms";
 import { getPublicationGateBlockers } from "./publication-gates";
+import {
+  accountTermsClauses,
+  accountTermsText,
+  accountTermsVersion,
+} from "../shared/account-terms";
+import {
+  hasLegacyApprovedLocation,
+  isStructuredLocation,
+} from "../shared/locations";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -69,13 +100,26 @@ export async function isDatabaseReady() {
     // Readiness must validate the schema required by the running release, not
     // only that MySQL accepts a connection. This prevents Coolify from marking
     // a container healthy when the application code is ahead of its migrations.
-    await db.execute(sql`SELECT \`portfolioReviewed\` FROM \`profiles\` LIMIT 0`);
-    await db.execute(sql`SELECT \`priceFromCents\`, \`services\`, \`attendancePlaces\` FROM \`profiles\` LIMIT 0`);
+    await db.execute(
+      sql`SELECT \`portfolioReviewed\` FROM \`profiles\` LIMIT 0`
+    );
+    await db.execute(
+      sql`SELECT \`priceFromCents\`, \`services\`, \`attendancePlaces\` FROM \`profiles\` LIMIT 0`
+    );
+    await db.execute(sql`SELECT \`neighborhood\` FROM \`profiles\` LIMIT 0`);
     await db.execute(sql`SELECT \`availableUntil\` FROM \`profiles\` LIMIT 0`);
-    await db.execute(sql`SELECT \`isFeatured\`, \`durationDays\`, \`sortOrder\`, \`benefits\` FROM \`plans\` LIMIT 0`);
-    await db.execute(sql`SELECT \`source\`, \`note\`, \`activatedBy\` FROM \`subscriptions\` LIMIT 0`);
-    await db.execute(sql`SELECT \`id\`, \`secretEnc\`, \`lastStep\` FROM \`user_mfa\` LIMIT 0`);
-    await db.execute(sql`SELECT \`id\`, \`topic\`, \`status\` FROM \`contact_messages\` LIMIT 0`);
+    await db.execute(
+      sql`SELECT \`isFeatured\`, \`durationDays\`, \`sortOrder\`, \`benefits\` FROM \`plans\` LIMIT 0`
+    );
+    await db.execute(
+      sql`SELECT \`source\`, \`note\`, \`activatedBy\` FROM \`subscriptions\` LIMIT 0`
+    );
+    await db.execute(
+      sql`SELECT \`id\`, \`secretEnc\`, \`lastStep\` FROM \`user_mfa\` LIMIT 0`
+    );
+    await db.execute(
+      sql`SELECT \`id\`, \`topic\`, \`status\` FROM \`contact_messages\` LIMIT 0`
+    );
     await db.execute(sql`SELECT \`adminFunction\` FROM \`users\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\` FROM \`site_settings\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\` FROM \`finance_entries\` LIMIT 0`);
@@ -185,7 +229,10 @@ export async function createLocalUser(input: {
   return getUserByEmail(email);
 }
 
-export async function resetBootstrapDevAccount(email: string, password: string) {
+export async function resetBootstrapDevAccount(
+  email: string,
+  password: string
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const normalizedEmail = email.trim().toLowerCase();
@@ -230,10 +277,7 @@ export async function updateUserPassword(userId: number, password: string) {
 export async function updateUserName(userId: number, name: string) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  await db
-    .update(users)
-    .set({ name: name.trim() })
-    .where(eq(users.id, userId));
+  await db.update(users).set({ name: name.trim() }).where(eq(users.id, userId));
   await writeAuditLog({
     actorUserId: userId,
     action: "user.name_updated",
@@ -254,7 +298,9 @@ export async function anonymizeOwnAccount(userId: number) {
       .for("update");
     if (!account) throw new Error("Conta não encontrada");
     if (account.role !== "user")
-      throw new Error("Contas administrativas precisam ser encerradas por outro administrador");
+      throw new Error(
+        "Contas administrativas precisam ser encerradas por outro administrador"
+      );
 
     await tx
       .update(users)
@@ -292,7 +338,10 @@ export async function anonymizeOwnAccount(userId: number) {
       action: "user.self_anonymized",
       entityType: "user",
       entityId: userId,
-      metadata: JSON.stringify({ deletionMode: "soft", preferencesDeleted: true }),
+      metadata: JSON.stringify({
+        deletionMode: "soft",
+        preferencesDeleted: true,
+      }),
     });
   });
   return { success: true as const };
@@ -437,6 +486,78 @@ export async function writeAuditLog(input: {
   });
 }
 
+export async function getAccountTermsStatus(userId: number) {
+  const db = await getDb();
+  if (!db)
+    return {
+      current: false,
+      reason: "never_accepted" as const,
+      version: accountTermsVersion,
+      acceptedAt: null,
+      clauses: accountTermsClauses,
+      text: accountTermsText,
+    };
+  const [latest] = await db
+    .select({ metadata: auditLogs.metadata, createdAt: auditLogs.createdAt })
+    .from(auditLogs)
+    .where(
+      and(
+        eq(auditLogs.action, "account.terms.accepted"),
+        eq(auditLogs.entityType, "user"),
+        eq(auditLogs.entityId, userId),
+        eq(auditLogs.actorUserId, userId)
+      )
+    )
+    .orderBy(desc(auditLogs.createdAt))
+    .limit(1);
+  let metadata: Record<string, unknown> = {};
+  try {
+    metadata = latest?.metadata ? JSON.parse(latest.metadata) : {};
+  } catch {
+    metadata = {};
+  }
+  const current =
+    metadata.version === accountTermsVersion &&
+    metadata.adultConfirmed === true &&
+    metadata.rightsConfirmed === true &&
+    metadata.policyConfirmed === true;
+  const reason = current
+    ? null
+    : !latest
+      ? ("never_accepted" as const)
+      : metadata.version !== accountTermsVersion
+        ? ("terms_updated" as const)
+        : ("invalid_acceptance" as const);
+  return {
+    current,
+    reason,
+    version: accountTermsVersion,
+    acceptedAt: latest?.createdAt ?? null,
+    clauses: accountTermsClauses,
+    text: accountTermsText,
+  };
+}
+
+export async function acceptAccountTerms(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const current = await getAccountTermsStatus(userId);
+  if (current.current) return current;
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "account.terms.accepted",
+    entityType: "user",
+    entityId: userId,
+    metadata: {
+      version: accountTermsVersion,
+      adultConfirmed: true,
+      rightsConfirmed: true,
+      policyConfirmed: true,
+    },
+  });
+  return getAccountTermsStatus(userId);
+}
+
 async function readProfileTermsStatus(executor: any, profile: any) {
   const media = await executor
     .select({
@@ -470,7 +591,10 @@ async function readProfileTermsStatus(executor: any, profile: any) {
   return evaluateProfileTermsAcceptance(profile, media, latest ?? null);
 }
 
-export async function getProfilePublicationReadiness(profileId: number, executor?: any) {
+export async function getProfilePublicationReadiness(
+  profileId: number,
+  executor?: any
+) {
   const db = executor ?? (await getDb());
   if (!db) throw new Error("Database unavailable");
   const [profile] = await db
@@ -488,7 +612,13 @@ export async function getProfilePublicationReadiness(profileId: number, executor
     .select()
     .from(profileMedia)
     .where(eq(profileMedia.profileId, profileId));
-  const terms = await readProfileTermsStatus(db, profile);
+  const terms = await getAccountTermsStatus(profile.ownerId);
+  const locationValid = await isStructuredLocation(
+    profile.region,
+    profile.city,
+    profile.neighborhood
+  );
+  const locationReady = locationValid || hasLegacyApprovedLocation(profile);
   const [siteRow] = await db
     .select({ value: siteSettings.value })
     .from(siteSettings)
@@ -496,7 +626,9 @@ export async function getProfilePublicationReadiness(profileId: number, executor
     .limit(1);
   let showGallery = defaultSiteSettings.showGallery;
   try {
-    showGallery = siteRow ? Boolean(JSON.parse(siteRow.value).showGallery) : defaultSiteSettings.showGallery;
+    showGallery = siteRow
+      ? Boolean(JSON.parse(siteRow.value).showGallery)
+      : defaultSiteSettings.showGallery;
   } catch {
     showGallery = false;
   }
@@ -510,20 +642,38 @@ export async function getProfilePublicationReadiness(profileId: number, executor
           .orderBy(desc(identityVerifications.updatedAt))
           .limit(1)
       : [];
-    identityApproved = identity?.status === "approved" && !(identity.expiresAt && identity.expiresAt <= new Date());
+    identityApproved =
+      identity?.status === "approved" &&
+      !(identity.expiresAt && identity.expiresAt <= new Date());
   }
   const categories = parseJson(profile.categories);
-  const approvedMedia = media.filter((item: any) => item.status === "approved" && !item.isPremium);
+  const approvedMedia = media.filter(
+    (item: any) => item.status === "approved" && !item.isPremium
+  );
   const gates = getPublicationGateBlockers({
     ownerActive: owner?.accountStatus === "active",
     profileActive: profile.isActive && !profile.deletedAt,
     identityApproved,
     termsCurrent: terms.current,
     termsReason: terms.reason,
-    profileComplete: Boolean(profile.stageName && profile.slug && profile.city && profile.description),
-    categoriesValid: Array.isArray(categories) && categories.length > 0 && categories.every((category: unknown) => typeof category === "string" && (portfolioCategories as readonly string[]).includes(category)),
+    profileComplete: Boolean(
+      profile.stageName &&
+        profile.slug &&
+        locationReady &&
+        profile.description &&
+        profile.phone
+    ),
+    categoriesValid:
+      Array.isArray(categories) &&
+      categories.length > 0 &&
+      categories.every(
+        (category: unknown) =>
+          typeof category === "string" &&
+          (portfolioCategories as readonly string[]).includes(category)
+      ),
     approvedMediaCount: approvedMedia.length,
-    pendingMediaCount: media.filter((item: any) => item.status === "pending").length,
+    pendingMediaCount: media.filter((item: any) => item.status === "pending")
+      .length,
     isDemo: Boolean(profile.isDemo),
     isTest: Boolean(profile.isTest),
     publicAccessEnabled: ENV.publicAccessEnabled,
@@ -531,7 +681,8 @@ export async function getProfilePublicationReadiness(profileId: number, executor
     adultMarketplaceEnabled: ENV.adultMarketplaceEnabled,
     escortListingsEnabled: ENV.escortListingsEnabled,
     robotsNoIndex: ENV.robotsNoIndex,
-    requireAgeVerification: ENV.requireAgeVerification && !isAgeVerificationConfigured(),
+    requireAgeVerification:
+      ENV.requireAgeVerification && !isAgeVerificationConfigured(),
     showGallery,
     reportsEnabled: ENV.reportsEnabled,
     blockingEnabled: ENV.blockingEnabled,
@@ -540,13 +691,17 @@ export async function getProfilePublicationReadiness(profileId: number, executor
     ...gates,
     terms,
     approvedMediaCount: approvedMedia.length,
-    pendingMediaCount: media.filter((item: any) => item.status === "pending").length,
+    pendingMediaCount: media.filter((item: any) => item.status === "pending")
+      .length,
     ownerActive: owner?.accountStatus === "active",
     identityApproved,
   };
 }
 
-export async function getProfileTermsStatus(profileId: number, ownerId?: number) {
+export async function getProfileTermsStatus(
+  profileId: number,
+  ownerId?: number
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const [profile] = await db
@@ -650,6 +805,7 @@ export function hydratePublicProfile(row: any) {
     age: row.age ?? null,
     city: row.city,
     region: row.region ?? null,
+    neighborhood: row.neighborhood ?? null,
     locationNote: row.locationNote ?? null,
     categories,
     attributes,
@@ -669,9 +825,9 @@ export function hydratePublicProfile(row: any) {
     avatarUrl: row.avatarUrl ?? null,
     isFeatured: Boolean(row.isFeatured),
     updatedAt: row.updatedAt,
-    phone: contactAllowed ? row.phone ?? null : null,
-    whatsapp: contactAllowed ? row.whatsapp ?? null : null,
-    telegram: contactAllowed ? row.telegram ?? null : null,
+    phone: contactAllowed ? (row.phone ?? null) : null,
+    whatsapp: contactAllowed ? (row.whatsapp ?? null) : null,
+    telegram: contactAllowed ? (row.telegram ?? null) : null,
     contactOptions: contactAllowed
       ? contactOptions
       : row.isDemo
@@ -783,20 +939,22 @@ function buildPublicConditions(input: PublicListFilters) {
   if (input.service)
     conditions.push(like(profiles.services, `%${escapeLike(input.service)}%`));
   if (input.place)
-    conditions.push(like(profiles.attendancePlaces, `%${escapeLike(input.place)}%`));
-  if (input.verifiedOnly)
-    conditions.push(identityApprovedExists());
+    conditions.push(
+      like(profiles.attendancePlaces, `%${escapeLike(input.place)}%`)
+    );
+  if (input.verifiedOnly) conditions.push(identityApprovedExists());
   return conditions;
 }
 
 export async function listPublishedProfiles(input: PublicListFilters) {
-
   const db = await getDb();
   if (!db || input.publicAllowed === false) return [];
   const conditions = buildPublicConditions(input);
   // Patrocinados (rotulados) ficam à frente apenas nas ordenações "relevantes" e
   // "disponíveis"; ordenar por preço ou recência não é afetado.
-  const sponsoredFirst = ENV.sponsoredListingsEnabled ? [desc(sponsoredExists())] : [];
+  const sponsoredFirst = ENV.sponsoredListingsEnabled
+    ? [desc(sponsoredExists())]
+    : [];
   const order =
     input.sort === "recent"
       ? [desc(profiles.updatedAt), desc(profiles.id)]
@@ -807,20 +965,20 @@ export async function listPublishedProfiles(input: PublicListFilters) {
             desc(profiles.isFeatured),
             desc(profiles.id),
           ]
-      : input.sort === "available"
-        ? [
-            ...sponsoredFirst,
-            desc(availableNowSql()),
-            desc(profiles.isFeatured),
-            desc(profiles.updatedAt),
-            desc(profiles.id),
-          ]
-        : [
-            ...sponsoredFirst,
-            desc(profiles.isFeatured),
-            desc(profiles.updatedAt),
-            desc(profiles.id),
-          ];
+        : input.sort === "available"
+          ? [
+              ...sponsoredFirst,
+              desc(availableNowSql()),
+              desc(profiles.isFeatured),
+              desc(profiles.updatedAt),
+              desc(profiles.id),
+            ]
+          : [
+              ...sponsoredFirst,
+              desc(profiles.isFeatured),
+              desc(profiles.updatedAt),
+              desc(profiles.id),
+            ];
   const rows = await db
     .select(publicProfileSelection())
     .from(profiles)
@@ -832,7 +990,7 @@ export async function listPublishedProfiles(input: PublicListFilters) {
     rows.map(async row => {
       const hydrated = hydratePublicProfile(row);
       if (hydrated.demoContactDisabled) return hydrated;
-      const terms = await readProfileTermsStatus(db, row);
+      const terms = await getAccountTermsStatus(row.ownerId);
       return terms.current
         ? { ...hydrated, contactAuthorizationCurrent: true }
         : {
@@ -848,7 +1006,9 @@ export async function listPublishedProfiles(input: PublicListFilters) {
   );
 }
 
-export async function countPublishedProfiles(input: Omit<PublicListFilters, "limit" | "offset" | "sort">) {
+export async function countPublishedProfiles(
+  input: Omit<PublicListFilters, "limit" | "offset" | "sort">
+) {
   const db = await getDb();
   if (!db || input.publicAllowed === false) return 0;
   const [row] = await db
@@ -965,10 +1125,14 @@ export async function getPublicProfile(slug: string, publicAllowed = true) {
     .select(publicProfileSelection())
     .from(profiles)
     .where(and(...relatedConditions))
-    .orderBy(desc(profiles.isFeatured), desc(profiles.updatedAt), desc(profiles.id))
+    .orderBy(
+      desc(profiles.isFeatured),
+      desc(profiles.updatedAt),
+      desc(profiles.id)
+    )
     .limit(4);
   const profileHydrated = hydratePublicProfile(rows[0]);
-  const profileTerms = await readProfileTermsStatus(db, rows[0]);
+  const profileTerms = await getAccountTermsStatus(rows[0].ownerId);
   const profilePublic =
     !profileHydrated.demoContactDisabled && profileTerms.current
       ? { ...profileHydrated, contactAuthorizationCurrent: true }
@@ -985,7 +1149,7 @@ export async function getPublicProfile(slug: string, publicAllowed = true) {
     relatedRows.map(async row => {
       const hydrated = hydratePublicProfile(row);
       if (hydrated.demoContactDisabled) return hydrated;
-      const terms = await readProfileTermsStatus(db, row);
+      const terms = await getAccountTermsStatus(row.ownerId);
       return terms.current
         ? { ...hydrated, contactAuthorizationCurrent: true }
         : {
@@ -999,7 +1163,11 @@ export async function getPublicProfile(slug: string, publicAllowed = true) {
           };
     })
   );
-  return { profile: profilePublic, media: media.map(hydratePublicMedia), related };
+  return {
+    profile: profilePublic,
+    media: media.map(hydratePublicMedia),
+    related,
+  };
 }
 
 export async function getOwnerProfiles(ownerId: number) {
@@ -1008,7 +1176,9 @@ export async function getOwnerProfiles(ownerId: number) {
   const rows = await db
     .select()
     .from(profiles)
-    .where(and(eq(profiles.ownerId, ownerId), sql`${profiles.deletedAt} IS NULL`))
+    .where(
+      and(eq(profiles.ownerId, ownerId), sql`${profiles.deletedAt} IS NULL`)
+    )
     .orderBy(desc(profiles.updatedAt));
   return rows.map(hydrateProfile);
 }
@@ -1068,19 +1238,31 @@ export async function saveProfile(
         .limit(1)
     : [];
   const current = currentRows[0];
-  if (id && !current) throw new Error("Perfil não pertence à conta ou está arquivado");
+  if (id && !current)
+    throw new Error("Perfil não pertence à conta ou está arquivado");
+  const preservePublished = Boolean(
+    current?.isPublished && current.status === "approved" && !submitForReview
+  );
   const hydratedCurrent = current ? hydrateProfile(current) : {};
-  const stageName = String(input.stageName ?? hydratedCurrent.stageName ?? "Rascunho sem nome").trim() || "Rascunho sem nome";
-  const city = String(input.city ?? hydratedCurrent.city ?? "A definir").trim() || "A definir";
+  const stageName =
+    String(
+      input.stageName ?? hydratedCurrent.stageName ?? "Rascunho sem nome"
+    ).trim() || "Rascunho sem nome";
+  const city =
+    String(input.city ?? hydratedCurrent.city ?? "A definir").trim() ||
+    "A definir";
   const slugCandidate = String(
-    input.slug ?? hydratedCurrent.slug ?? `rascunho-${ownerId}-${randomUUID().slice(0, 12)}`
+    input.slug ??
+      hydratedCurrent.slug ??
+      `rascunho-${ownerId}-${randomUUID().slice(0, 12)}`
   )
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-  const slug = slugCandidate || `rascunho-${ownerId}-${randomUUID().slice(0, 12)}`;
+  const slug =
+    slugCandidate || `rascunho-${ownerId}-${randomUUID().slice(0, 12)}`;
   const [slugOwner] = await db
     .select({ id: profiles.id })
     .from(profiles)
@@ -1090,18 +1272,22 @@ export async function saveProfile(
     throw new Error("Este slug já está em uso; escolha outro endereço público");
   const categories = input.categories ?? hydratedCurrent.categories ?? [];
   const attributes = input.attributes ?? hydratedCurrent.attributes ?? [];
-  const contactOptions = input.contactOptions ?? hydratedCurrent.contactOptions ?? [];
+  const contactOptions =
+    input.contactOptions ?? hydratedCurrent.contactOptions ?? [];
   const preferences = input.preferences ?? hydratedCurrent.preferences ?? [];
   const languages = input.languages ?? hydratedCurrent.languages ?? [];
-  const paymentMethods = input.paymentMethods ?? hydratedCurrent.paymentMethods ?? [];
+  const paymentMethods =
+    input.paymentMethods ?? hydratedCurrent.paymentMethods ?? [];
   const services = input.services ?? hydratedCurrent.services ?? [];
-  const attendancePlaces = input.attendancePlaces ?? hydratedCurrent.attendancePlaces ?? [];
+  const attendancePlaces =
+    input.attendancePlaces ?? hydratedCurrent.attendancePlaces ?? [];
   const values: any = {
     stageName,
     slug,
     description: input.description ?? hydratedCurrent.description ?? null,
     city,
     region: input.region ?? hydratedCurrent.region ?? null,
+    neighborhood: input.neighborhood ?? hydratedCurrent.neighborhood ?? null,
     locationNote: input.locationNote ?? hydratedCurrent.locationNote ?? null,
     age: input.age ?? hydratedCurrent.age ?? null,
     avatarUrl: input.avatarUrl ?? hydratedCurrent.avatarUrl ?? null,
@@ -1113,15 +1299,27 @@ export async function saveProfile(
     paymentMethods: serialize(paymentMethods),
     services: serialize(services),
     attendancePlaces: serialize(attendancePlaces),
-    availabilityLabel: input.availabilityLabel ?? hydratedCurrent.availabilityLabel ?? null,
-    isAvailableNow: input.isAvailableNow ?? Boolean(hydratedCurrent.isAvailableNow),
-    priceFromCents: input.priceFromCents ?? hydratedCurrent.priceFromCents ?? null,
-    phone: input.phone !== undefined ? input.phone || null : hydratedCurrent.phone ?? null,
-    whatsapp: input.whatsapp !== undefined ? input.whatsapp || null : hydratedCurrent.whatsapp ?? null,
-    telegram: input.telegram !== undefined ? input.telegram || null : hydratedCurrent.telegram ?? null,
+    availabilityLabel:
+      input.availabilityLabel ?? hydratedCurrent.availabilityLabel ?? null,
+    isAvailableNow:
+      input.isAvailableNow ?? Boolean(hydratedCurrent.isAvailableNow),
+    priceFromCents:
+      input.priceFromCents ?? hydratedCurrent.priceFromCents ?? null,
+    phone:
+      input.phone !== undefined
+        ? input.phone || null
+        : (hydratedCurrent.phone ?? null),
+    whatsapp:
+      input.whatsapp !== undefined
+        ? input.whatsapp || null
+        : (hydratedCurrent.whatsapp ?? null),
+    telegram:
+      input.telegram !== undefined
+        ? input.telegram || null
+        : (hydratedCurrent.telegram ?? null),
     portfolioReviewed: false,
     ownerId,
-    ...(input.isAvailableNow ?? hydratedCurrent.isAvailableNow
+    ...((input.isAvailableNow ?? hydratedCurrent.isAvailableNow)
       ? { availableUntil: current?.availableUntil ?? null }
       : { availableUntil: null }),
   };
@@ -1130,11 +1328,37 @@ export async function saveProfile(
       .update(profiles)
       .set({
         ...values,
-        status: submitForReview ? "pending" : "draft",
-        isPublished: false,
+        status: submitForReview
+          ? "pending"
+          : preservePublished
+            ? "approved"
+            : "draft",
+        isPublished: preservePublished,
+        portfolioReviewed: preservePublished,
         rejectionReason: null,
       })
       .where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)));
+    if (preservePublished) {
+      const readiness = await getProfilePublicationReadiness(id);
+      if (!readiness.ready) {
+        await db
+          .update(profiles)
+          .set({
+            status: "draft",
+            isPublished: false,
+            portfolioReviewed: false,
+            rejectionReason: `Alteração ocultada: ${readiness.blockers.join("; ")}`,
+          })
+          .where(and(eq(profiles.id, id), eq(profiles.ownerId, ownerId)));
+        await writeAuditLog({
+          actorUserId: ownerId,
+          action: "profile.unpublished",
+          entityType: "profile",
+          entityId: id,
+          metadata: { blockers: readiness.blockers, reason: "profile_updated" },
+        });
+      }
+    }
     await writeAuditLog({
       actorUserId: ownerId,
       action: submitForReview ? "profile.submitted" : "profile.updated",
@@ -1143,18 +1367,16 @@ export async function saveProfile(
     });
     return id;
   }
-  const inserted = await db
-    .insert(profiles)
-    .values({
-      ...values,
-      status: submitForReview ? "pending" : "draft",
-      isPublished: false,
-      isActive: true,
-      deletedAt: null,
-      isTest: ENV.allowFakeData,
-      isDemo: ENV.allowFakeData,
-      rejectionReason: null,
-    });
+  const inserted = await db.insert(profiles).values({
+    ...values,
+    status: submitForReview ? "pending" : "draft",
+    isPublished: false,
+    isActive: true,
+    deletedAt: null,
+    isTest: ENV.allowFakeData,
+    isDemo: ENV.allowFakeData,
+    rejectionReason: null,
+  });
   const profileId = Number(inserted[0].insertId);
   await writeAuditLog({
     actorUserId: ownerId,
@@ -1180,16 +1402,47 @@ export async function publishOwnerProfile(ownerId: number, profileId: number) {
         )
       )
       .for("update");
-    if (!profile) throw new Error("Perfil não pertence à conta ou está arquivado");
+    if (!profile)
+      throw new Error("Perfil não pertence à conta ou está arquivado");
     if (!profile.isActive) throw new Error("Ative o anúncio antes de publicar");
     if (profile.status === "suspended")
-      throw new Error("Este anúncio está suspenso e precisa de uma decisão administrativa");
+      throw new Error(
+        "Este anúncio está suspenso e precisa de uma decisão administrativa"
+      );
     if (profile.status === "pending")
-      throw new Error("Este anúncio está aguardando uma decisão administrativa");
+      throw new Error(
+        "Este anúncio está aguardando uma decisão administrativa"
+      );
     if (profile.status === "rejected")
-      throw new Error("Salve os ajustes do anúncio antes de tentar publicar novamente");
+      throw new Error(
+        "Salve os ajustes do anúncio antes de tentar publicar novamente"
+      );
     if (profile.status !== "draft" && profile.status !== "approved")
       throw new Error("O anúncio ainda não está pronto para publicação");
+
+    if (!ENV.autoPublishEnabled) {
+      await tx
+        .update(profiles)
+        .set({
+          status: "pending",
+          portfolioReviewed: false,
+          isPublished: false,
+          rejectionReason: null,
+        })
+        .where(and(eq(profiles.id, profileId), eq(profiles.ownerId, ownerId)));
+      await tx.insert(auditLogs).values({
+        actorUserId: ownerId,
+        action: "profile.submitted_by_owner",
+        entityType: "profile",
+        entityId: profileId,
+        metadata: JSON.stringify({ autoPublishEnabled: false }),
+      });
+      return {
+        success: true as const,
+        isPublished: false as const,
+        awaitingReview: true as const,
+      };
+    }
 
     const readiness = await getProfilePublicationReadiness(profileId, tx);
     if (!readiness.ready) {
@@ -1212,7 +1465,10 @@ export async function publishOwnerProfile(ownerId: number, profileId: number) {
       action: "profile.published_by_owner",
       entityType: "profile",
       entityId: profileId,
-      metadata: JSON.stringify({ ownerMediaAutoApprove: ENV.ownerMediaAutoApprove }),
+      metadata: JSON.stringify({
+        autoPublishEnabled: ENV.autoPublishEnabled,
+        ownerMediaAutoApprove: ENV.ownerMediaAutoApprove,
+      }),
     });
     return { success: true as const, isPublished: true as const };
   });
@@ -1259,24 +1515,30 @@ export async function createMedia(
   const storageHash =
     input.storageHash ??
     createHash("sha256").update(input.storageKey).digest("hex");
-  const autoApproved = ENV.ownerMediaAutoApprove && actorUserId === ownerId;
-  const inserted = await db
-    .insert(profileMedia)
-    .values({ ...input, storageHash, status: autoApproved ? "approved" : "pending" });
+  const autoApproved =
+    ENV.autoPublishEnabled &&
+    ENV.ownerMediaAutoApprove &&
+    actorUserId === ownerId;
+  const inserted = await db.insert(profileMedia).values({
+    ...input,
+    storageHash,
+    status: autoApproved ? "approved" : "pending",
+  });
   const mediaId = Number(inserted[0].insertId);
-  if (owned[0].isPublished) {
+  if (owned[0].isPublished && !autoApproved) {
     await db
       .update(profiles)
       .set({
         isPublished: false,
         portfolioReviewed: false,
-        rejectionReason: "Novo conteúdo adicionado; confirme o termo e publique novamente",
+        rejectionReason: "Novo conteúdo aguardando moderação",
       })
       .where(eq(profiles.id, input.profileId));
   }
   await writeAuditLog({
     actorUserId,
-    action: actorUserId === ownerId ? "media.created" : "media.created_by_admin",
+    action:
+      actorUserId === ownerId ? "media.created" : "media.created_by_admin",
     entityType: "media",
     entityId: mediaId,
     metadata: actorUserId === ownerId ? undefined : { ownerUserId: ownerId },
@@ -1339,9 +1601,15 @@ export async function listAdminProfiles(input?: {
     );
   }
   if (input?.lifecycle === "active") {
-    conditions.push(eq(profiles.isActive, true), sql`${profiles.deletedAt} IS NULL`);
+    conditions.push(
+      eq(profiles.isActive, true),
+      sql`${profiles.deletedAt} IS NULL`
+    );
   } else if (input?.lifecycle === "inactive") {
-    conditions.push(eq(profiles.isActive, false), sql`${profiles.deletedAt} IS NULL`);
+    conditions.push(
+      eq(profiles.isActive, false),
+      sql`${profiles.deletedAt} IS NULL`
+    );
   } else if (input?.lifecycle === "deleted") {
     conditions.push(sql`${profiles.deletedAt} IS NOT NULL`);
   }
@@ -1369,7 +1637,8 @@ export async function setProfileActive(
       .where(eq(profiles.id, id))
       .for("update");
     if (!profile) throw new Error("Perfil não encontrado");
-    if (profile.deletedAt) throw new Error("Restaure o perfil antes de ativá-lo");
+    if (profile.deletedAt)
+      throw new Error("Restaure o perfil antes de ativá-lo");
     if (profile.isActive === isActive) return;
     if (!isActive) {
       await tx
@@ -1385,7 +1654,8 @@ export async function setProfileActive(
         profile.status === "approved"
           ? await getProfilePublicationReadiness(id, tx)
           : null;
-      const canPublish = profile.status === "approved" && Boolean(readiness?.ready);
+      const canPublish =
+        profile.status === "approved" && Boolean(readiness?.ready);
       await tx
         .update(profiles)
         .set({
@@ -1411,10 +1681,7 @@ export async function setProfileActive(
   return { success: true as const, isActive };
 }
 
-export async function softDeleteProfile(
-  id: number,
-  actorUserId: number
-) {
+export async function softDeleteProfile(id: number, actorUserId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.transaction(async tx => {
@@ -1452,7 +1719,11 @@ export async function softDeleteProfile(
   return { success: true as const };
 }
 
-export async function restoreProfile(id: number, actorUserId: number, reason?: string) {
+export async function restoreProfile(
+  id: number,
+  actorUserId: number,
+  reason?: string
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.transaction(async tx => {
@@ -1551,7 +1822,8 @@ export async function moderateProfile(
       .where(eq(profiles.id, id))
       .for("update");
     if (!profile) throw new Error("Perfil não encontrado");
-    if (profile.deletedAt) throw new Error("Restaure o perfil antes de moderá-lo");
+    if (profile.deletedAt)
+      throw new Error("Restaure o perfil antes de moderá-lo");
     let publicationBlockers: string[] = [];
     if (status === "approved") {
       const categories = parseJson(profile.categories);
@@ -1571,7 +1843,8 @@ export async function moderateProfile(
         throw new Error(readiness.approvalBlockers[0]);
       publicationBlockers = readiness.publicationBlockers;
     }
-    const canPublish = status === "approved" && publicationBlockers.length === 0;
+    const canPublish =
+      status === "approved" && publicationBlockers.length === 0;
     await tx
       .update(profiles)
       .set({
@@ -1588,20 +1861,18 @@ export async function moderateProfile(
               : null,
       })
       .where(eq(profiles.id, id));
-    await tx
-      .insert(auditLogs)
-      .values({
-        actorUserId: actorUserId ?? null,
-        action: `profile.moderated.${status}`,
-        entityType: "profile",
-        entityId: id,
-        metadata: JSON.stringify({
-          isFeatured,
-          portfolioConfirmed,
-          publicationBlockers,
-          rejectionReason: rejectionReason ?? null,
-        }),
-      });
+    await tx.insert(auditLogs).values({
+      actorUserId: actorUserId ?? null,
+      action: `profile.moderated.${status}`,
+      entityType: "profile",
+      entityId: id,
+      metadata: JSON.stringify({
+        isFeatured,
+        portfolioConfirmed,
+        publicationBlockers,
+        rejectionReason: rejectionReason ?? null,
+      }),
+    });
   });
 }
 
@@ -1632,10 +1903,10 @@ export async function moderateMedia(
     if (!profile || !media || media.profileId !== profile.id)
       throw new Error("Mídia não encontrada");
     if (status === "approved") {
-      const terms = await readProfileTermsStatus(tx, profile);
+      const terms = await getAccountTermsStatus(profile.ownerId);
       if (!terms.current)
         throw new Error(
-          "O titular precisa aceitar o termo de responsabilidade vigente para o conteúdo atual antes da aprovação da mídia"
+          "O titular precisa aceitar os termos da conta antes da aprovação da mídia"
         );
       if (ENV.requireIdentityVerification) {
         const [identity] = await tx
@@ -1648,10 +1919,15 @@ export async function moderateMedia(
           identity?.status !== "approved" ||
           (identity.expiresAt && identity.expiresAt <= new Date())
         )
-          throw new Error("O titular precisa de verificação de identidade válida");
+          throw new Error(
+            "O titular precisa de verificação de identidade válida"
+          );
       }
     }
-    await tx.update(profileMedia).set({ status }).where(eq(profileMedia.id, id));
+    await tx
+      .update(profileMedia)
+      .set({ status })
+      .where(eq(profileMedia.id, id));
     if (profile.status === "approved") {
       const readiness = await getProfilePublicationReadiness(profile.id, tx);
       await tx
@@ -1730,8 +2006,10 @@ export async function getMediaByStorageKey(storageKey: string) {
   return rows[0];
 }
 
-
-async function requirePublicInteractionProfile(executor: any, profileId: number) {
+async function requirePublicInteractionProfile(
+  executor: any,
+  profileId: number
+) {
   const conditions = [
     eq(profiles.id, profileId),
     eq(profiles.status, "approved"),
@@ -1753,11 +2031,13 @@ async function requirePublicInteractionProfile(executor: any, profileId: number)
 }
 
 export async function favoriteProfile(userId: number, profileId: number) {
-  if (!ENV.favoritesEnabled) throw new Error("Favoritos ainda não estão habilitados");
+  if (!ENV.favoritesEnabled)
+    throw new Error("Favoritos ainda não estão habilitados");
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const profile = await requirePublicInteractionProfile(db, profileId);
-  if (!canActOnProfile(userId, profile.ownerId)) throw new Error("Não é possível favoritar o próprio perfil");
+  if (!canActOnProfile(userId, profile.ownerId))
+    throw new Error("Não é possível favoritar o próprio perfil");
   await db
     .insert(favorites)
     .values({ userId, profileId })
@@ -1772,12 +2052,15 @@ export async function favoriteProfile(userId: number, profileId: number) {
 }
 
 export async function unfavoriteProfile(userId: number, profileId: number) {
-  if (!ENV.favoritesEnabled) throw new Error("Favoritos ainda não estão habilitados");
+  if (!ENV.favoritesEnabled)
+    throw new Error("Favoritos ainda não estão habilitados");
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db
     .delete(favorites)
-    .where(and(eq(favorites.userId, userId), eq(favorites.profileId, profileId)));
+    .where(
+      and(eq(favorites.userId, userId), eq(favorites.profileId, profileId))
+    );
   await writeAuditLog({
     actorUserId: userId,
     action: "profile.favorite.removed",
@@ -1788,13 +2071,16 @@ export async function unfavoriteProfile(userId: number, profileId: number) {
 }
 
 export async function getFavoriteStatus(userId: number, profileId: number) {
-  if (!ENV.favoritesEnabled) return { enabled: false as const, favorited: false as const };
+  if (!ENV.favoritesEnabled)
+    return { enabled: false as const, favorited: false as const };
   const db = await getDb();
   if (!db) return { enabled: true as const, favorited: false as const };
   const [row] = await db
     .select({ id: favorites.id })
     .from(favorites)
-    .where(and(eq(favorites.userId, userId), eq(favorites.profileId, profileId)))
+    .where(
+      and(eq(favorites.userId, userId), eq(favorites.profileId, profileId))
+    )
     .limit(1);
   return { enabled: true as const, favorited: Boolean(row) };
 }
@@ -1831,11 +2117,13 @@ export async function listFavoriteProfiles(userId: number) {
 }
 
 export async function blockProfile(userId: number, profileId: number) {
-  if (!ENV.blockingEnabled) throw new Error("Bloqueios ainda não estão habilitados");
+  if (!ENV.blockingEnabled)
+    throw new Error("Bloqueios ainda não estão habilitados");
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const profile = await requirePublicInteractionProfile(db, profileId);
-  if (!canActOnProfile(userId, profile.ownerId)) throw new Error("Não é possível bloquear o próprio perfil");
+  if (!canActOnProfile(userId, profile.ownerId))
+    throw new Error("Não é possível bloquear o próprio perfil");
   await db
     .insert(blocks)
     .values({ userId, blockedProfileId: profileId, blockedUserId: null })
@@ -1843,7 +2131,9 @@ export async function blockProfile(userId: number, profileId: number) {
   if (ENV.favoritesEnabled) {
     await db
       .delete(favorites)
-      .where(and(eq(favorites.userId, userId), eq(favorites.profileId, profileId)));
+      .where(
+        and(eq(favorites.userId, userId), eq(favorites.profileId, profileId))
+      );
   }
   await writeAuditLog({
     actorUserId: userId,
@@ -1855,12 +2145,15 @@ export async function blockProfile(userId: number, profileId: number) {
 }
 
 export async function unblockProfile(userId: number, profileId: number) {
-  if (!ENV.blockingEnabled) throw new Error("Bloqueios ainda não estão habilitados");
+  if (!ENV.blockingEnabled)
+    throw new Error("Bloqueios ainda não estão habilitados");
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db
     .delete(blocks)
-    .where(and(eq(blocks.userId, userId), eq(blocks.blockedProfileId, profileId)));
+    .where(
+      and(eq(blocks.userId, userId), eq(blocks.blockedProfileId, profileId))
+    );
   await writeAuditLog({
     actorUserId: userId,
     action: "profile.unblocked",
@@ -1871,13 +2164,16 @@ export async function unblockProfile(userId: number, profileId: number) {
 }
 
 export async function getBlockStatus(userId: number, profileId: number) {
-  if (!ENV.blockingEnabled) return { enabled: false as const, blocked: false as const };
+  if (!ENV.blockingEnabled)
+    return { enabled: false as const, blocked: false as const };
   const db = await getDb();
   if (!db) return { enabled: true as const, blocked: false as const };
   const [row] = await db
     .select({ id: blocks.id })
     .from(blocks)
-    .where(and(eq(blocks.userId, userId), eq(blocks.blockedProfileId, profileId)))
+    .where(
+      and(eq(blocks.userId, userId), eq(blocks.blockedProfileId, profileId))
+    )
     .limit(1);
   return { enabled: true as const, blocked: Boolean(row) };
 }
@@ -1916,8 +2212,8 @@ export async function listUserReports(userId: number) {
     .where(
       and(
         eq(moderationCases.targetType, "report"),
-        eq(moderationCases.createdBy, userId),
-      ),
+        eq(moderationCases.createdBy, userId)
+      )
     )
     .orderBy(desc(moderationCases.createdAt));
 }
@@ -1926,11 +2222,15 @@ export async function createProfileReport(
   userId: number,
   input: { profileId: number; category: ReportCategory; description: string }
 ) {
-  if (!ENV.reportsEnabled) throw new Error("Denúncias ainda não estão habilitadas");
+  if (!ENV.reportsEnabled)
+    throw new Error("Denúncias ainda não estão habilitadas");
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const profile = await requirePublicInteractionProfile(db, input.profileId);
-  if (!canActOnProfile(userId, profile.ownerId)) throw new Error("Use o suporte administrativo para relatar o próprio perfil");
+  if (!canActOnProfile(userId, profile.ownerId))
+    throw new Error(
+      "Use o suporte administrativo para relatar o próprio perfil"
+    );
   const reason = encodeReportReason({
     category: input.category,
     description: input.description,
@@ -1953,7 +2253,12 @@ export async function createProfileReport(
     )
     .orderBy(desc(moderationCases.createdAt))
     .limit(1);
-  if (existing) return { id: existing.id, status: existing.status, duplicate: true as const };
+  if (existing)
+    return {
+      id: existing.id,
+      status: existing.status,
+      duplicate: true as const,
+    };
   const result = await db.insert(moderationCases).values({
     targetType: "report",
     targetId: input.profileId,
@@ -1968,7 +2273,11 @@ export async function createProfileReport(
     action: "report.created",
     entityType: "moderation_case",
     entityId: id,
-    metadata: { category: input.category, priority, targetProfileId: input.profileId },
+    metadata: {
+      category: input.category,
+      priority,
+      targetProfileId: input.profileId,
+    },
   });
   return { id, status: "open" as const, duplicate: false as const };
 }
@@ -2006,17 +2315,29 @@ export async function listAdminReports() {
 export async function updateAdminReport(input: {
   id: number;
   actorUserId: number;
-  status: "open" | "in_review" | "approved" | "rejected" | "appealed" | "closed";
+  status:
+    | "open"
+    | "in_review"
+    | "approved"
+    | "rejected"
+    | "appealed"
+    | "closed";
   decision?: string;
 }) {
-  if (!ENV.reportsEnabled) throw new Error("Denúncias ainda não estão habilitadas");
+  if (!ENV.reportsEnabled)
+    throw new Error("Denúncias ainda não estão habilitadas");
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.transaction(async tx => {
     const [current] = await tx
       .select()
       .from(moderationCases)
-      .where(and(eq(moderationCases.id, input.id), eq(moderationCases.targetType, "report")))
+      .where(
+        and(
+          eq(moderationCases.id, input.id),
+          eq(moderationCases.targetType, "report")
+        )
+      )
       .for("update");
     if (!current) throw new Error("Denúncia não encontrada");
     const terminal = ["approved", "rejected", "closed"].includes(input.status);
@@ -2024,7 +2345,10 @@ export async function updateAdminReport(input: {
       .update(moderationCases)
       .set({
         status: input.status,
-        assignedTo: input.status === "open" ? null : (current.assignedTo ?? input.actorUserId),
+        assignedTo:
+          input.status === "open"
+            ? null
+            : (current.assignedTo ?? input.actorUserId),
         resolvedAt: terminal ? new Date() : null,
       })
       .where(eq(moderationCases.id, input.id));
@@ -2055,7 +2379,12 @@ export async function getReportAuditHistory(reportId: number) {
       createdAt: auditLogs.createdAt,
     })
     .from(auditLogs)
-    .where(and(eq(auditLogs.entityType, "moderation_case"), eq(auditLogs.entityId, reportId)))
+    .where(
+      and(
+        eq(auditLogs.entityType, "moderation_case"),
+        eq(auditLogs.entityId, reportId)
+      )
+    )
     .orderBy(asc(auditLogs.createdAt), asc(auditLogs.id));
 }
 
@@ -2064,24 +2393,33 @@ export async function getSafeExternalContact(
   profileId: number,
   method: "whatsapp" | "phone" | "telegram"
 ) {
-  if (!ENV.secureContactEnabled) throw new Error("Contato seguro ainda não está habilitado");
+  if (!ENV.secureContactEnabled)
+    throw new Error("Contato seguro ainda não está habilitado");
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const profile = await requirePublicInteractionProfile(db, profileId);
-  if (!canActOnProfile(viewerUserId, profile.ownerId)) throw new Error("Use o painel do titular para revisar seus contatos");
+  if (!canActOnProfile(viewerUserId, profile.ownerId))
+    throw new Error("Use o painel do titular para revisar seus contatos");
   const [block] = await db
     .select({ id: blocks.id })
     .from(blocks)
     .where(
       or(
-        and(eq(blocks.userId, viewerUserId), eq(blocks.blockedProfileId, profileId)),
-        and(eq(blocks.userId, profile.ownerId), eq(blocks.blockedUserId, viewerUserId))
+        and(
+          eq(blocks.userId, viewerUserId),
+          eq(blocks.blockedProfileId, profileId)
+        ),
+        and(
+          eq(blocks.userId, profile.ownerId),
+          eq(blocks.blockedUserId, viewerUserId)
+        )
       )
     )
     .limit(1);
   if (block) throw new Error("Contato indisponível");
-  const terms = await readProfileTermsStatus(db, profile);
-  if (!terms.current) throw new Error("A autorização de contato do titular não está vigente");
+  const terms = await getAccountTermsStatus(profile.ownerId);
+  if (!terms.current)
+    throw new Error("O aceite de conta do titular não está vigente");
 
   let href: string | null = null;
   if (method === "whatsapp") {
@@ -2090,7 +2428,8 @@ export async function getSafeExternalContact(
     href = contactLinks(profile.phone, profile.whatsapp).tel;
   } else if (method === "telegram" && profile.telegram) {
     const username = profile.telegram.trim().replace(/^@/, "");
-    if (/^[A-Za-z0-9_]{5,32}$/.test(username)) href = `https://t.me/${username}`;
+    if (/^[A-Za-z0-9_]{5,32}$/.test(username))
+      href = `https://t.me/${username}`;
   }
   if (!href) throw new Error("Este método de contato não está disponível");
   await writeAuditLog({
@@ -2176,7 +2515,8 @@ export async function updateOwnedMedia(
           .set({
             isPublished: false,
             portfolioReviewed: false,
-            rejectionReason: "A galeria foi alterada; publique novamente após revisar o conteúdo",
+            rejectionReason:
+              "A galeria foi alterada; publique novamente após revisar o conteúdo",
           })
           .where(eq(profiles.id, profile.id));
       }
@@ -2186,15 +2526,13 @@ export async function updateOwnedMedia(
           .set({ avatarUrl: null })
           .where(eq(profiles.id, profile.id));
     }
-    await tx
-      .insert(auditLogs)
-      .values({
-        actorUserId: ownerId,
-        action: `media.${action}`,
-        entityType: "media",
-        entityId: media.id,
-        metadata: "{}",
-      });
+    await tx.insert(auditLogs).values({
+      actorUserId: ownerId,
+      action: `media.${action}`,
+      entityType: "media",
+      entityId: media.id,
+      metadata: "{}",
+    });
   });
   return { success: true };
 }
@@ -2202,7 +2540,7 @@ export async function updateOwnedMedia(
 export async function updateOwnedMediaMetadata(
   ownerId: number,
   mediaId: number,
-  input: { title: string | null; description: string | null },
+  input: { title: string | null; description: string | null }
 ) {
   const db = await getDb();
   if (!db) throw new Error("Banco indisponível");
@@ -2216,7 +2554,9 @@ export async function updateOwnedMediaMetadata(
     const [profile] = await tx
       .select({ id: profiles.id, isPublished: profiles.isPublished })
       .from(profiles)
-      .where(and(eq(profiles.id, media.profileId), eq(profiles.ownerId, ownerId)))
+      .where(
+        and(eq(profiles.id, media.profileId), eq(profiles.ownerId, ownerId))
+      )
       .for("update");
     if (!profile) throw new Error("Arquivo não pertence à conta");
     const metadataChanged =
@@ -2237,7 +2577,8 @@ export async function updateOwnedMediaMetadata(
         .set({
           isPublished: false,
           portfolioReviewed: false,
-          rejectionReason: "A galeria foi alterada; publique novamente após revisar o conteúdo",
+          rejectionReason:
+            "A galeria foi alterada; publique novamente após revisar o conteúdo",
         })
         .where(eq(profiles.id, profile.id));
     }
@@ -2246,7 +2587,9 @@ export async function updateOwnedMediaMetadata(
       action: "media.metadata_updated",
       entityType: "media",
       entityId: mediaId,
-      metadata: JSON.stringify({ reviewRequired: metadataChanged && media.status === "approved" }),
+      metadata: JSON.stringify({
+        reviewRequired: metadataChanged && media.status === "approved",
+      }),
     });
   });
   return { success: true };
@@ -2255,7 +2598,7 @@ export async function updateOwnedMediaMetadata(
 export async function reorderOwnedMedia(
   ownerId: number,
   profileId: number,
-  mediaIds: number[],
+  mediaIds: number[]
 ) {
   const db = await getDb();
   if (!db) throw new Error("Banco indisponível");
@@ -2278,13 +2621,20 @@ export async function reorderOwnedMedia(
       mediaIds.length !== rows.length ||
       mediaIds.some(mediaId => !knownIds.has(mediaId))
     )
-      throw new Error("A ordenação precisa incluir todos os arquivos do anúncio");
+      throw new Error(
+        "A ordenação precisa incluir todos os arquivos do anúncio"
+      );
     for (let sortOrder = 0; sortOrder < mediaIds.length; sortOrder++) {
       const mediaId = mediaIds[sortOrder];
       await tx
         .update(profileMedia)
         .set({ sortOrder })
-        .where(and(eq(profileMedia.id, mediaId), eq(profileMedia.profileId, profileId)));
+        .where(
+          and(
+            eq(profileMedia.id, mediaId),
+            eq(profileMedia.profileId, profileId)
+          )
+        );
     }
     await tx.insert(auditLogs).values({
       actorUserId: ownerId,
@@ -2296,7 +2646,6 @@ export async function reorderOwnedMedia(
   });
   return { success: true };
 }
-
 
 // ---------------------------------------------------------------------------
 // Verificação de identidade (fluxo manual, sem provider externo)
@@ -2484,7 +2833,9 @@ export async function getOwnerProfileStats(
   if (!owned) throw new Error("Perfil não pertence à conta");
   const span = Math.min(Math.max(Math.floor(days), 1), 90);
   // Busca o dobro do período para comparar com o período imediatamente anterior.
-  const since = saoPauloDateKey(new Date(Date.now() - (span * 2 - 1) * 86400000));
+  const since = saoPauloDateKey(
+    new Date(Date.now() - (span * 2 - 1) * 86400000)
+  );
   const rows = await db
     .select({
       dateKey: analyticsDaily.dateKey,
@@ -2499,7 +2850,10 @@ export async function getOwnerProfileStats(
       )
     )
     .orderBy(asc(analyticsDaily.dateKey));
-  const byDay = new Map<string, { date: string; views: number; contactClicks: number }>();
+  const byDay = new Map<
+    string,
+    { date: string; views: number; contactClicks: number }
+  >();
   for (let i = span * 2 - 1; i >= 0; i--) {
     const key = saoPauloDateKey(new Date(Date.now() - i * 86400000));
     byDay.set(key, { date: key, views: 0, contactClicks: 0 });
@@ -2517,12 +2871,17 @@ export async function getOwnerProfileStats(
     list.reduce((total, d) => total + d[key], 0);
   return {
     days: span,
-    totals: { views: sum(daily, "views"), contactClicks: sum(daily, "contactClicks") },
-    previousTotals: { views: sum(previous, "views"), contactClicks: sum(previous, "contactClicks") },
+    totals: {
+      views: sum(daily, "views"),
+      contactClicks: sum(daily, "contactClicks"),
+    },
+    previousTotals: {
+      views: sum(previous, "views"),
+      contactClicks: sum(previous, "contactClicks"),
+    },
     daily,
   };
 }
-
 
 // ---------------------------------------------------------------------------
 // MFA (TOTP) — segredo cifrado em repouso, código usado uma única vez
@@ -2543,11 +2902,15 @@ export async function startMfaEnrollment(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const current = await getUserMfa(userId);
-  if (current?.enabledAt) throw new Error("A verificação em duas etapas já está ativa");
+  if (current?.enabledAt)
+    throw new Error("A verificação em duas etapas já está ativa");
   const secret = generateTotpSecret();
   const secretEnc = encryptSecret(secret, ENV.cookieSecret);
   if (current) {
-    await db.update(userMfa).set({ secretEnc, lastStep: 0 }).where(eq(userMfa.userId, userId));
+    await db
+      .update(userMfa)
+      .set({ secretEnc, lastStep: 0 })
+      .where(eq(userMfa.userId, userId));
   } else {
     await db.insert(userMfa).values({ userId, secretEnc });
   }
@@ -2575,9 +2938,20 @@ export async function confirmMfaEnrollment(userId: number, code: string) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const consumed = await consumeMfaCode(userId, code);
-  if (!consumed) throw new Error("Código inválido. Confira o horário do celular e tente de novo");
-  await db.update(userMfa).set({ enabledAt: new Date() }).where(eq(userMfa.userId, userId));
-  await writeAuditLog({ actorUserId: userId, action: "mfa.enabled", entityType: "user", entityId: userId });
+  if (!consumed)
+    throw new Error(
+      "Código inválido. Confira o horário do celular e tente de novo"
+    );
+  await db
+    .update(userMfa)
+    .set({ enabledAt: new Date() })
+    .where(eq(userMfa.userId, userId));
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "mfa.enabled",
+    entityType: "user",
+    entityId: userId,
+  });
 }
 
 export async function verifyLoginMfa(userId: number, code: string) {
@@ -2590,9 +2964,13 @@ export async function disableMfa(userId: number, actorUserId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await db.delete(userMfa).where(eq(userMfa.userId, userId));
-  await writeAuditLog({ actorUserId, action: "mfa.disabled", entityType: "user", entityId: userId });
+  await writeAuditLog({
+    actorUserId,
+    action: "mfa.disabled",
+    entityType: "user",
+    entityId: userId,
+  });
 }
-
 
 // ---------------------------------------------------------------------------
 // Planos e assinaturas (ativação manual — cobrança automática continua desligada)
@@ -2644,14 +3022,28 @@ export async function savePlan(input: PlanInput, actorUserId: number) {
   };
   if (input.id) {
     await db.update(plans).set(values).where(eq(plans.id, input.id));
-    await writeAuditLog({ actorUserId, action: "plan.updated", entityType: "plan", entityId: input.id });
+    await writeAuditLog({
+      actorUserId,
+      action: "plan.updated",
+      entityType: "plan",
+      entityId: input.id,
+    });
     return input.id;
   }
-  const [existing] = await db.select({ id: plans.id }).from(plans).where(eq(plans.code, input.code)).limit(1);
+  const [existing] = await db
+    .select({ id: plans.id })
+    .from(plans)
+    .where(eq(plans.code, input.code))
+    .limit(1);
   if (existing) throw new Error("Já existe um plano com este código");
   const inserted = await db.insert(plans).values(values);
   const id = Number(inserted[0].insertId);
-  await writeAuditLog({ actorUserId, action: "plan.created", entityType: "plan", entityId: id });
+  await writeAuditLog({
+    actorUserId,
+    action: "plan.created",
+    entityType: "plan",
+    entityId: id,
+  });
   return id;
 }
 
@@ -2659,12 +3051,22 @@ export async function savePlan(input: PlanInput, actorUserId: number) {
 export async function requestSubscription(userId: number, planId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const [plan] = await db.select().from(plans).where(and(eq(plans.id, planId), eq(plans.isActive, true))).limit(1);
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(and(eq(plans.id, planId), eq(plans.isActive, true)))
+    .limit(1);
   if (!plan) throw new Error("Plano indisponível");
   const [pending] = await db
     .select({ id: subscriptions.id })
     .from(subscriptions)
-    .where(and(eq(subscriptions.userId, userId), eq(subscriptions.planId, planId), eq(subscriptions.status, "pending")))
+    .where(
+      and(
+        eq(subscriptions.userId, userId),
+        eq(subscriptions.planId, planId),
+        eq(subscriptions.status, "pending")
+      )
+    )
     .limit(1);
   if (pending) return { id: pending.id, duplicate: true as const };
   const inserted = await db.insert(subscriptions).values({
@@ -2675,7 +3077,13 @@ export async function requestSubscription(userId: number, planId: number) {
     source: "owner_request",
   });
   const id = Number(inserted[0].insertId);
-  await writeAuditLog({ actorUserId: userId, action: "subscription.requested", entityType: "subscription", entityId: id, metadata: { planId } });
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "subscription.requested",
+    entityType: "subscription",
+    entityId: id,
+    metadata: { planId },
+  });
   return { id, duplicate: false as const };
 }
 
@@ -2691,24 +3099,47 @@ export async function activateSubscription(input: {
   if (!db) throw new Error("Database unavailable");
   let sub: any;
   if (input.subscriptionId) {
-    [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, input.subscriptionId)).limit(1);
+    [sub] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.id, input.subscriptionId))
+      .limit(1);
     if (!sub) throw new Error("Assinatura não encontrada");
-    if (sub.status !== "pending") throw new Error("Só pedidos pendentes podem ser ativados");
+    if (sub.status !== "pending")
+      throw new Error("Só pedidos pendentes podem ser ativados");
   } else {
-    if (!input.userId || !input.planId) throw new Error("Informe o titular e o plano");
-    const [owner] = await db.select({ id: users.id }).from(users).where(eq(users.id, input.userId)).limit(1);
+    if (!input.userId || !input.planId)
+      throw new Error("Informe o titular e o plano");
+    const [owner] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
     if (!owner) throw new Error("Titular não encontrado");
     sub = { id: null, userId: input.userId, planId: input.planId };
   }
-  const [plan] = await db.select().from(plans).where(eq(plans.id, sub.planId)).limit(1);
+  const [plan] = await db
+    .select()
+    .from(plans)
+    .where(eq(plans.id, sub.planId))
+    .limit(1);
   if (!plan) throw new Error("Plano não encontrado");
   // Renovação soma ao período vigente, em vez de perder dias já pagos.
   const [current] = await db
     .select({ endsAt: sql<Date>`MAX(${subscriptions.currentPeriodEndsAt})` })
     .from(subscriptions)
-    .where(and(eq(subscriptions.userId, sub.userId), eq(subscriptions.planId, sub.planId), eq(subscriptions.status, "active")));
+    .where(
+      and(
+        eq(subscriptions.userId, sub.userId),
+        eq(subscriptions.planId, sub.planId),
+        eq(subscriptions.status, "active")
+      )
+    );
   const now = new Date();
-  const base = current?.endsAt && new Date(current.endsAt) > now ? new Date(current.endsAt) : now;
+  const base =
+    current?.endsAt && new Date(current.endsAt) > now
+      ? new Date(current.endsAt)
+      : now;
   const endsAt = new Date(base.getTime() + plan.durationDays * 86400000);
   let id = sub.id as number | null;
   const values = {
@@ -2722,7 +3153,9 @@ export async function activateSubscription(input: {
   if (id) {
     await db.update(subscriptions).set(values).where(eq(subscriptions.id, id));
   } else {
-    const inserted = await db.insert(subscriptions).values({ userId: sub.userId, planId: sub.planId, ...values });
+    const inserted = await db
+      .insert(subscriptions)
+      .values({ userId: sub.userId, planId: sub.planId, ...values });
     id = Number(inserted[0].insertId);
   }
   const paid = Math.max(0, Math.floor(input.paidCents ?? 0));
@@ -2741,25 +3174,49 @@ export async function activateSubscription(input: {
     action: "subscription.activated",
     entityType: "subscription",
     entityId: id,
-    metadata: { planId: plan.id, userId: sub.userId, endsAt: endsAt.toISOString(), paidCents: paid },
+    metadata: {
+      planId: plan.id,
+      userId: sub.userId,
+      endsAt: endsAt.toISOString(),
+      paidCents: paid,
+    },
   });
   return { id, endsAt };
 }
 
-export async function cancelSubscription(subscriptionId: number, actorUserId: number) {
+export async function cancelSubscription(
+  subscriptionId: number,
+  actorUserId: number
+) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, subscriptionId)).limit(1);
+  const [sub] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.id, subscriptionId))
+    .limit(1);
   if (!sub) throw new Error("Assinatura não encontrada");
-  if (!["pending", "active"].includes(sub.status)) throw new Error("Esta assinatura já foi encerrada");
+  if (!["pending", "active"].includes(sub.status))
+    throw new Error("Esta assinatura já foi encerrada");
   await db
     .update(subscriptions)
-    .set({ status: "cancelled", currentPeriodEndsAt: sub.status === "active" ? new Date() : sub.currentPeriodEndsAt })
+    .set({
+      status: "cancelled",
+      currentPeriodEndsAt:
+        sub.status === "active" ? new Date() : sub.currentPeriodEndsAt,
+    })
     .where(eq(subscriptions.id, subscriptionId));
-  await writeAuditLog({ actorUserId, action: "subscription.cancelled", entityType: "subscription", entityId: subscriptionId });
+  await writeAuditLog({
+    actorUserId,
+    action: "subscription.cancelled",
+    entityType: "subscription",
+    entityId: subscriptionId,
+  });
 }
 
-export async function listSubscriptionsAdmin(status?: "pending" | "active" | "cancelled" | "expired") {
+export async function listSubscriptionsAdmin(
+  status?: "pending" | "active" | "cancelled" | "expired"
+) {
   const db = await getDb();
   if (!db) return [];
   return db
@@ -2804,7 +3261,6 @@ export async function listMySubscriptions(userId: number) {
     .limit(20);
 }
 
-
 // Atualização leve de "disponível agora": não despublica nem reenvia para revisão,
 // porque altera só a disponibilidade e não o conteúdo moderado do anúncio.
 export async function setOwnerAvailability(
@@ -2845,29 +3301,51 @@ export async function setOwnerAvailability(
   return { isAvailableNow: available, availableUntil: until };
 }
 
-
 // Contagens operacionais para o painel de prontidão do admin.
 export async function getOperationalCounts() {
   const db = await getDb();
   if (!db) return null;
-  const one = async (query: any) => Number((await db.execute(query) as any)[0]?.[0]?.total ?? 0);
+  const one = async (query: any) =>
+    Number(((await db.execute(query)) as any)[0]?.[0]?.total ?? 0);
   return {
     publishedProfiles: await one(
       sql`SELECT COUNT(*) AS total FROM profiles WHERE status='approved' AND isPublished=1 AND portfolioReviewed=1 AND isActive=1 AND deletedAt IS NULL AND isDemo=0 AND isTest=0`
     ),
-    pendingProfiles: await one(sql`SELECT COUNT(*) AS total FROM profiles WHERE status='pending' AND deletedAt IS NULL`),
-    pendingMedia: await one(sql`SELECT COUNT(*) AS total FROM profile_media WHERE status='pending'`),
-    pendingIdentity: await one(sql`SELECT COUNT(*) AS total FROM identity_verifications WHERE status='pending'`),
-    openReports: await one(sql`SELECT COUNT(*) AS total FROM moderation_cases WHERE status IN ('open','in_review')`),
-    pendingSubscriptions: await one(sql`SELECT COUNT(*) AS total FROM subscriptions WHERE status='pending'`),
-    activePlans: await one(sql`SELECT COUNT(*) AS total FROM plans WHERE isActive=1`),
-    newMessages: await one(sql`SELECT COUNT(*) AS total FROM contact_messages WHERE status='new'`),
-    owners: await one(sql`SELECT COUNT(DISTINCT ownerId) AS total FROM profiles WHERE deletedAt IS NULL`),
+    pendingProfiles: await one(
+      sql`SELECT COUNT(*) AS total FROM profiles WHERE status='pending' AND deletedAt IS NULL`
+    ),
+    pendingMedia: await one(
+      sql`SELECT COUNT(*) AS total FROM profile_media WHERE status='pending'`
+    ),
+    pendingIdentity: await one(
+      sql`SELECT COUNT(*) AS total FROM identity_verifications WHERE status='pending'`
+    ),
+    openReports: await one(
+      sql`SELECT COUNT(*) AS total FROM moderation_cases WHERE status IN ('open','in_review')`
+    ),
+    pendingSubscriptions: await one(
+      sql`SELECT COUNT(*) AS total FROM subscriptions WHERE status='pending'`
+    ),
+    activePlans: await one(
+      sql`SELECT COUNT(*) AS total FROM plans WHERE isActive=1`
+    ),
+    newMessages: await one(
+      sql`SELECT COUNT(*) AS total FROM contact_messages WHERE status='new'`
+    ),
+    owners: await one(
+      sql`SELECT COUNT(DISTINCT ownerId) AS total FROM profiles WHERE deletedAt IS NULL`
+    ),
   };
 }
 
 // Fale conosco: canal de contato dentro da plataforma (sem depender de e-mail).
-export const contactTopics = ["support", "privacy", "report", "password", "other"] as const;
+export const contactTopics = [
+  "support",
+  "privacy",
+  "report",
+  "password",
+  "other",
+] as const;
 
 export async function createContactMessage(input: {
   name: string;
@@ -2886,7 +3364,9 @@ export async function createContactMessage(input: {
   return { id: Number((inserted as any)[0].insertId) };
 }
 
-export async function listContactMessages(status: "new" | "handled" | "all" = "new") {
+export async function listContactMessages(
+  status: "new" | "handled" | "all" = "new"
+) {
   const db = await getDb();
   if (!db) return [];
   const query = db.select().from(contactMessages);
@@ -2900,7 +3380,10 @@ export async function listContactMessages(status: "new" | "handled" | "all" = "n
   return rows;
 }
 
-export async function markContactMessageHandled(id: number, actorUserId: number) {
+export async function markContactMessageHandled(
+  id: number,
+  actorUserId: number
+) {
   const db = await getDb();
   if (!db) throw new Error("Banco de dados indisponível");
   await db

@@ -1,11 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import {
   portfolioCategories,
   portfolioPolicy,
-  portfolioTermsClauses,
-  portfolioTermsTitle,
-  portfolioTermsVersion,
   contactLinks,
 } from "@shared/portfolio";
 import {
@@ -22,6 +19,12 @@ import {
   type AttendancePlace,
   type ServiceOption,
 } from "@shared/discovery-options";
+import {
+  loadCitiesForState,
+  neighborhoodOptionsFor,
+  stateCodeByLabel,
+  stateLabelByCode,
+} from "@shared/locations";
 import { toast } from "sonner";
 import MultiSelectField from "@/components/MultiSelectField";
 
@@ -37,6 +40,47 @@ function withLegacyValues(options: readonly string[], current: string[]) {
   return Array.from(new Set([...options, ...current]));
 }
 
+type UploadQueueItem = {
+  id: string;
+  file: File;
+  status: "queued" | "uploading" | "uploaded" | "error" | "cancelled";
+  progress: number;
+  error?: string;
+};
+
+async function preparePhotoFile(file: File) {
+  if (!file.type.startsWith("image/")) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const largestSide = Math.max(bitmap.width, bitmap.height);
+    if (largestSide <= 2000) {
+      bitmap.close();
+      return file;
+    }
+    const ratio = 2000 / largestSide;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * ratio));
+    canvas.height = Math.max(1, Math.round(bitmap.height * ratio));
+    const context = canvas.getContext("2d");
+    if (!context) {
+      bitmap.close();
+      return file;
+    }
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>(resolve =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85)
+    );
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
+      type: "image/jpeg",
+      lastModified: file.lastModified,
+    });
+  } catch {
+    return file;
+  }
+}
+
 export default function PortfolioEditor({
   initial,
   media = [],
@@ -44,13 +88,16 @@ export default function PortfolioEditor({
   admin = false,
   onSaved,
 }: Props) {
+  const initialRegion =
+    initial?.region || (!initial ? stateLabelByCode.DF : "");
   const [form, setForm] = useState({
     stageName: initial?.stageName || "",
     slug: initial?.slug || "",
     description: initial?.description || "",
     age: initial?.age ? String(initial.age) : "",
-    city: initial?.city || "",
-    region: initial?.region || "",
+    city: initial?.city || (!initial ? "Brasília" : ""),
+    region: initialRegion,
+    neighborhood: initial?.neighborhood || "",
     locationNote: initial?.locationNote || "",
     phone: initial?.phone || "",
     whatsapp: initial?.whatsapp || "",
@@ -84,13 +131,14 @@ export default function PortfolioEditor({
         (attendancePlaceOptions as readonly string[]).includes(v)
     ),
   });
+  const [cityOptions, setCityOptions] = useState<readonly string[]>([]);
   const [busy, setBusy] = useState(false);
   const [consent, setConsent] = useState(false);
-  const [termsChecks, setTermsChecks] = useState({
-    adultConfirmed: false,
-    rightsConfirmed: false,
-    responsibilityConfirmed: false,
-  });
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<number | undefined>(
+    initial?.id
+  );
+  const uploadControllers = useRef<Record<string, XMLHttpRequest>>({});
   const [mediaEdits, setMediaEdits] = useState<
     Record<number, { title: string; description: string }>
   >({});
@@ -101,14 +149,29 @@ export default function PortfolioEditor({
   const hide = trpc.profiles.hideMedia.useMutation();
   const updateMediaMetadata = trpc.profiles.updateMediaMetadata.useMutation();
   const reorderMedia = trpc.profiles.reorderMedia.useMutation();
-  const ownerTerms = trpc.profiles.termsStatus.useQuery(
-    { id: initial?.id || 0 },
-    { enabled: Boolean(initial?.id) && !admin }
-  );
-  const acceptTerms = trpc.profiles.acceptTerms.useMutation();
   const update = (key: string, value: any) =>
     setForm(f => ({ ...f, [key]: value }));
   const links = contactLinks(form.phone, form.whatsapp);
+  const stateCode = stateCodeByLabel[form.region];
+  const neighborhoodOptions: readonly string[] = neighborhoodOptionsFor(
+    stateCode,
+    form.city
+  );
+  useEffect(() => {
+    let cancelled = false;
+    if (!stateCode) {
+      setCityOptions([]);
+      return () => {
+        cancelled = true;
+      };
+    }
+    void loadCitiesForState(stateCode).then(cities => {
+      if (!cancelled) setCityOptions(cities);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [stateCode]);
   useEffect(() => {
     setMediaEdits(
       Object.fromEntries(
@@ -126,7 +189,7 @@ export default function PortfolioEditor({
       await updateMediaMetadata.mutateAsync({ id: item.id, ...draft });
       toast.success(
         item.status === "approved"
-          ? "Metadados salvos e enviados para nova revisão"
+          ? "Metadados salvos; publique novamente para atualizar a vitrine"
           : "Metadados salvos"
       );
       onSaved(initial.id);
@@ -156,7 +219,7 @@ export default function PortfolioEditor({
       setBusy(false);
     }
   }
-  function buildPayload(id = initial?.id) {
+  function buildPayload(id = activeProfileId) {
     const { priceFrom, ...formFields } = form;
     const priceFromCents = reaisToCents(priceFrom);
     if (priceFrom.trim() && priceFromCents === null) {
@@ -164,6 +227,7 @@ export default function PortfolioEditor({
     }
     return {
       ...formFields,
+      locationNote: form.neighborhood || form.locationNote,
       priceFromCents,
       id,
       slug:
@@ -188,16 +252,20 @@ export default function PortfolioEditor({
   async function persistDraft() {
     const payload = buildPayload();
     if (admin) {
-      return Number(
+      const profileId = Number(
         await adminSave.mutateAsync({
           ...payload,
           ownerId: ownerId!,
         })
       );
+      setActiveProfileId(profileId);
+      return profileId;
     }
-    return Number(
+    const profileId = Number(
       await save.mutateAsync({ ...payload, submitForReview: false })
     );
+    setActiveProfileId(profileId);
+    return profileId;
   }
 
   async function saveDraft() {
@@ -217,17 +285,15 @@ export default function PortfolioEditor({
 
   async function publish() {
     if (admin) return;
-    if (!consent) {
-      toast.error(
-        "Confirme a responsabilidade e a autorização do conteúdo antes de publicar"
-      );
-      return;
-    }
     setBusy(true);
     try {
       const id = await persistDraft();
-      await publishMine.mutateAsync({ id });
-      toast.success("Anúncio publicado na vitrine");
+      const result = await publishMine.mutateAsync({ id });
+      toast.success(
+        result.isPublished
+          ? "Anúncio publicado na vitrine"
+          : "Anúncio enviado para revisão"
+      );
       onSaved(id);
     } catch (e) {
       toast.error((e as Error).message);
@@ -235,56 +301,181 @@ export default function PortfolioEditor({
       setBusy(false);
     }
   }
-  async function upload(file: File | undefined) {
-    if (!file) return;
-    if (!initial?.id) {
-      toast.error("Salve o rascunho antes de adicionar fotos ou vídeos");
-      return;
-    }
-    const kind: "photo" | "video" = file.type.startsWith("video/")
+
+  function updateUploadItem(id: string, patch: Partial<UploadQueueItem>) {
+    setUploadQueue(current =>
+      current.map(item => (item.id === id ? { ...item, ...patch } : item))
+    );
+  }
+
+  async function sendUploadItem(item: UploadQueueItem, profileId: number) {
+    const kind: "photo" | "video" = item.file.type.startsWith("video/")
       ? "video"
       : "photo";
-    if (file.size > (kind === "video" ? 100 : 12) * 1024 * 1024) {
-      toast.error("Arquivo acima do limite: fotos 12 MB e vídeos 100 MB");
-      return;
+    const maxBytes = (kind === "video" ? 100 : 12) * 1024 * 1024;
+    if (item.file.size > maxBytes) {
+      updateUploadItem(item.id, {
+        status: "error",
+        progress: 0,
+        error: `${item.file.name}: fotos até 12 MB e vídeos até 100 MB`,
+      });
+      return false;
     }
-    if (!consent) {
-      toast.error("Confirme a autorização do conteúdo antes de enviar");
+    if (
+      ![
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/avif",
+        "video/mp4",
+        "video/webm",
+        "video/quicktime",
+      ].includes(item.file.type)
+    ) {
+      updateUploadItem(item.id, {
+        status: "error",
+        progress: 0,
+        error: `${item.file.name}: formato não permitido`,
+      });
+      return false;
+    }
+
+    updateUploadItem(item.id, {
+      status: "uploading",
+      progress: 1,
+      error: undefined,
+    });
+    try {
+      const file =
+        kind === "photo" ? await preparePhotoFile(item.file) : item.file;
+      const data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onprogress = event => {
+          if (event.lengthComputable) {
+            updateUploadItem(item.id, {
+              progress: Math.max(
+                1,
+                Math.round((event.loaded / event.total) * 20)
+              ),
+            });
+          }
+        };
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () =>
+          reject(new Error("Não foi possível ler o arquivo"));
+        reader.onabort = () =>
+          reject(new DOMException("Upload cancelado", "AbortError"));
+        reader.readAsDataURL(file);
+      });
+      const xhr = new XMLHttpRequest();
+      uploadControllers.current[item.id] = xhr;
+      const result = await new Promise<{ ok: boolean; message?: string }>(
+        (resolve, reject) => {
+          xhr.open("POST", "/api/upload/media");
+          xhr.setRequestHeader("Content-Type", "application/json");
+          xhr.upload.onprogress = event => {
+            if (event.lengthComputable) {
+              updateUploadItem(item.id, {
+                progress: 20 + Math.round((event.loaded / event.total) * 80),
+              });
+            }
+          };
+          xhr.onload = () => {
+            let payload: { error?: string } = {};
+            try {
+              payload = JSON.parse(xhr.responseText) as { error?: string };
+            } catch {
+              // The status below still provides a useful failure state.
+            }
+            resolve({
+              ok: xhr.status >= 200 && xhr.status < 300,
+              message: payload.error,
+            });
+          };
+          xhr.onerror = () =>
+            reject(new Error("Falha de conexão durante o envio"));
+          xhr.onabort = () =>
+            reject(new DOMException("Upload cancelado", "AbortError"));
+          xhr.send(
+            JSON.stringify({
+              profileId,
+              kind,
+              filename: file.name,
+              contentType: file.type,
+              ...(admin ? { consent: true } : {}),
+              data,
+            })
+          );
+        }
+      );
+      if (!result.ok) throw new Error(result.message || "Falha no envio");
+      updateUploadItem(item.id, { status: "uploaded", progress: 100 });
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha no envio";
+      if (message === "Upload cancelado") {
+        updateUploadItem(item.id, { status: "cancelled", error: message });
+      } else {
+        updateUploadItem(item.id, { status: "error", error: message });
+      }
+      return false;
+    } finally {
+      delete uploadControllers.current[item.id];
+    }
+  }
+
+  async function uploadFiles(fileList: FileList | null) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    if (admin && !consent) {
+      toast.error("Confirme a autorização do titular antes de enviar");
       return;
     }
     setBusy(true);
     try {
-      const data = await new Promise<string>((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = reject;
-        r.readAsDataURL(file);
-      });
-      const res = await fetch("/api/upload/media", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profileId: initial.id,
-          kind,
-          filename: file.name,
-          contentType: file.type,
-          consent: true,
-          data,
-        }),
-      });
-      const result = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(result.error || "Falha no envio");
+      const profileId = activeProfileId || (await persistDraft());
+      const queue = files.map((file, index) => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
+        file,
+        status: "queued" as const,
+        progress: 0,
+      }));
+      setUploadQueue(queue);
+      let uploaded = 0;
+      for (const item of queue) {
+        if (await sendUploadItem(item, profileId)) uploaded += 1;
+      }
       toast.success(
-        result.autoApproved
-          ? "Arquivo adicionado à galeria"
-          : "Arquivo recebido e aguardando revisão específica"
+        uploaded === files.length
+          ? `${uploaded} arquivo${uploaded === 1 ? "" : "s"} adicionado${uploaded === 1 ? "" : "s"} à galeria`
+          : `${uploaded} de ${files.length} arquivos enviados; revise os itens com erro`
       );
-      onSaved(initial.id);
+      if (uploaded === files.length) onSaved(profileId);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function retryUpload(item: UploadQueueItem) {
+    const profileId = activeProfileId;
+    if (!profileId || busy) return;
+    setBusy(true);
+    try {
+      const uploaded = await sendUploadItem(item, profileId);
+      const hasRemainingErrors = uploadQueue.some(
+        queued => queued.id !== item.id && queued.status === "error"
+      );
+      if (uploaded && !hasRemainingErrors) onSaved(profileId);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function cancelUpload(id: string) {
+    uploadControllers.current[id]?.abort();
+    updateUploadItem(id, { status: "cancelled", error: "Upload cancelado" });
   }
   return (
     <div className="studio-editor">
@@ -315,19 +506,18 @@ export default function PortfolioEditor({
           />
         </label>
         <label>
-          Cidade de atendimento
-          <input
-            maxLength={120}
-            placeholder="Ex.: Brasília"
-            value={form.city}
-            onChange={e => update("city", e.target.value)}
-          />
-        </label>
-        <label>
           Estado / região
           <select
             value={form.region}
-            onChange={e => update("region", e.target.value)}
+            onChange={e =>
+              setForm(current => ({
+                ...current,
+                region: e.target.value,
+                city: "",
+                neighborhood: "",
+                locationNote: "",
+              }))
+            }
           >
             <option value="">Selecione o estado</option>
             {brazilianStateOptions.map(([code, label]) => (
@@ -344,14 +534,65 @@ export default function PortfolioEditor({
           </select>
         </label>
         <label>
-          Localização aproximada
-          <input
-            maxLength={180}
-            placeholder="Ex.: Asa Sul e região — nunca informe endereço privado"
-            value={form.locationNote}
-            onChange={e => update("locationNote", e.target.value)}
-          />
+          Cidade de atendimento
+          <select
+            value={form.city}
+            disabled={!stateCode}
+            onChange={e =>
+              setForm(current => ({
+                ...current,
+                city: e.target.value,
+                neighborhood: "",
+                locationNote: "",
+              }))
+            }
+          >
+            <option value="">Selecione a cidade</option>
+            {form.city && !cityOptions.includes(form.city) && (
+              <option value={form.city}>{form.city} (legado)</option>
+            )}
+            {cityOptions.map(city => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
         </label>
+        <label>
+          Bairro ou região aproximada
+          <select
+            value={form.neighborhood}
+            disabled={!form.city}
+            onChange={e => update("neighborhood", e.target.value)}
+          >
+            <option value="">Selecione uma opção</option>
+            {form.neighborhood &&
+              !neighborhoodOptions.includes(form.neighborhood) && (
+                <option value={form.neighborhood}>
+                  {form.neighborhood} (legado)
+                </option>
+              )}
+            {neighborhoodOptions.map(neighborhood => (
+              <option key={neighborhood} value={neighborhood}>
+                {neighborhood}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="studio-location-summary" role="status">
+          <strong>Região aproximada</strong>
+          <span>
+            {form.neighborhood ||
+              form.locationNote ||
+              "Escolha o bairro ou região"}
+          </span>
+          {!form.neighborhood && form.locationNote && (
+            <small>
+              Valor antigo preservado. Escolha uma opção para atualizar a
+              localização.
+            </small>
+          )}
+        </div>
         <label>
           Idade pública
           <input
@@ -371,10 +612,11 @@ export default function PortfolioEditor({
           help="Clique para escolher vários idiomas."
         />
         <label>
-          Telefone para ligação — DDI e DDD
+          Telefone / WhatsApp (com DDD)
           <input
             maxLength={40}
-            placeholder="Ex.: +55 61 99999-9999"
+            inputMode="tel"
+            placeholder="(61) 99999-9999"
             value={form.phone}
             onChange={e => update("phone", e.target.value)}
           />
@@ -471,22 +713,13 @@ export default function PortfolioEditor({
       </p>
       {(links.tel || links.whatsapp) && (
         <div
-          className="studio-actions"
+          className="studio-contact-preview"
           aria-label="Prévia privada dos links de contato"
         >
-          {links.tel && (
-            <a className="studio-cta" href={links.tel}>
-              Pré-visualizar ligação
-            </a>
-          )}
+          {links.tel && <a href={links.tel}>testar ligação</a>}
           {links.whatsapp && (
-            <a
-              className="studio-cta"
-              href={links.whatsapp}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Pré-visualizar WhatsApp
+            <a href={links.whatsapp} target="_blank" rel="noreferrer">
+              testar WhatsApp
             </a>
           )}
         </div>
@@ -499,22 +732,30 @@ export default function PortfolioEditor({
         />
         Exibir o anúncio como disponível agora
       </label>
-      <label className="studio-check">
-        <input
-          type="checkbox"
-          checked={consent}
-          onChange={e => setConsent(e.target.checked)}
-        />
-        {admin
-          ? "Confirmo que estas informações e arquivos foram fornecidos ou autorizados pelo titular para preparar este perfil. O titular ainda deverá revisar o conteúdo e registrar o aceite do termo."
-          : "Confirmo que tenho 18 anos ou mais, sou responsável por este anúncio e tenho autorização para usar estas informações e arquivos."}{" "}
-        {portfolioPolicy}
-      </label>
-      <p className="studio-muted">
-        O aceite é necessário para enviar fotos, vídeos e publicar. Você pode
-        salvar o rascunho a qualquer momento. A revisão manual só é acionada em
-        casos específicos ou quando o ambiente estiver configurado para isso.
-      </p>
+      {admin ? (
+        <>
+          <label className="studio-check">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={e => setConsent(e.target.checked)}
+            />
+            Confirmo que estas informações e arquivos foram fornecidos ou
+            autorizados pelo titular para preparar este perfil.{" "}
+            {portfolioPolicy}
+          </label>
+          <p className="studio-muted">
+            Esta confirmação operacional é exigida apenas quando a equipe
+            prepara um anúncio em nome do titular.
+          </p>
+        </>
+      ) : (
+        <p className="studio-muted">
+          O aceite de maioridade, autorização e responsabilidade é único na
+          conta. Ele não é repetido ao salvar, editar ou anexar mídia deste
+          anúncio.
+        </p>
+      )}
       <div className="studio-actions">
         <button disabled={busy} onClick={() => void saveDraft()}>
           Salvar rascunho
@@ -529,260 +770,195 @@ export default function PortfolioEditor({
           </button>
         )}
       </div>
-      <section className="studio-panel">
-        <h3>{portfolioTermsTitle}</h3>
-        {!initial?.id ? (
-          <p className="studio-muted">
-            Salve o rascunho primeiro. O aceite será vinculado ao conteúdo atual
-            do perfil e às mídias cadastradas.
-          </p>
-        ) : admin ? (
-          <p className="studio-muted">
-            O administrador prepara o conteúdo, mas somente o titular pode
-            confirmar maioridade, direitos, responsabilidade e aceite
-            contratual.
-          </p>
-        ) : (
-          <>
-            <p
-              className={
-                ownerTerms.data?.current ? "studio-notice" : "studio-muted"
-              }
-            >
-              {ownerTerms.data?.current
-                ? `Aceite vigente registrado em ${new Date(ownerTerms.data.acceptedAt!).toLocaleString("pt-BR")}.`
-                : "Leia e confirme o termo para o conteúdo atual deste anúncio."}
-            </p>
-            <ol className="studio-terms">
-              {portfolioTermsClauses.map(clause => (
-                <li key={clause}>{clause}</li>
-              ))}
-            </ol>
-            <p className="studio-muted">Versão {portfolioTermsVersion}</p>
-            <label className="studio-check">
-              <input
-                type="checkbox"
-                checked={termsChecks.adultConfirmed}
-                onChange={e =>
-                  setTermsChecks(v => ({
-                    ...v,
-                    adultConfirmed: e.target.checked,
-                  }))
-                }
-              />
-              Confirmo que tenho 18 anos ou mais.
-            </label>
-            <label className="studio-check">
-              <input
-                type="checkbox"
-                checked={termsChecks.rightsConfirmed}
-                onChange={e =>
-                  setTermsChecks(v => ({
-                    ...v,
-                    rightsConfirmed: e.target.checked,
-                  }))
-                }
-              />
-              Confirmo que possuo os direitos e autorizações necessários sobre
-              os dados, fotos e vídeos.
-            </label>
-            <label className="studio-check">
-              <input
-                type="checkbox"
-                checked={termsChecks.responsibilityConfirmed}
-                onChange={e =>
-                  setTermsChecks(v => ({
-                    ...v,
-                    responsibilityConfirmed: e.target.checked,
-                  }))
-                }
-              />
-              Assumo a responsabilidade pelo conteúdo que envio ou autorizo
-              publicar.
-            </label>
-            <button
-              className="primary"
-              disabled={
-                acceptTerms.isPending ||
-                !termsChecks.adultConfirmed ||
-                !termsChecks.rightsConfirmed ||
-                !termsChecks.responsibilityConfirmed
-              }
-              onClick={async () => {
-                try {
-                  await acceptTerms.mutateAsync({
-                    id: initial.id,
-                    adultConfirmed: true,
-                    rightsConfirmed: true,
-                    responsibilityConfirmed: true,
-                  });
-                  await ownerTerms.refetch();
-                  setTermsChecks({
-                    adultConfirmed: false,
-                    rightsConfirmed: false,
-                    responsibilityConfirmed: false,
-                  });
-                  toast.success("Termo registrado para o conteúdo atual");
-                } catch (e) {
-                  toast.error((e as Error).message);
-                }
-              }}
-            >
-              Aceitar termo e registrar
-            </button>
-          </>
-        )}
-      </section>
+      {!admin && (
+        <p className="studio-notice">
+          O aceite de maioridade, autorização e responsabilidade é feito uma
+          única vez na conta. Se a conta ainda não estiver confirmada, abra
+          <a href="/conta"> Minha conta</a> para concluir antes de publicar.
+        </p>
+      )}
       <section className="studio-panel">
         <h3>Fotos e vídeos do anúncio</h3>
-        {!initial?.id ? (
-          <p>Salve o rascunho antes de enviar materiais autorizados.</p>
-        ) : (
-          <>
-            <label>
-              {admin
-                ? "Adicionar arquivo em nome do titular"
-                : "Adicionar arquivo"}
-              <input
-                disabled={busy || !consent}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm,video/quicktime"
-                onChange={e => {
-                  upload(e.target.files?.[0]);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            <p className="studio-muted">
-              {consent
-                ? "Imagens até 12 MB e vídeos até 100 MB. A galeria só fica pública quando o anúncio for publicado."
-                : "Marque a autorização do conteúdo acima para liberar o envio de fotos e vídeos."}{" "}
-              {admin
-                ? "O titular ainda precisa revisar o material e aceitar o termo."
-                : "Casos específicos podem passar por revisão manual."}
-            </p>
-            <div className="studio-media">
-              {media.map((m, index) => {
-                const draft = mediaEdits[m.id] || {
-                  title: m.title || "",
-                  description: m.description || "",
-                };
-                return (
-                  <article key={m.id}>
-                    {m.kind === "photo" ? (
-                      <img
-                        src={`/api/media-preview/${m.id}`}
-                        alt={draft.title || "Foto do anúncio"}
-                      />
-                    ) : (
-                      <video
-                        src={`/api/media-preview/${m.id}`}
-                        controls
-                        preload="metadata"
-                      />
-                    )}
-                    <p>
-                      {m.status} · {m.kind === "photo" ? "Foto" : "Vídeo"}
-                    </p>
-                    {!admin && (
-                      <div className="studio-fields">
-                        <label>
-                          Título da mídia
-                          <input
-                            maxLength={160}
-                            value={draft.title}
-                            onChange={e =>
-                              setMediaEdits(current => ({
-                                ...current,
-                                [m.id]: { ...draft, title: e.target.value },
-                              }))
-                            }
-                          />
-                        </label>
-                        <label>
-                          Descrição da mídia
-                          <textarea
-                            rows={3}
-                            maxLength={2000}
-                            value={draft.description}
-                            onChange={e =>
-                              setMediaEdits(current => ({
-                                ...current,
-                                [m.id]: {
-                                  ...draft,
-                                  description: e.target.value,
-                                },
-                              }))
-                            }
-                          />
-                        </label>
-                        <div className="studio-actions">
-                          <button
-                            disabled={busy || updateMediaMetadata.isPending}
-                            onClick={() => void saveMediaMetadata(m)}
-                          >
-                            Salvar metadados
-                          </button>
-                          <button
-                            disabled={
-                              busy || reorderMedia.isPending || index === 0
-                            }
-                            onClick={() => void moveMedia(index, -1)}
-                          >
-                            Subir
-                          </button>
-                          <button
-                            disabled={
-                              busy ||
-                              reorderMedia.isPending ||
-                              index === media.length - 1
-                            }
-                            onClick={() => void moveMedia(index, 1)}
-                          >
-                            Descer
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    {!admin && (
+        <>
+          <label>
+            {admin
+              ? "Adicionar arquivo em nome do titular"
+              : "Adicionar arquivo"}
+            <input
+              disabled={busy || (admin && !consent)}
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm,video/quicktime"
+              onChange={e => {
+                void uploadFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </label>
+          <p className="studio-muted">
+            {admin && !consent
+              ? "Marque a autorização operacional acima para liberar o envio."
+              : "Imagens até 12 MB e vídeos até 100 MB. Você pode selecionar vários arquivos; o rascunho é salvo automaticamente quando necessário."}{" "}
+            A galeria só fica pública quando o anúncio for publicado.
+          </p>
+          {uploadQueue.length > 0 && (
+            <div className="studio-upload-queue" aria-live="polite">
+              <strong>Fila de envio</strong>
+              {uploadQueue.map(item => (
+                <div className="studio-upload-row" key={item.id}>
+                  <span className="studio-upload-name">{item.file.name}</span>
+                  <progress max="100" value={item.progress} />
+                  <span className={`studio-upload-status is-${item.status}`}>
+                    {item.status === "queued" && "aguardando"}
+                    {item.status === "uploading" && `${item.progress}%`}
+                    {item.status === "uploaded" && "enviado"}
+                    {item.status === "cancelled" && "cancelado"}
+                    {item.status === "error" && (item.error || "erro")}
+                  </span>
+                  {item.status === "error" && (
+                    <button
+                      type="button"
+                      onClick={() => void retryUpload(item)}
+                      disabled={busy}
+                    >
+                      tentar de novo
+                    </button>
+                  )}
+                  {(item.status === "queued" ||
+                    item.status === "uploading") && (
+                    <button
+                      type="button"
+                      onClick={() => cancelUpload(item.id)}
+                      disabled={item.status === "queued"}
+                    >
+                      cancelar
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="studio-media">
+            {media.map((m, index) => {
+              const draft = mediaEdits[m.id] || {
+                title: m.title || "",
+                description: m.description || "",
+              };
+              return (
+                <article key={m.id}>
+                  {m.kind === "photo" ? (
+                    <img
+                      src={`/api/media-preview/${m.id}`}
+                      alt={draft.title || "Foto do anúncio"}
+                    />
+                  ) : (
+                    <video
+                      src={`/api/media-preview/${m.id}`}
+                      controls
+                      preload="metadata"
+                    />
+                  )}
+                  <p>
+                    {m.status} · {m.kind === "photo" ? "Foto" : "Vídeo"}
+                  </p>
+                  {!admin && (
+                    <div className="studio-fields">
+                      <label>
+                        Título da mídia
+                        <input
+                          maxLength={160}
+                          value={draft.title}
+                          onChange={e =>
+                            setMediaEdits(current => ({
+                              ...current,
+                              [m.id]: { ...draft, title: e.target.value },
+                            }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        Descrição da mídia
+                        <textarea
+                          rows={3}
+                          maxLength={2000}
+                          value={draft.description}
+                          onChange={e =>
+                            setMediaEdits(current => ({
+                              ...current,
+                              [m.id]: {
+                                ...draft,
+                                description: e.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </label>
                       <div className="studio-actions">
-                        {m.kind === "photo" && (
-                          <button
-                            disabled={busy || cover.isPending}
-                            onClick={async () => {
-                              try {
-                                await cover.mutateAsync({ id: m.id });
-                                toast.success("Capa atualizada");
-                                onSaved(initial.id);
-                              } catch (e) {
-                                toast.error((e as Error).message);
-                              }
-                            }}
-                          >
-                            Usar como capa
-                          </button>
-                        )}
                         <button
-                          disabled={busy || hide.isPending}
+                          disabled={busy || updateMediaMetadata.isPending}
+                          onClick={() => void saveMediaMetadata(m)}
+                        >
+                          Salvar metadados
+                        </button>
+                        <button
+                          disabled={
+                            busy || reorderMedia.isPending || index === 0
+                          }
+                          onClick={() => void moveMedia(index, -1)}
+                        >
+                          Subir
+                        </button>
+                        <button
+                          disabled={
+                            busy ||
+                            reorderMedia.isPending ||
+                            index === media.length - 1
+                          }
+                          onClick={() => void moveMedia(index, 1)}
+                        >
+                          Descer
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {!admin && (
+                    <div className="studio-actions">
+                      {m.kind === "photo" && (
+                        <button
+                          disabled={busy || cover.isPending}
                           onClick={async () => {
                             try {
-                              await hide.mutateAsync({ id: m.id });
+                              await cover.mutateAsync({ id: m.id });
+                              toast.success("Capa atualizada");
                               onSaved(initial.id);
                             } catch (e) {
                               toast.error((e as Error).message);
                             }
                           }}
                         >
-                          Ocultar arquivo
+                          Usar como capa
                         </button>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          </>
-        )}
+                      )}
+                      <button
+                        disabled={busy || hide.isPending}
+                        onClick={async () => {
+                          try {
+                            await hide.mutateAsync({ id: m.id });
+                            onSaved(initial.id);
+                          } catch (e) {
+                            toast.error((e as Error).message);
+                          }
+                        }}
+                      >
+                        Ocultar arquivo
+                      </button>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </>
       </section>
     </div>
   );

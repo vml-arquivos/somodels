@@ -1,8 +1,5 @@
 import { createHash } from "node:crypto";
-import {
-  portfolioTermsText,
-  portfolioTermsVersion,
-} from "../shared/portfolio";
+import { portfolioTermsText, portfolioTermsVersion } from "../shared/portfolio";
 
 const sha256 = (value: string) =>
   createHash("sha256").update(value, "utf8").digest("hex");
@@ -24,6 +21,7 @@ export function buildProfileContentDigest(profile: any, media: any[]) {
     description: profile.description ?? null,
     city: profile.city ?? null,
     region: profile.region ?? null,
+    neighborhood: profile.neighborhood ?? null,
     locationNote: profile.locationNote ?? null,
     categories: profile.categories ?? null,
     attributes: profile.attributes ?? null,
@@ -47,7 +45,9 @@ export function buildProfileContentDigest(profile: any, media: any[]) {
       sortOrder: Number(item.sortOrder ?? 0),
     }))
     .sort((a, b) => a.id - b.id);
-  return sha256(JSON.stringify({ profile: normalizedProfile, media: normalizedMedia }));
+  return sha256(
+    JSON.stringify({ profile: normalizedProfile, media: normalizedMedia })
+  );
 }
 
 function parseMetadata(value: unknown): Record<string, any> {
@@ -63,7 +63,11 @@ function parseMetadata(value: unknown): Record<string, any> {
 export function evaluateProfileTermsAcceptance(
   profile: any,
   media: any[],
-  latest?: { actorUserId?: number | null; metadata?: string | null; createdAt?: Date | string | null } | null
+  latest?: {
+    actorUserId?: number | null;
+    metadata?: string | null;
+    createdAt?: Date | string | null;
+  } | null
 ) {
   const terms = currentPortfolioTerms();
   const contentDigest = buildProfileContentDigest(profile, media);
@@ -77,8 +81,15 @@ export function evaluateProfileTermsAcceptance(
     metadata.termsVersion === terms.termsVersion &&
     metadata.termsHash === terms.termsHash;
   const validContent = metadata.contentDigest === contentDigest;
-  const current = Boolean(latest && validActor && validFlags && validTerms && validContent);
-  let reason: "never_accepted" | "terms_updated" | "content_changed" | "invalid_acceptance" | null = null;
+  const current = Boolean(
+    latest && validActor && validFlags && validTerms && validContent
+  );
+  let reason:
+    | "never_accepted"
+    | "terms_updated"
+    | "content_changed"
+    | "invalid_acceptance"
+    | null = null;
   if (!current) {
     if (!latest) reason = "never_accepted";
     else if (!validActor || !validFlags) reason = "invalid_acceptance";
@@ -89,7 +100,8 @@ export function evaluateProfileTermsAcceptance(
     current,
     reason,
     acceptedAt: latest?.createdAt ?? null,
-    acceptedVersion: typeof metadata.termsVersion === "string" ? metadata.termsVersion : null,
+    acceptedVersion:
+      typeof metadata.termsVersion === "string" ? metadata.termsVersion : null,
     termsVersion: terms.termsVersion,
     termsHash: terms.termsHash,
     contentDigest,

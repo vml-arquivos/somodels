@@ -38,7 +38,7 @@ export const users = mysqlTable(
     emailIdx: uniqueIndex("users_email_unique").on(table.email),
     roleIdx: index("users_role_idx").on(table.role),
     statusIdx: index("users_status_idx").on(table.accountStatus),
-  }),
+  })
 );
 
 export const userMfa = mysqlTable(
@@ -54,7 +54,7 @@ export const userMfa = mysqlTable(
   },
   table => ({
     userIdx: uniqueIndex("user_mfa_user_unique").on(table.userId),
-  }),
+  })
 );
 
 export const contactMessages = mysqlTable(
@@ -63,7 +63,13 @@ export const contactMessages = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     name: varchar("name", { length: 120 }).notNull(),
     replyTo: varchar("replyTo", { length: 200 }),
-    topic: mysqlEnum("topic", ["support", "privacy", "report", "password", "other"])
+    topic: mysqlEnum("topic", [
+      "support",
+      "privacy",
+      "report",
+      "password",
+      "other",
+    ])
       .default("support")
       .notNull(),
     message: text("message").notNull(),
@@ -73,8 +79,11 @@ export const contactMessages = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
-    statusIdx: index("contact_messages_status_idx").on(table.status, table.createdAt),
-  }),
+    statusIdx: index("contact_messages_status_idx").on(
+      table.status,
+      table.createdAt
+    ),
+  })
 );
 
 export const authSessions = mysqlTable(
@@ -92,7 +101,7 @@ export const authSessions = mysqlTable(
     tokenIdx: uniqueIndex("auth_sessions_token_unique").on(table.tokenHash),
     userIdx: index("auth_sessions_user_idx").on(table.userId),
     expiryIdx: index("auth_sessions_expiry_idx").on(table.expiresAt),
-  }),
+  })
 );
 
 export const emailVerifications = mysqlTable(
@@ -106,9 +115,11 @@ export const emailVerifications = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
-    tokenIdx: uniqueIndex("email_verifications_token_unique").on(table.tokenHash),
+    tokenIdx: uniqueIndex("email_verifications_token_unique").on(
+      table.tokenHash
+    ),
     userIdx: index("email_verifications_user_idx").on(table.userId),
-  }),
+  })
 );
 
 export const passwordResetTokens = mysqlTable(
@@ -122,9 +133,11 @@ export const passwordResetTokens = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
-    tokenIdx: uniqueIndex("password_reset_tokens_token_unique").on(table.tokenHash),
+    tokenIdx: uniqueIndex("password_reset_tokens_token_unique").on(
+      table.tokenHash
+    ),
     userIdx: index("password_reset_tokens_user_idx").on(table.userId),
-  }),
+  })
 );
 
 export const ageVerifications = mysqlTable(
@@ -134,7 +147,13 @@ export const ageVerifications = mysqlTable(
     sessionTokenHash: varchar("sessionTokenHash", { length: 128 }).notNull(),
     provider: varchar("provider", { length: 80 }),
     providerReference: varchar("providerReference", { length: 160 }),
-    status: mysqlEnum("status", ["pending", "approved", "rejected", "expired", "error"])
+    status: mysqlEnum("status", [
+      "pending",
+      "approved",
+      "rejected",
+      "expired",
+      "error",
+    ])
       .default("pending")
       .notNull(),
     verifiedAt: timestamp("verifiedAt"),
@@ -144,10 +163,14 @@ export const ageVerifications = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
-    sessionIdx: uniqueIndex("age_verifications_session_unique").on(table.sessionTokenHash),
-    providerIdx: index("age_verifications_provider_idx").on(table.providerReference),
+    sessionIdx: uniqueIndex("age_verifications_session_unique").on(
+      table.sessionTokenHash
+    ),
+    providerIdx: index("age_verifications_provider_idx").on(
+      table.providerReference
+    ),
     statusIdx: index("age_verifications_status_idx").on(table.status),
-  }),
+  })
 );
 
 export const identityVerifications = mysqlTable(
@@ -157,7 +180,13 @@ export const identityVerifications = mysqlTable(
     userId: int("userId").notNull(),
     provider: varchar("provider", { length: 80 }),
     providerReference: varchar("providerReference", { length: 160 }),
-    status: mysqlEnum("status", ["pending", "approved", "rejected", "expired", "error"])
+    status: mysqlEnum("status", [
+      "pending",
+      "approved",
+      "rejected",
+      "expired",
+      "error",
+    ])
       .default("pending")
       .notNull(),
     reviewReason: varchar("reviewReason", { length: 500 }),
@@ -168,9 +197,11 @@ export const identityVerifications = mysqlTable(
   },
   table => ({
     userIdx: index("identity_verifications_user_idx").on(table.userId),
-    providerIdx: index("identity_verifications_provider_idx").on(table.providerReference),
+    providerIdx: index("identity_verifications_provider_idx").on(
+      table.providerReference
+    ),
     statusIdx: index("identity_verifications_status_idx").on(table.status),
-  }),
+  })
 );
 
 export const verificationEvents = mysqlTable(
@@ -187,9 +218,13 @@ export const verificationEvents = mysqlTable(
   },
   table => ({
     ageIdx: index("verification_events_age_idx").on(table.ageVerificationId),
-    identityIdx: index("verification_events_identity_idx").on(table.identityVerificationId),
-    eventIdx: uniqueIndex("verification_events_provider_event_unique").on(table.providerEventId),
-  }),
+    identityIdx: index("verification_events_identity_idx").on(
+      table.identityVerificationId
+    ),
+    eventIdx: uniqueIndex("verification_events_provider_event_unique").on(
+      table.providerEventId
+    ),
+  })
 );
 
 export const profiles = mysqlTable(
@@ -204,6 +239,7 @@ export const profiles = mysqlTable(
     description: text("description"),
     city: varchar("city", { length: 120 }).notNull(),
     region: varchar("region", { length: 80 }),
+    neighborhood: varchar("neighborhood", { length: 120 }),
     locationNote: varchar("locationNote", { length: 180 }),
     categories: text("categories"),
     attributes: text("attributes"),
@@ -221,7 +257,13 @@ export const profiles = mysqlTable(
     whatsapp: varchar("whatsapp", { length: 40 }),
     telegram: varchar("telegram", { length: 80 }),
     avatarUrl: text("avatarUrl"),
-    status: mysqlEnum("status", ["draft", "pending", "approved", "rejected", "suspended"])
+    status: mysqlEnum("status", [
+      "draft",
+      "pending",
+      "approved",
+      "rejected",
+      "suspended",
+    ])
       .default("draft")
       .notNull(),
     isActive: boolean("isActive").default(true).notNull(),
@@ -238,9 +280,12 @@ export const profiles = mysqlTable(
     ownerIdx: index("profiles_owner_idx").on(table.ownerId),
     cityIdx: index("profiles_city_idx").on(table.city),
     statusIdx: index("profiles_status_idx").on(table.status),
-    lifecycleIdx: index("profiles_lifecycle_idx").on(table.isActive, table.deletedAt),
+    lifecycleIdx: index("profiles_lifecycle_idx").on(
+      table.isActive,
+      table.deletedAt
+    ),
     priceIdx: index("profiles_price_idx").on(table.priceFromCents),
-  }),
+  })
 );
 
 export const profileMedia = mysqlTable(
@@ -266,16 +311,28 @@ export const profileMedia = mysqlTable(
     profileIdx: index("media_profile_idx").on(table.profileId),
     storageIdx: uniqueIndex("media_storage_hash_unique").on(table.storageHash),
     statusIdx: index("media_status_idx").on(table.status),
-  }),
+  })
 );
 
 export const moderationCases = mysqlTable(
   "moderation_cases",
   {
     id: int("id").autoincrement().primaryKey(),
-    targetType: mysqlEnum("targetType", ["profile", "media", "user", "report"]).notNull(),
+    targetType: mysqlEnum("targetType", [
+      "profile",
+      "media",
+      "user",
+      "report",
+    ]).notNull(),
     targetId: int("targetId").notNull(),
-    status: mysqlEnum("status", ["open", "in_review", "approved", "rejected", "appealed", "closed"])
+    status: mysqlEnum("status", [
+      "open",
+      "in_review",
+      "approved",
+      "rejected",
+      "appealed",
+      "closed",
+    ])
       .default("open")
       .notNull(),
     priority: mysqlEnum("priority", ["low", "normal", "high", "urgent"])
@@ -289,9 +346,12 @@ export const moderationCases = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
-    targetIdx: index("moderation_cases_target_idx").on(table.targetType, table.targetId),
+    targetIdx: index("moderation_cases_target_idx").on(
+      table.targetType,
+      table.targetId
+    ),
     statusIdx: index("moderation_cases_status_idx").on(table.status),
-  }),
+  })
 );
 
 export const auditLogs = mysqlTable(
@@ -307,9 +367,12 @@ export const auditLogs = mysqlTable(
   },
   table => ({
     actorIdx: index("audit_logs_actor_idx").on(table.actorUserId),
-    entityIdx: index("audit_logs_entity_idx").on(table.entityType, table.entityId),
+    entityIdx: index("audit_logs_entity_idx").on(
+      table.entityType,
+      table.entityId
+    ),
     createdIdx: index("audit_logs_created_idx").on(table.createdAt),
-  }),
+  })
 );
 
 export const favorites = mysqlTable(
@@ -321,9 +384,12 @@ export const favorites = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
-    userProfileIdx: uniqueIndex("favorites_user_profile_unique").on(table.userId, table.profileId),
+    userProfileIdx: uniqueIndex("favorites_user_profile_unique").on(
+      table.userId,
+      table.profileId
+    ),
     profileIdx: index("favorites_profile_idx").on(table.profileId),
-  }),
+  })
 );
 
 export const availability = mysqlTable(
@@ -333,13 +399,18 @@ export const availability = mysqlTable(
     profileId: int("profileId").notNull(),
     isAvailableNow: boolean("isAvailableNow").default(false).notNull(),
     availableUntil: timestamp("availableUntil"),
-    timezone: varchar("timezone", { length: 80 }).default("America/Sao_Paulo").notNull(),
+    timezone: varchar("timezone", { length: 80 })
+      .default("America/Sao_Paulo")
+      .notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     profileIdx: uniqueIndex("availability_profile_unique").on(table.profileId),
-    activeIdx: index("availability_active_idx").on(table.isAvailableNow, table.availableUntil),
-  }),
+    activeIdx: index("availability_active_idx").on(
+      table.isAvailableNow,
+      table.availableUntil
+    ),
+  })
 );
 
 export const tours = mysqlTable(
@@ -359,7 +430,7 @@ export const tours = mysqlTable(
   table => ({
     profileIdx: index("tours_profile_idx").on(table.profileId),
     cityDateIdx: index("tours_city_date_idx").on(table.city, table.startsAt),
-  }),
+  })
 );
 
 export const plans = mysqlTable(
@@ -383,7 +454,7 @@ export const plans = mysqlTable(
   },
   table => ({
     activeIdx: index("plans_active_idx").on(table.isActive),
-  }),
+  })
 );
 
 export const subscriptions = mysqlTable(
@@ -394,7 +465,13 @@ export const subscriptions = mysqlTable(
     planId: int("planId").notNull(),
     provider: varchar("provider", { length: 80 }),
     providerReference: varchar("providerReference", { length: 160 }),
-    status: mysqlEnum("status", ["pending", "active", "past_due", "cancelled", "expired"])
+    status: mysqlEnum("status", [
+      "pending",
+      "active",
+      "past_due",
+      "cancelled",
+      "expired",
+    ])
       .default("pending")
       .notNull(),
     currentPeriodEndsAt: timestamp("currentPeriodEndsAt"),
@@ -410,8 +487,11 @@ export const subscriptions = mysqlTable(
       table.status,
       table.currentPeriodEndsAt
     ),
-    providerIdx: uniqueIndex("subscriptions_provider_unique").on(table.provider, table.providerReference),
-  }),
+    providerIdx: uniqueIndex("subscriptions_provider_unique").on(
+      table.provider,
+      table.providerReference
+    ),
+  })
 );
 
 export const creditWallets = mysqlTable(
@@ -424,7 +504,7 @@ export const creditWallets = mysqlTable(
   },
   table => ({
     userIdx: uniqueIndex("credit_wallets_user_unique").on(table.userId),
-  }),
+  })
 );
 
 export const creditLedger = mysqlTable(
@@ -440,8 +520,11 @@ export const creditLedger = mysqlTable(
   },
   table => ({
     walletIdx: index("credit_ledger_wallet_idx").on(table.walletId),
-    providerIdx: uniqueIndex("credit_ledger_provider_unique").on(table.provider, table.providerReference),
-  }),
+    providerIdx: uniqueIndex("credit_ledger_provider_unique").on(
+      table.provider,
+      table.providerReference
+    ),
+  })
 );
 
 export const analyticsEvents = mysqlTable(
@@ -457,9 +540,15 @@ export const analyticsEvents = mysqlTable(
     occurredAt: timestamp("occurredAt").defaultNow().notNull(),
   },
   table => ({
-    eventIdx: index("analytics_events_name_date_idx").on(table.eventName, table.occurredAt),
-    profileIdx: index("analytics_events_profile_date_idx").on(table.profileId, table.occurredAt),
-  }),
+    eventIdx: index("analytics_events_name_date_idx").on(
+      table.eventName,
+      table.occurredAt
+    ),
+    profileIdx: index("analytics_events_profile_date_idx").on(
+      table.profileId,
+      table.occurredAt
+    ),
+  })
 );
 
 export const analyticsDaily = mysqlTable(
@@ -474,8 +563,13 @@ export const analyticsDaily = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
-    aggregationIdx: uniqueIndex("analytics_daily_aggregation_unique").on(table.dateKey, table.profileId, table.eventName, table.city),
-  }),
+    aggregationIdx: uniqueIndex("analytics_daily_aggregation_unique").on(
+      table.dateKey,
+      table.profileId,
+      table.eventName,
+      table.city
+    ),
+  })
 );
 
 export const reviews = mysqlTable(
@@ -495,7 +589,7 @@ export const reviews = mysqlTable(
   table => ({
     profileIdx: index("reviews_profile_idx").on(table.profileId),
     statusIdx: index("reviews_status_idx").on(table.status),
-  }),
+  })
 );
 
 export const reviewAppeals = mysqlTable(
@@ -513,7 +607,7 @@ export const reviewAppeals = mysqlTable(
   },
   table => ({
     reviewIdx: index("review_appeals_review_idx").on(table.reviewId),
-  }),
+  })
 );
 
 export const blocks = mysqlTable(
@@ -526,9 +620,15 @@ export const blocks = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
-    userProfileIdx: uniqueIndex("blocks_user_profile_unique").on(table.userId, table.blockedProfileId),
-    userUserIdx: uniqueIndex("blocks_user_user_unique").on(table.userId, table.blockedUserId),
-  }),
+    userProfileIdx: uniqueIndex("blocks_user_profile_unique").on(
+      table.userId,
+      table.blockedProfileId
+    ),
+    userUserIdx: uniqueIndex("blocks_user_user_unique").on(
+      table.userId,
+      table.blockedUserId
+    ),
+  })
 );
 
 export const webhookEvents = mysqlTable(
@@ -546,8 +646,11 @@ export const webhookEvents = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
-    providerEventIdx: uniqueIndex("webhook_events_provider_event_unique").on(table.provider, table.providerEventId),
-  }),
+    providerEventIdx: uniqueIndex("webhook_events_provider_event_unique").on(
+      table.provider,
+      table.providerEventId
+    ),
+  })
 );
 
 export const premiumEntitlements = mysqlTable(
@@ -558,13 +661,21 @@ export const premiumEntitlements = mysqlTable(
     mediaId: int("mediaId").notNull(),
     provider: varchar("provider", { length: 40 }),
     providerReference: varchar("providerReference", { length: 160 }),
-    status: mysqlEnum("status", ["pending", "paid", "revoked"]).default("pending").notNull(),
+    status: mysqlEnum("status", ["pending", "paid", "revoked"])
+      .default("pending")
+      .notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
-    entitlementIdx: uniqueIndex("entitlement_user_media_idx").on(table.userId, table.mediaId),
-    providerIdx: uniqueIndex("entitlement_provider_unique").on(table.provider, table.providerReference),
-  }),
+    entitlementIdx: uniqueIndex("entitlement_user_media_idx").on(
+      table.userId,
+      table.mediaId
+    ),
+    providerIdx: uniqueIndex("entitlement_provider_unique").on(
+      table.provider,
+      table.providerReference
+    ),
+  })
 );
 
 export type User = typeof users.$inferSelect;

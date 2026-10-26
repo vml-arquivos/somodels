@@ -15,6 +15,12 @@ Possível menor e tráfico/exploração/coerção recebem prioridade `urgent`. A
 5. Admin acessa fila sem exposição pública do denunciante e pode assumir, encerrar ou reabrir.
 6. Toda mudança de estado é auditada com justificativa administrativa opcional.
 
+## Publicação automática e pós-moderação
+
+Com `AUTO_PUBLISH_ENABLED=true`, o titular publica diretamente depois de passar pelos gates automáticos: conta ativa, aceite de conta vigente, localização estruturada, dados mínimos, categoria e pelo menos uma mídia aprovada. Mídias enviadas pelo próprio titular ficam aprovadas quando `OWNER_MEDIA_AUTO_APPROVE=true`; uploads administrativos continuam exigindo a confirmação operacional do responsável.
+
+O admin não deixa de ter controle: pode suspender, ocultar ou rejeitar perfis e mídias a qualquer momento. Essas ações continuam auditadas e atendem denúncias ou casos específicos. Definir `AUTO_PUBLISH_ENABLED=false` devolve o envio do titular à fila `pending` para revisão manual.
+
 ## Takedown urgente
 
 A prioridade é um sinal operacional, não substitui procedimento jurídico. Em incidente crítico, o operador deve suspender o perfil/mídia pelos controles de moderação já existentes e preservar somente a evidência necessária conforme política de retenção aprovada.

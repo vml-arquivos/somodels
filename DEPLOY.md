@@ -30,7 +30,7 @@ Inicie com `NODE_ENV=production node dist/index.js`. O servidor usa `process.env
 
 ## Segurança operacional
 
-Use HTTPS, mantenha `JWT_SECRET` longo e aleatório, limite o tamanho de upload conforme a política do negócio, mantenha o banco com SSL quando o provedor oferecer essa opção e configure backups. Perfis e mídias começam pendentes e não aparecem publicamente antes da aprovação administrativa.
+Use HTTPS, mantenha `JWT_SECRET` longo e aleatório, limite o tamanho de upload conforme a política do negócio, mantenha o banco com SSL quando o provedor oferecer essa opção e configure backups. Com `AUTO_PUBLISH_ENABLED=true`, o titular publica após os gates automáticos; a moderação continua como pós-moderação e pode suspender ou ocultar a qualquer momento. Com a flag desligada, o fluxo volta para pendência administrativa.
 
 ## Estado funcional
 
@@ -50,6 +50,6 @@ pnpm test
 pnpm build
 ```
 
-Em seguida valide `/healthz`, `/api/release`, login/logout, age gate, storage, perfil público e admin. Use `docs/DEPLOY-ROLLBACK-PLAN.md` como runbook. Esta etapa adiciona a migration `0011_talented_ares.sql`, que somente cria `profiles.paymentMethods`; ela é aplicada automaticamente por `db:migrate` antes do servidor iniciar. As migrations anteriores permanecem necessárias e devem estar integralmente aplicadas antes do tráfego público.
+Em seguida valide `/healthz`, `/api/release`, login/logout, age gate, storage, perfil público e admin. Use `docs/DEPLOY-ROLLBACK-PLAN.md` como runbook. Faça backup do banco antes de rodar `db:migrate`. Além da `0011_talented_ares.sql` (formas de pagamento), esta etapa inclui `0012_profile_neighborhood.sql`, que adiciona somente `profiles.neighborhood`; ambas são aditivas. As migrations anteriores permanecem necessárias e devem estar integralmente aplicadas antes do tráfego público.
 
 A homologação final deve ocorrer contra um MySQL/TiDB real com backup/restauração testados. Providers de age/KYC/payment não devem ser considerados operacionais apenas por existirem variáveis de ambiente.

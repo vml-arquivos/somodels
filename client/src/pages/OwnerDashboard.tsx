@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import PortfolioEditor from "@/components/PortfolioEditor";
+import AccountTermsPanel from "@/components/AccountTermsPanel";
 import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
 import { portfolioPublicationLabel } from "@shared/portfolio";
@@ -399,6 +400,7 @@ export default function OwnerDashboard() {
               <Link href="/alterar-senha?returnTo=/titular">Alterar senha</Link>
             </div>
             <AccountPanel user={user} />
+            <AccountTermsPanel />
             <IdentityPanel />
             <div className="studio-split">
               <aside className="studio-panel">
