@@ -1,6 +1,16 @@
 import { updateOwnedMedia } from "./db";
-import { profileDraftInputSchema, profileInputSchema } from "../shared/profile-schema";
-import { attendancePlaceOptions, serviceOptions } from "../shared/discovery-options";
+import {
+  profileDraftInputSchema,
+  profileInputSchema,
+} from "../shared/profile-schema";
+import {
+  attendancePlaceOptions,
+  serviceOptions,
+} from "../shared/discovery-options";
+import {
+  accountTermsClauses,
+  accountTermsVersion,
+} from "../shared/account-terms";
 import { readSiteSettings } from "./site-config";
 import { managementRouter } from "./management";
 import { z } from "zod";
@@ -22,7 +32,12 @@ import {
   router,
   adminScopesFor,
 } from "./_core/trpc";
-import { ENV, isAgeVerificationConfigured, resolveStorageDriver, runtimeConfigStatus } from "./_core/env";
+import {
+  ENV,
+  isAgeVerificationConfigured,
+  resolveStorageDriver,
+  runtimeConfigStatus,
+} from "./_core/env";
 import { isLocalStoragePersistent } from "./storage";
 import { buildReadiness } from "./readiness";
 import { otpauthUrl } from "./totp";
@@ -58,7 +73,6 @@ import {
   getUserMfa,
   startMfaEnrollment,
   verifyLoginMfa,
-  acceptProfileTerms,
   getOwnerProfileStats,
   listIdentityQueue,
   recordPublicProfileView,
@@ -69,7 +83,6 @@ import {
   createPremiumIntent,
   getApprovedAgeVerification,
   getIdentityVerification,
-  getProfileTermsStatus,
   getOwnerProfile,
   getOwnerProfiles,
   getPublicProfile,
@@ -107,10 +120,16 @@ import {
   moderateProfile,
   publishOwnerProfile,
   saveProfile,
+  acceptAccountTerms,
+  getAccountTermsStatus,
   writeAuditLog,
 } from "./db";
 import { hashToken, createOpaqueToken } from "./auth-crypto";
-import { createInMemoryRateLimiter, rateLimitMessage, sensitiveRateLimits } from "./rate-limit";
+import {
+  createInMemoryRateLimiter,
+  rateLimitMessage,
+  sensitiveRateLimits,
+} from "./rate-limit";
 
 const loginAttempts = createInMemoryRateLimiter({
   max: ENV.loginRateLimitMax,
@@ -122,8 +141,14 @@ const registrationAttempts = createInMemoryRateLimiter({
   windowMs: 60 * 60 * 1000,
   maxKeys: 20_000,
 });
-const reportRateLimiter = createInMemoryRateLimiter({ ...sensitiveRateLimits.report, maxKeys: 20_000 });
-const contactRateLimiter = createInMemoryRateLimiter({ ...sensitiveRateLimits.contact, maxKeys: 20_000 });
+const reportRateLimiter = createInMemoryRateLimiter({
+  ...sensitiveRateLimits.report,
+  maxKeys: 20_000,
+});
+const contactRateLimiter = createInMemoryRateLimiter({
+  ...sensitiveRateLimits.contact,
+  maxKeys: 20_000,
+});
 const viewRateLimiter = createInMemoryRateLimiter({
   max: 1,
   windowMs: 30 * 60 * 1000,
@@ -156,7 +181,8 @@ function assertLoginRateLimit(req: {
   headers: Record<string, unknown>;
 }) {
   const decision = loginAttempts.consume(getClientKey(req));
-  if (!decision.allowed) throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+  if (!decision.allowed)
+    throw new Error(rateLimitMessage(decision.retryAfterSeconds));
 }
 
 function publicUser(user: User) {
@@ -197,7 +223,9 @@ type ContactBearingProfile = {
   availableContactMethods?: unknown;
 };
 
-function sanitizePublicProfileContact<T extends ContactBearingProfile>(profile: T) {
+function sanitizePublicProfileContact<T extends ContactBearingProfile>(
+  profile: T
+) {
   const availableContactMethods: PublicContactMethod[] = [
     profile.whatsapp || profile.phone ? "whatsapp" : null,
     profile.phone ? "phone" : null,
@@ -318,6 +346,7 @@ export const appRouter = router({
           name: z.string().trim().min(2).max(120),
           email: z.string().email().max(320),
           password: z.string().min(16).max(200),
+          acceptAccountTerms: z.literal(true),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -336,6 +365,7 @@ export const appRouter = router({
           entityType: "user",
           entityId: user.id,
         });
+        await acceptAccountTerms(user.id);
         return { user: publicUser(user) };
       }),
     login: publicProcedure
@@ -386,24 +416,39 @@ export const appRouter = router({
       const secret = await startMfaEnrollment(ctx.user.id);
       return {
         secret,
-        otpauthUrl: otpauthUrl(secret, ctx.user.email ?? `user-${ctx.user.id}`, ENV.siteName),
+        otpauthUrl: otpauthUrl(
+          secret,
+          ctx.user.email ?? `user-${ctx.user.id}`,
+          ENV.siteName
+        ),
       };
     }),
     mfaConfirm: authenticatedProcedure
       .input(z.object({ code: z.string().min(6).max(12) }))
       .mutation(async ({ ctx, input }) => {
         const decision = loginAttempts.consume(`mfa:${ctx.user.id}`);
-        if (!decision.allowed) throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+        if (!decision.allowed)
+          throw new Error(rateLimitMessage(decision.retryAfterSeconds));
         await confirmMfaEnrollment(ctx.user.id, input.code);
         return { enabled: true };
       }),
     mfaDisable: authenticatedProcedure
-      .input(z.object({ password: z.string().min(1).max(200), code: z.string().min(6).max(12) }))
+      .input(
+        z.object({
+          password: z.string().min(1).max(200),
+          code: z.string().min(6).max(12),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
         if (ENV.adminMfaRequired && publicUser(ctx.user).isAdmin)
-          throw new Error("A verificação em duas etapas é obrigatória para administradores");
+          throw new Error(
+            "A verificação em duas etapas é obrigatória para administradores"
+          );
         const account = await getUserById(ctx.user.id);
-        if (!account?.passwordHash || !(await verifyPassword(input.password, account.passwordHash)))
+        if (
+          !account?.passwordHash ||
+          !(await verifyPassword(input.password, account.passwordHash))
+        )
           throw new Error("Senha inválida");
         if (!(await verifyLoginMfa(ctx.user.id, input.code)))
           throw new Error("Código de verificação inválido ou já utilizado");
@@ -446,6 +491,16 @@ export const appRouter = router({
         });
       return { success: true } as const;
     }),
+    accountTerms: publicProcedure.query(() => ({
+      version: accountTermsVersion,
+      clauses: accountTermsClauses,
+    })),
+    accountTermsStatus: authenticatedProcedure.query(({ ctx }) =>
+      getAccountTermsStatus(ctx.user.id)
+    ),
+    acceptAccountTerms: authenticatedProcedure.mutation(({ ctx }) =>
+      acceptAccountTerms(ctx.user.id)
+    ),
   }),
   age: router({
     status: publicProcedure.query(async ({ ctx }) => {
@@ -472,12 +527,16 @@ export const appRouter = router({
     }),
     start: publicProcedure.mutation(async ({ ctx }) => {
       if (!ageAccessEnabled())
-        throw new Error("A confirmação de maioridade está temporariamente indisponível");
+        throw new Error(
+          "A confirmação de maioridade está temporariamente indisponível"
+        );
       const token = createOpaqueToken();
       const selfAttested = ENV.ageVerificationMode === "self_attestation";
       const created = await createAgeVerificationSession(
         hashToken(token),
-        selfAttested || !ENV.requireAgeVerification || (ENV.testMode && ENV.testAccessEnabled)
+        selfAttested ||
+          !ENV.requireAgeVerification ||
+          (ENV.testMode && ENV.testAccessEnabled)
           ? {
               status: "approved",
               provider: selfAttested ? "self_attestation" : "test",
@@ -645,7 +704,12 @@ export const appRouter = router({
         })
       )
       .mutation(({ ctx, input }) =>
-        setOwnerAvailability(ctx.user.id, input.id, input.available, input.hours)
+        setOwnerAvailability(
+          ctx.user.id,
+          input.id,
+          input.available,
+          input.hours
+        )
       ),
     requestIdentity: protectedProcedure.mutation(({ ctx }) => {
       const decision = identityRequestLimiter.consume(`user:${ctx.user.id}`);
@@ -675,9 +739,6 @@ export const appRouter = router({
         if (!decision.allowed) return { recorded: false };
         return recordPublicProfileView(input.slug, ctx.user?.id ?? null);
       }),
-    termsStatus: protectedProcedure
-      .input(z.object({ id: z.number().int().positive() }))
-      .query(({ ctx, input }) => getProfileTermsStatus(input.id, ctx.user.id)),
     publicationReadiness: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
@@ -685,16 +746,6 @@ export const appRouter = router({
         if (!owned) throw new Error("Perfil não pertence à conta");
         return getProfilePublicationReadiness(input.id);
       }),
-    acceptTerms: protectedProcedure
-      .input(
-        z.object({
-          id: z.number().int().positive(),
-          adultConfirmed: z.literal(true),
-          rightsConfirmed: z.literal(true),
-          responsibilityConfirmed: z.literal(true),
-        })
-      )
-      .mutation(({ ctx, input }) => acceptProfileTerms(ctx.user.id, input.id)),
     save: protectedProcedure
       .input(
         profileDraftInputSchema.extend({
@@ -714,7 +765,9 @@ export const appRouter = router({
             const issue = strict.error.issues[0];
             throw new TRPCError({
               code: "BAD_REQUEST",
-              message: issue?.message || "Complete os dados obrigatórios antes de enviar para revisão",
+              message:
+                issue?.message ||
+                "Complete os dados obrigatórios antes de enviar para revisão",
             });
           }
           return saveProfile(ctx.user.id, strict.data as any, id, true);
@@ -725,14 +778,22 @@ export const appRouter = router({
   safety: router({
     favoriteStatus: protectedProcedure
       .input(z.object({ profileId: z.number().int().positive() }))
-      .query(({ ctx, input }) => getFavoriteStatus(ctx.user.id, input.profileId)),
+      .query(({ ctx, input }) =>
+        getFavoriteStatus(ctx.user.id, input.profileId)
+      ),
     favorite: protectedProcedure
       .input(z.object({ profileId: z.number().int().positive() }))
-      .mutation(({ ctx, input }) => favoriteProfile(ctx.user.id, input.profileId)),
+      .mutation(({ ctx, input }) =>
+        favoriteProfile(ctx.user.id, input.profileId)
+      ),
     unfavorite: protectedProcedure
       .input(z.object({ profileId: z.number().int().positive() }))
-      .mutation(({ ctx, input }) => unfavoriteProfile(ctx.user.id, input.profileId)),
-    favorites: protectedProcedure.query(({ ctx }) => listFavoriteProfiles(ctx.user.id)),
+      .mutation(({ ctx, input }) =>
+        unfavoriteProfile(ctx.user.id, input.profileId)
+      ),
+    favorites: protectedProcedure.query(({ ctx }) =>
+      listFavoriteProfiles(ctx.user.id)
+    ),
     blockStatus: protectedProcedure
       .input(z.object({ profileId: z.number().int().positive() }))
       .query(({ ctx, input }) => getBlockStatus(ctx.user.id, input.profileId)),
@@ -741,14 +802,21 @@ export const appRouter = router({
       .mutation(({ ctx, input }) => blockProfile(ctx.user.id, input.profileId)),
     unblockProfile: protectedProcedure
       .input(z.object({ profileId: z.number().int().positive() }))
-      .mutation(({ ctx, input }) => unblockProfile(ctx.user.id, input.profileId)),
-    blocks: protectedProcedure.query(({ ctx }) => listBlockedProfiles(ctx.user.id)),
-    myReports: protectedProcedure.query(({ ctx }) => listUserReports(ctx.user.id)),
+      .mutation(({ ctx, input }) =>
+        unblockProfile(ctx.user.id, input.profileId)
+      ),
+    blocks: protectedProcedure.query(({ ctx }) =>
+      listBlockedProfiles(ctx.user.id)
+    ),
+    myReports: protectedProcedure.query(({ ctx }) =>
+      listUserReports(ctx.user.id)
+    ),
     reportProfile: protectedProcedure
       .input(reportProfileInputSchema)
       .mutation(({ ctx, input }) => {
         const decision = reportRateLimiter.consume(`user:${ctx.user.id}`);
-        if (!decision.allowed) throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+        if (!decision.allowed)
+          throw new Error(rateLimitMessage(decision.retryAfterSeconds));
         return createProfileReport(ctx.user.id, input);
       }),
     contactIntent: protectedProcedure
@@ -760,14 +828,21 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const decision = contactRateLimiter.consume(`user:${ctx.user.id}`);
-        if (!decision.allowed) throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+        if (!decision.allowed)
+          throw new Error(rateLimitMessage(decision.retryAfterSeconds));
         if (!(await readSiteSettings()).showContact) {
           throw new Error("Os contatos estão temporariamente desabilitados");
         }
         if (!(await hasValidAgeSession(ctx.req))) {
-          throw new Error("Confirme que você tem 18 anos ou mais antes de acessar o contato");
+          throw new Error(
+            "Confirme que você tem 18 anos ou mais antes de acessar o contato"
+          );
         }
-        return getSafeExternalContact(ctx.user.id, input.profileId, input.method);
+        return getSafeExternalContact(
+          ctx.user.id,
+          input.profileId,
+          input.method
+        );
       }),
     adminReports: scopedProcedure("reports").query(() => listAdminReports()),
     adminReportHistory: scopedProcedure("reports")
@@ -777,7 +852,14 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number().int().positive(),
-          status: z.enum(["open", "in_review", "approved", "rejected", "appealed", "closed"]),
+          status: z.enum([
+            "open",
+            "in_review",
+            "approved",
+            "rejected",
+            "appealed",
+            "closed",
+          ]),
           decision: z.string().trim().max(1000).optional(),
         })
       )
@@ -799,12 +881,15 @@ export const appRouter = router({
         benefits: plan.benefits as string[],
       }))
     ),
-    mine: protectedProcedure.query(({ ctx }) => listMySubscriptions(ctx.user.id)),
+    mine: protectedProcedure.query(({ ctx }) =>
+      listMySubscriptions(ctx.user.id)
+    ),
     request: protectedProcedure
       .input(z.object({ planId: z.number().int().positive() }))
       .mutation(({ ctx, input }) => {
         const decision = planRequestLimiter.consume(`user:${ctx.user.id}`);
-        if (!decision.allowed) throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+        if (!decision.allowed)
+          throw new Error(rateLimitMessage(decision.retryAfterSeconds));
         return requestSubscription(ctx.user.id, input.planId);
       }),
   }),
@@ -813,12 +898,7 @@ export const appRouter = router({
       .input(
         z.object({
           name: z.string().trim().min(2, "Informe seu nome").max(120),
-          replyTo: z
-            .string()
-            .trim()
-            .max(200)
-            .optional()
-            .or(z.literal("")),
+          replyTo: z.string().trim().max(200).optional().or(z.literal("")),
           topic: z.enum(contactTopics),
           message: z
             .string()
@@ -858,7 +938,9 @@ export const appRouter = router({
       .input(
         z
           .object({
-            status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+            status: z
+              .enum(["pending", "approved", "rejected"])
+              .default("pending"),
           })
           .optional()
       )
@@ -876,7 +958,11 @@ export const appRouter = router({
         reviewIdentityVerification({ ...input, actorUserId: ctx.user.id })
       ),
     contactMessages: scopedProcedure("messages")
-      .input(z.object({ status: z.enum(["new", "handled", "all"]).optional() }).optional())
+      .input(
+        z
+          .object({ status: z.enum(["new", "handled", "all"]).optional() })
+          .optional()
+      )
       .query(({ input }) => listContactMessages(input?.status ?? "new")),
     handleContactMessage: scopedProcedure("messages")
       .input(z.object({ id: z.number().int().positive() }))
@@ -920,7 +1006,10 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number().int().positive().optional(),
-          code: z.string().trim().regex(/^[a-z0-9-]{2,40}$/),
+          code: z
+            .string()
+            .trim()
+            .regex(/^[a-z0-9-]{2,40}$/),
           name: z.string().trim().min(2).max(80),
           description: z.string().trim().max(500).nullish(),
           priceCents: z.number().int().min(0).max(10_000_000),
@@ -929,14 +1018,21 @@ export const appRouter = router({
           isFeatured: z.boolean(),
           isActive: z.boolean(),
           sortOrder: z.number().int().min(0).max(1000).default(0),
-          benefits: z.array(z.string().trim().min(2).max(120)).max(8).default([]),
+          benefits: z
+            .array(z.string().trim().min(2).max(120))
+            .max(8)
+            .default([]),
         })
       )
       .mutation(({ ctx, input }) => savePlan(input, ctx.user.id)),
     subscriptions: scopedProcedure("plans")
       .input(
         z
-          .object({ status: z.enum(["pending", "active", "cancelled", "expired"]).optional() })
+          .object({
+            status: z
+              .enum(["pending", "active", "cancelled", "expired"])
+              .optional(),
+          })
           .optional()
       )
       .query(({ input }) => listSubscriptionsAdmin(input?.status)),
@@ -956,15 +1052,21 @@ export const appRouter = router({
     cancelSubscription: scopedProcedure("plans")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ ctx, input }) => cancelSubscription(input.id, ctx.user.id)),
-    pendingProfiles: scopedProcedure("moderation").query(() => listPendingProfiles()),
+    pendingProfiles: scopedProcedure("moderation").query(() =>
+      listPendingProfiles()
+    ),
     pendingMedia: scopedProcedure("moderation").query(() => listPendingMedia()),
-    users: scopedProcedure("users:read", "plans", "profiles:write").query(({ ctx }) => listAdminUsers(ctx.user.role)),
+    users: scopedProcedure("users:read", "plans", "profiles:write").query(
+      ({ ctx }) => listAdminUsers(ctx.user.role)
+    ),
     profiles: scopedProcedure("profiles:read", "moderation")
       .input(
         z
           .object({
             search: z.string().trim().max(120).optional(),
-            lifecycle: z.enum(["all", "active", "inactive", "deleted"]).default("all"),
+            lifecycle: z
+              .enum(["all", "active", "inactive", "deleted"])
+              .default("all"),
           })
           .optional()
       )
@@ -982,7 +1084,9 @@ export const appRouter = router({
           reason: z.string().trim().max(500).optional(),
         })
       )
-      .mutation(({ ctx, input }) => setProfileActive(input.id, true, ctx.user.id, input.reason)),
+      .mutation(({ ctx, input }) =>
+        setProfileActive(input.id, true, ctx.user.id, input.reason)
+      ),
     deactivateProfile: scopedProcedure("profiles:write")
       .input(
         z.object({
@@ -990,7 +1094,9 @@ export const appRouter = router({
           reason: z.string().trim().min(3).max(500),
         })
       )
-      .mutation(({ ctx, input }) => setProfileActive(input.id, false, ctx.user.id, input.reason)),
+      .mutation(({ ctx, input }) =>
+        setProfileActive(input.id, false, ctx.user.id, input.reason)
+      ),
     deleteProfile: scopedProcedure("profiles:write")
       .input(
         z.object({
@@ -1005,7 +1111,9 @@ export const appRouter = router({
           reason: z.string().trim().min(3).max(500),
         })
       )
-      .mutation(({ ctx, input }) => restoreProfile(input.id, ctx.user.id, input.reason)),
+      .mutation(({ ctx, input }) =>
+        restoreProfile(input.id, ctx.user.id, input.reason)
+      ),
     moderateProfile: scopedProcedure("moderation")
       .input(
         z
@@ -1017,8 +1125,15 @@ export const appRouter = router({
             portfolioConfirmed: z.boolean().default(false),
           })
           .superRefine((value, ctx) => {
-            if (["rejected", "suspended"].includes(value.status) && !value.rejectionReason?.trim()) {
-              ctx.addIssue({ code: "custom", path: ["rejectionReason"], message: "Informe o motivo da decisão" });
+            if (
+              ["rejected", "suspended"].includes(value.status) &&
+              !value.rejectionReason?.trim()
+            ) {
+              ctx.addIssue({
+                code: "custom",
+                path: ["rejectionReason"],
+                message: "Informe o motivo da decisão",
+              });
             }
           })
       )

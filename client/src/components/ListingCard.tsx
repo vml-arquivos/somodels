@@ -2,9 +2,15 @@ import { Link } from "wouter";
 import { formatBRL } from "@shared/discovery-options";
 
 export default function ListingCard({ profile }: { profile: any }) {
-  const categories = Array.isArray(profile.categories) ? profile.categories : [];
-  const attributes = Array.isArray(profile.attributes) ? profile.attributes : [];
-  const location = [profile.city, profile.region].filter(Boolean).join(" / ");
+  const categories = Array.isArray(profile.categories)
+    ? profile.categories
+    : [];
+  const attributes = Array.isArray(profile.attributes)
+    ? profile.attributes
+    : [];
+  const location = [profile.city, profile.region, profile.neighborhood]
+    .filter(Boolean)
+    .join(" / ");
 
   return (
     <article className="studio-listing-card">
@@ -21,7 +27,9 @@ export default function ListingCard({ profile }: { profile: any }) {
           )}
           <span className="studio-listing-age">+18</span>
           {profile.isAvailableNow && (
-            <span className="studio-listing-availability">Disponível agora</span>
+            <span className="studio-listing-availability">
+              Disponível agora
+            </span>
           )}
           {profile.identityVerified && (
             <span className="studio-listing-verified">✓ Verificada</span>

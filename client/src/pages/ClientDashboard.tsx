@@ -7,6 +7,7 @@ import StudioHeader from "@/components/StudioHeader";
 import PublicFooter from "@/components/PublicFooter";
 import Seo from "@/components/Seo";
 import ListingCard from "@/components/ListingCard";
+import AccountTermsPanel from "@/components/AccountTermsPanel";
 
 const reportStatusLabels: Record<string, string> = {
   open: "Aberta",
@@ -163,6 +164,8 @@ export default function ClientDashboard() {
                 </div>
               </form>
             </section>
+
+            <AccountTermsPanel />
 
             <section
               className="studio-panel"

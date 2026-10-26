@@ -15,7 +15,7 @@ const phoneSchema = z
     } catch {
       ctx.addIssue({
         code: "custom",
-        message: "Telefone inválido: informe DDI, DDD e número",
+        message: "Informe o telefone com DDD, por exemplo (61) 99999-9999",
       });
       return z.NEVER;
     }
@@ -31,6 +31,7 @@ export const profileInputSchema = z.object({
   description: z.string().trim().max(5000).optional(),
   city: z.string().trim().min(2).max(120),
   region: z.string().trim().max(80).optional(),
+  neighborhood: z.string().trim().max(120).optional(),
   locationNote: z.string().trim().max(180).optional(),
   categories: z.array(z.enum(portfolioCategories)).min(1).max(6),
   attributes: z.array(z.string().trim().min(1).max(60)).max(30).default([]),
@@ -80,6 +81,7 @@ export const profileDraftInputSchema = z.object({
   description: z.string().trim().max(5000).optional(),
   city: z.string().trim().max(120).optional(),
   region: z.string().trim().max(80).optional(),
+  neighborhood: z.string().trim().max(120).optional(),
   locationNote: z.string().trim().max(180).optional(),
   categories: z.array(z.enum(portfolioCategories)).max(6).optional(),
   attributes: z.array(z.string().trim().min(1).max(60)).max(30).optional(),

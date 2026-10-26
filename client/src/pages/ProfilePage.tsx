@@ -219,6 +219,9 @@ export default function ProfilePage() {
                 <p className="studio-profile-location">
                   {data.profile.city}
                   {data.profile.region ? ` / ${data.profile.region}` : ""}
+                  {data.profile.neighborhood
+                    ? ` · ${data.profile.neighborhood}`
+                    : ""}
                 </p>
                 {data.profile.age && <p>{data.profile.age} anos</p>}
                 {data.profile.identityVerified && (
@@ -414,10 +417,12 @@ export default function ProfilePage() {
                     {data.profile.city}
                     {data.profile.region ? ` / ${data.profile.region}` : ""}
                   </dd>
-                  {data.profile.locationNote && (
+                  {(data.profile.neighborhood || data.profile.locationNote) && (
                     <>
-                      <dt>Região de atendimento</dt>
-                      <dd>{data.profile.locationNote}</dd>
+                      <dt>Bairro ou região aproximada</dt>
+                      <dd>
+                        {data.profile.neighborhood || data.profile.locationNote}
+                      </dd>
                     </>
                   )}
                   {data.profile.age && (

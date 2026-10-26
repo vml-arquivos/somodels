@@ -1,5 +1,16 @@
 # Reformulação da home Ero Models — landing page de marketplace
 
+## Etapa 8 — aceite de conta, localização e publicação automática
+
+**Status:** implementada e validada no checkout local; `pnpm check`, 171 testes, `pnpm build` e `git diff --check` aprovados. A migration aditiva e a publicação em produção continuam pendentes de PR/CI e confirmação explícita de merge/deploy.
+
+- contas novas aceitam uma única versão de termos no cadastro; contas existentes confirmam uma vez no painel. Os mesmos termos não são solicitados por anúncio;
+- `profiles.neighborhood` organiza a localização em Estado → cidade → bairro/região aproximada, com validação repetida no servidor antes de publicar e compatibilidade visual para valores históricos;
+- municípios são carregados em chunks por UF e possuem fonte/defasagem documentadas em `docs/LOCATIONS.md`; o DF oferece suas regiões administrativas, enquanto as demais UFs usam regiões aproximadas padronizadas;
+- upload em lote é sequencial, informa o resultado de cada arquivo e não perde os envios que já concluíram se um arquivo falhar;
+- `AUTO_PUBLISH_ENABLED=true` é o padrão: publica somente depois dos gates automáticos. `false` devolve o perfil à fila manual como contingência, sem remover moderação, denúncia, suspensão ou auditoria;
+- a vitrine usa um card rotativo com perfis já elegíveis e arte neutra no catálogo vazio; filtros de cidade usam select em vez de texto livre.
+
 ## Etapa 2 — refinamento visual e editor completo de conteúdo
 
 **Status:** concluída no checkout local; typecheck, 102 testes, build, diff e inspeções desktop/mobile aprovados. A publicação em produção permanece separada deste checkpoint até uma confirmação explícita de merge/deploy.

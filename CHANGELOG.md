@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-26 — aceite único, localização estruturada e vitrine com perfis reais
+
+- cadastro público exige um único aceite de conta para maioridade, responsabilidade/autorização dos dados e vedação de conteúdo de menores, não consensual ou ilícito; o registro é versionado e auditado, e contas antigas recebem um painel de confirmação única nas áreas Cliente e Titular;
+- o anúncio não solicita novamente os mesmos termos por perfil. Upload e publicação mantêm apenas os controles operacionais e server-side aplicáveis, como ownership, tipo/tamanho de arquivo, identidade configurada e completude;
+- formulário do titular usa Estado → cidade/município → bairro ou região aproximada, com 27 listas de municípios carregadas sob demanda e regiões administrativas selecionáveis no DF. A migration aditiva `0012_profile_neighborhood.sql` cria somente `profiles.neighborhood`;
+- telefone brasileiro aceita DDD válido e celular com nove dígitos; a localização é validada novamente no servidor antes da publicação e cartões/perfil público exibem somente cidade, UF e bairro/região aproximada;
+- o upload permite selecionar múltiplas fotos e vídeos em fila sequencial, com resultado por arquivo e continuidade após falhas. Mídia do titular continua autoaprovável quando configurada, sem reabrir revisão manual por padrão;
+- `AUTO_PUBLISH_ENABLED=true` deixa o titular publicar diretamente somente após os gates automáticos. Com `false`, o mesmo comando encaminha o anúncio à fila administrativa; suspensão, ocultação, rejeição, denúncias e auditoria continuam disponíveis;
+- a Home usa somente perfis públicos elegíveis no hero rotativo e mantém a arte neutra quando o catálogo está vazio. A busca de cidade passou a usar o catálogo público selecionável;
+- corrigido o middleware Vite de desenvolvimento: a configuração funcional agora é resolvida antes do servidor, evitando que `/src/main.tsx` caísse no fallback HTML e resultasse em tela branca no preview local;
+- fonte e limitação temporal do catálogo municipal documentadas em `docs/LOCATIONS.md`; validação local desta etapa: typecheck, 171 testes, build e `git diff --check` aprovados. Deploy e aplicação da migration permanecem pendentes de aprovação explícita.
+
 ## 2026-10-26 — fluxo simplificado do titular e galeria
 
 - dados pessoais editáveis no painel do titular e na área do cliente, com e-mail de acesso somente leitura e retorno seguro após troca de senha;

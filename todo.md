@@ -1,5 +1,12 @@
 # Projeto TODO — Ero Models
 
+- [x] Substituir o reaceite por anúncio por aceite único versionado de maioridade, responsabilidade/autorização e proibição de conteúdo ilícito, com painel para contas antigas
+- [x] Adicionar Estado → município → bairro/região aproximada, município por UF carregado sob demanda, validação server-side e migration aditiva de bairro
+- [x] Permitir upload sequencial de múltiplas fotos/vídeos com status por arquivo e continuidade após falha parcial
+- [x] Tornar a publicação direta do titular explícita e reversível por `AUTO_PUBLISH_ENABLED`, preservando pós-moderação, suspensão e auditoria
+- [x] Mostrar somente perfis públicos elegíveis no carrossel do hero e manter arte neutra sem catálogo
+- [ ] Aplicar `0012_profile_neighborhood.sql` pelo runbook, após backup, PR/CI aprovados e confirmação de merge/deploy
+
 - [x] Inspecionar o ZIP anexado do Permupay Vendas e registrar a arquitetura reaproveitável
 - [x] Substituir a marca Permupay Vendas por Só Models em toda a experiência
 - [x] Definir modelo de usuário, titular de perfil, visitante e administrador

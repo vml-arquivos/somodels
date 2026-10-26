@@ -3,7 +3,14 @@ import { hydrateProfile, hydratePublicProfile } from "./db";
 
 describe("profile data", () => {
   it("hydrates JSON fields without exposing malformed values", () => {
-    const profile = hydrateProfile({ id: 1, stageName: "Musa", categories: '["Modelo","Acompanhante"]', attributes: '["Com local"]', contactOptions: '["WhatsApp"]', description: null });
+    const profile = hydrateProfile({
+      id: 1,
+      stageName: "Musa",
+      categories: '["Modelo","Acompanhante"]',
+      attributes: '["Com local"]',
+      contactOptions: '["WhatsApp"]',
+      description: null,
+    });
     expect(profile.categories).toEqual(["Modelo", "Acompanhante"]);
     expect(profile.attributes).toEqual(["Com local"]);
     expect(profile.contactOptions).toEqual(["WhatsApp"]);
@@ -11,14 +18,24 @@ describe("profile data", () => {
   });
 
   it("uses empty arrays for invalid persisted JSON", () => {
-    const profile = hydrateProfile({ categories: "{invalid", attributes: null, contactOptions: undefined });
+    const profile = hydrateProfile({
+      categories: "{invalid",
+      attributes: null,
+      contactOptions: undefined,
+    });
     expect(profile.categories).toEqual([]);
     expect(profile.attributes).toEqual([]);
     expect(profile.contactOptions).toEqual([]);
   });
 
   it("fails closed for demo contacts in public hydration", () => {
-    const profile = hydratePublicProfile({ isDemo: true, phone: "000000000", whatsapp: "demo", telegram: "demo", contactOptions: '["WhatsApp"]' });
+    const profile = hydratePublicProfile({
+      isDemo: true,
+      phone: "000000000",
+      whatsapp: "demo",
+      telegram: "demo",
+      contactOptions: '["WhatsApp"]',
+    });
     expect(profile.phone).toBeNull();
     expect(profile.whatsapp).toBeNull();
     expect(profile.telegram).toBeNull();
@@ -27,5 +44,17 @@ describe("profile data", () => {
     expect(profile).not.toHaveProperty("ownerId");
     expect(profile).not.toHaveProperty("status");
     expect(profile).not.toHaveProperty("rejectionReason");
+  });
+
+  it("hydrates the approximate neighborhood in public profiles", () => {
+    const profile = hydratePublicProfile({
+      city: "Brasília",
+      region: "Distrito Federal",
+      neighborhood: "Recanto das Emas",
+      locationNote: "Recanto das Emas",
+      contactOptions: "[]",
+    });
+    expect(profile.neighborhood).toBe("Recanto das Emas");
+    expect(profile.locationNote).toBe("Recanto das Emas");
   });
 });

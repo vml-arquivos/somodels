@@ -79,6 +79,47 @@ function ProfilePreviewCard({ profile }: { profile: any }) {
   );
 }
 
+function HeroProfileCard({
+  profile,
+  onNext,
+}: {
+  profile: any;
+  onNext: () => void;
+}) {
+  return (
+    <div className="studio-hero-profile-stage">
+      <Link
+        href={`/perfil/${profile.slug}`}
+        className="studio-hero-profile-card"
+      >
+        <div className="studio-hero-profile-image">
+          {profile.avatarUrl ? (
+            <img src={profile.avatarUrl} alt="" />
+          ) : (
+            <span>{String(profile.stageName || "E").slice(0, 1)}</span>
+          )}
+        </div>
+        <div className="studio-hero-profile-caption">
+          <strong>{profile.stageName}</strong>
+          <span>
+            {[profile.city, profile.region, profile.neighborhood]
+              .filter(Boolean)
+              .join(" / ") || "Perfil publicado"}
+          </span>
+        </div>
+      </Link>
+      <button
+        type="button"
+        className="studio-hero-profile-next"
+        onClick={onNext}
+        aria-label="Ver próximo perfil"
+      >
+        Próximo perfil <span aria-hidden="true">↗</span>
+      </button>
+    </div>
+  );
+}
+
 export function DiscoveryPage({
   fixedCity,
   fixedCategory,
@@ -157,6 +198,11 @@ export function DiscoveryPage({
       : null;
   const items = list.data?.slice(0, DISCOVERY_PAGE_SIZE) ?? [];
   const hasNext = (list.data?.length ?? 0) > DISCOVERY_PAGE_SIZE;
+  const [heroIndex, setHeroIndex] = useState(0);
+  const heroProfiles = items.slice(0, 4);
+  const heroProfile = heroProfiles.length
+    ? heroProfiles[heroIndex % heroProfiles.length]
+    : null;
   const hasNonCanonicalFilter = Boolean(
     filters.search ||
       (!fixedCity && filters.city) ||
@@ -223,6 +269,18 @@ export function DiscoveryPage({
     const current = `${window.location.pathname}${window.location.search}`;
     if (next !== current) window.history.replaceState(null, "", next);
   }, [filters, fixedCity, fixedCategory]);
+
+  useEffect(() => {
+    setHeroIndex(0);
+  }, [heroProfiles[0]?.id]);
+
+  useEffect(() => {
+    if (heroProfiles.length < 2) return;
+    const timer = window.setInterval(() => {
+      setHeroIndex(current => (current + 1) % heroProfiles.length);
+    }, 7000);
+    return () => window.clearInterval(timer);
+  }, [heroProfiles.length]);
 
   const updateFilter = (
     key: keyof Omit<DiscoveryFilters, "page">,
@@ -291,7 +349,7 @@ export function DiscoveryPage({
         jsonLd={jsonLd}
       />
       <StudioHeader />
-      <main>
+      <main className="studio-landing-main">
         {(fixedCity || fixedCategory) && (
           <div className="studio-main studio-landing-breadcrumb-wrap">
             <nav
@@ -335,24 +393,23 @@ export function DiscoveryPage({
                 </label>
                 <label>
                   <span>{copy.hero.locationLabel}</span>
-                  <input
+                  <select
                     aria-label="Cidade"
-                    list="ero-location-options"
-                    placeholder={copy.hero.locationPlaceholder}
                     value={fixedCity || filters.city}
                     disabled={Boolean(fixedCity)}
                     onChange={event => updateFilter("city", event.target.value)}
-                  />
-                  <datalist id="ero-location-options">
+                  >
+                    <option value="">{copy.hero.locationPlaceholder}</option>
                     {locations.data?.map(location => (
                       <option
                         key={`${location.city}-${location.region || ""}`}
                         value={location.city}
                       >
-                        {location.region || ""}
+                        {location.city}
+                        {location.region ? ` — ${location.region}` : ""}
                       </option>
                     ))}
-                  </datalist>
+                  </select>
                 </label>
                 <button className="primary" type="submit">
                   {copy.hero.buttonText}
@@ -368,13 +425,34 @@ export function DiscoveryPage({
               </div>
             </div>
             <div className="studio-landing-hero-visual">
-              <img
-                src="/images/hero/ero-models-hero.webp"
-                alt={copy.hero.imageAlt}
-              />
+              {heroProfile ? (
+                <HeroProfileCard
+                  profile={heroProfile}
+                  onNext={() =>
+                    setHeroIndex(current => (current + 1) % heroProfiles.length)
+                  }
+                />
+              ) : (
+                <img
+                  src="/images/hero/ero-models-hero.webp"
+                  alt={copy.hero.imageAlt}
+                />
+              )}
               <div className="studio-landing-hero-badge">
-                <strong>{copy.hero.visualTitle}</strong>
-                <span>{copy.hero.visualSubtitle}</span>
+                <strong>
+                  {heroProfile?.stageName || copy.hero.visualTitle}
+                </strong>
+                <span>
+                  {heroProfile
+                    ? [
+                        heroProfile.city,
+                        heroProfile.region,
+                        heroProfile.neighborhood,
+                      ]
+                        .filter(Boolean)
+                        .join(" / ") || copy.hero.visualSubtitle
+                    : copy.hero.visualSubtitle}
+                </span>
               </div>
               <span className="studio-landing-hero-line" aria-hidden="true" />
             </div>
@@ -670,7 +748,10 @@ export function DiscoveryPage({
                     >
                       <option value="">Qualquer preço</option>
                       {priceBands.map(band => (
-                        <option key={band.maxCents} value={String(band.maxCents)}>
+                        <option
+                          key={band.maxCents}
+                          value={String(band.maxCents)}
+                        >
                           {band.label}
                         </option>
                       ))}
@@ -744,8 +825,8 @@ export function DiscoveryPage({
                 {(fixedCity || fixedCategory) && (
                   <p className="studio-page-intro">
                     {fixedCity
-                      ? `Veja anúncios de acompanhantes adultos em ${fixedCity}. Use os filtros de idade, serviços, local de atendimento e valor para encontrar o perfil ideal. Todos os anúncios passam por revisão antes de serem publicados.`
-                      : `Explore anúncios adultos na categoria ${fixedCategory}. Use os filtros para refinar a busca por cidade, idade, serviços e valor. Todos os anúncios passam por revisão antes de serem publicados.`}
+                      ? `Veja anúncios de acompanhantes adultos em ${fixedCity}. Use os filtros de idade, serviços, local de atendimento e valor para encontrar o perfil ideal. Todos os anúncios passam pelos critérios automáticos de segurança antes de serem publicados.`
+                      : `Explore anúncios adultos na categoria ${fixedCategory}. Use os filtros para refinar a busca por cidade, idade, serviços e valor. Todos os anúncios passam pelos critérios automáticos de segurança antes de serem publicados.`}
                   </p>
                 )}
                 <div className="studio-result-meta" aria-live="polite">
@@ -753,8 +834,8 @@ export function DiscoveryPage({
                     {list.isFetching
                       ? "Atualizando resultados…"
                       : typeof total === "number"
-        ? `${total} anúncio${total === 1 ? "" : "s"}`
-        : `${items.length}${hasNext ? "+" : ""} anúncio${items.length === 1 ? "" : "s"}`}
+                        ? `${total} anúncio${total === 1 ? "" : "s"}`
+                        : `${items.length}${hasNext ? "+" : ""} anúncio${items.length === 1 ? "" : "s"}`}
                   </span>
                   <span>
                     {locations.data?.length
