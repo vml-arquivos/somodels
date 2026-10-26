@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -8,6 +8,7 @@ import PublicFooter from "@/components/PublicFooter";
 import Seo from "@/components/Seo";
 import AdultGate, { useAdultAccess } from "@/components/AdultGate";
 import ListingCard from "@/components/ListingCard";
+import { formatBRL } from "@shared/discovery-options";
 import {
   reportCategories,
   reportCategoryLabels,
@@ -124,6 +125,14 @@ export default function ProfilePage() {
     onError: error => toast.error(error.message),
   });
 
+  const trackView = trpc.profiles.trackView.useMutation();
+  const publicProfileId = data?.profile.id;
+  useEffect(() => {
+    // Uma contagem por abertura da página; o servidor ainda aplica limite por visitante.
+    if (publicProfileId) trackView.mutate({ slug });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [publicProfileId, slug]);
+
   const availableContactMethods = useMemo<ContactMethod[]>(() => {
     const methods = (data?.profile as { availableContactMethods?: unknown[] } | undefined)
       ?.availableContactMethods ?? [];
@@ -205,6 +214,16 @@ export default function ProfilePage() {
                   {data.profile.region ? ` / ${data.profile.region}` : ""}
                 </p>
                 {data.profile.age && <p>{data.profile.age} anos</p>}
+                {data.profile.identityVerified && (
+                  <p className="studio-listing-status">
+                    ✓ Identidade verificada pela Ero Models
+                  </p>
+                )}
+                {typeof data.profile.priceFromCents === "number" && (
+                  <p className="studio-listing-price">
+                    A partir de <strong>{formatBRL(data.profile.priceFromCents)}</strong> por hora
+                  </p>
+                )}
                 {data.profile.availabilityLabel && (
                   <p className="studio-listing-status">
                     {data.profile.availabilityLabel}
@@ -373,6 +392,8 @@ export default function ProfilePage() {
                       : data.profile.availabilityLabel || "Consultar no contato"}
                   </dd>
                   <DetailList title="Categorias" items={data.profile.categories} />
+                  <DetailList title="Local de atendimento" items={data.profile.attendancePlaces} />
+                  <DetailList title="Serviços" items={data.profile.services} />
                   <DetailList title="Características" items={data.profile.attributes} />
                   <DetailList title="Idiomas" items={data.profile.languages} />
                   <DetailList title="Preferências" items={data.profile.preferences} />

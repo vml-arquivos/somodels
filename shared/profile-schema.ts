@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { portfolioCategories, normalizePhone } from "./portfolio";
+import {
+  attendancePlaceOptions,
+  serviceOptions,
+  MAX_PRICE_CENTS,
+} from "./discovery-options";
 const phoneSchema = z
   .string()
   .max(40)
@@ -37,6 +42,12 @@ export const profileInputSchema = z.object({
     .optional(),
   preferences: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
   languages: z.array(z.string().trim().min(1).max(60)).max(12).default([]),
+  priceFromCents: z.number().int().min(0).max(MAX_PRICE_CENTS).nullable().optional(),
+  services: z.array(z.enum(serviceOptions)).max(serviceOptions.length).default([]),
+  attendancePlaces: z
+    .array(z.enum(attendancePlaceOptions))
+    .max(attendancePlaceOptions.length)
+    .default([]),
   availabilityLabel: z.string().trim().max(160).optional(),
   isAvailableNow: z.boolean().default(false),
   phone: phoneSchema.optional(),

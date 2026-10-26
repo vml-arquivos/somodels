@@ -1,5 +1,6 @@
 import { updateOwnedMedia } from "./db";
 import { profileInputSchema } from "../shared/profile-schema";
+import { attendancePlaceOptions, serviceOptions } from "../shared/discovery-options";
 import { readSiteSettings } from "./site-config";
 import { managementRouter } from "./management";
 import { z } from "zod";
@@ -32,6 +33,11 @@ import {
 } from "./auth";
 import {
   acceptProfileTerms,
+  getOwnerProfileStats,
+  listIdentityQueue,
+  recordPublicProfileView,
+  requestIdentityVerification,
+  reviewIdentityVerification,
   createAgeVerificationSession,
   createMedia,
   createPremiumIntent,
@@ -91,6 +97,16 @@ const registrationAttempts = createInMemoryRateLimiter({
 });
 const reportRateLimiter = createInMemoryRateLimiter({ ...sensitiveRateLimits.report, maxKeys: 20_000 });
 const contactRateLimiter = createInMemoryRateLimiter({ ...sensitiveRateLimits.contact, maxKeys: 20_000 });
+const viewRateLimiter = createInMemoryRateLimiter({
+  max: 1,
+  windowMs: 30 * 60 * 1000,
+  maxKeys: 50_000,
+});
+const identityRequestLimiter = createInMemoryRateLimiter({
+  max: 5,
+  windowMs: 24 * 60 * 60 * 1000,
+  maxKeys: 20_000,
+});
 const ageCookie = "so_age_session";
 
 function getClientKey(req: { ip?: string; headers: Record<string, unknown> }) {
@@ -438,7 +454,13 @@ export const appRouter = router({
             ageMin: z.number().int().min(18).max(99).optional(),
             ageMax: z.number().int().min(18).max(99).optional(),
             availableNow: z.boolean().optional(),
-            sort: z.enum(["featured", "recent", "available"]).optional(),
+            priceMaxCents: z.number().int().min(0).max(10_000_000).optional(),
+            service: z.enum(serviceOptions).optional(),
+            place: z.enum(attendancePlaceOptions).optional(),
+            verifiedOnly: z.boolean().optional(),
+            sort: z
+              .enum(["featured", "recent", "available", "price_asc"])
+              .optional(),
             limit: z.number().int().min(1).max(25).optional(),
             offset: z.number().int().min(0).max(10000).optional(),
           })
@@ -502,6 +524,34 @@ export const appRouter = router({
     identity: protectedProcedure.query(({ ctx }) =>
       getIdentityVerification(ctx.user.id)
     ),
+    requestIdentity: protectedProcedure.mutation(({ ctx }) => {
+      const decision = identityRequestLimiter.consume(`user:${ctx.user.id}`);
+      if (!decision.allowed)
+        throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+      return requestIdentityVerification(ctx.user.id);
+    }),
+    stats: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          days: z.number().int().min(1).max(90).default(30),
+        })
+      )
+      .query(({ ctx, input }) =>
+        getOwnerProfileStats(ctx.user.id, input.id, input.days)
+      ),
+    trackView: publicProcedure
+      .input(z.object({ slug: z.string().min(2).max(160) }))
+      .mutation(async ({ ctx, input }) => {
+        // Só conta visitantes com sessão de maioridade válida, no máximo uma
+        // visualização por visitante/anúncio a cada 30 minutos.
+        if (!(await hasValidAgeSession(ctx.req))) return { recorded: false };
+        const decision = viewRateLimiter.consume(
+          `${getClientKey(ctx.req)}:${input.slug}`
+        );
+        if (!decision.allowed) return { recorded: false };
+        return recordPublicProfileView(input.slug, ctx.user?.id ?? null);
+      }),
     termsStatus: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ ctx, input }) => getProfileTermsStatus(input.id, ctx.user.id)),
@@ -625,6 +675,27 @@ export const appRouter = router({
       .query(({ ctx, input }) => hasPremiumAccess(ctx.user.id, input.mediaId)),
   }),
   admin: router({
+    identityQueue: adminProcedure
+      .input(
+        z
+          .object({
+            status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+          })
+          .optional()
+      )
+      .query(({ input }) => listIdentityQueue(input?.status ?? "pending")),
+    reviewIdentity: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          decision: z.enum(["approved", "rejected"]),
+          reason: z.string().trim().max(500).optional(),
+          validityDays: z.number().int().min(30).max(730).optional(),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        reviewIdentityVerification({ ...input, actorUserId: ctx.user.id })
+      ),
     pendingProfiles: adminProcedure.query(() => listPendingProfiles()),
     pendingMedia: adminProcedure.query(() => listPendingMedia()),
     users: adminProcedure.query(({ ctx }) => listAdminUsers(ctx.user.role)),

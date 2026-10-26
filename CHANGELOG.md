@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-25 — competitividade: busca por preço e serviço, verificação manual e métricas
+
+- migration `0007_profile_discovery` adiciona `priceFromCents`, `services` e `attendancePlaces` (opcionais) e o índice `profiles_price_idx`; o healthcheck passa a validar essas colunas;
+- vitrine com filtros de preço, serviço, local de atendimento e identidade verificada, ordenação por menor preço e URLs compartilháveis; cartão e página do anúncio mostram "a partir de", selo de verificação, local e serviços;
+- formulário do titular e do admin com os novos campos, validados por vocabulário controlado em `shared/discovery-options.ts`;
+- fluxo manual de verificação de identidade: pedido pelo titular, fila e decisão no admin (aprovação por 12 meses ou recusa com motivo), auditoria, bloqueio de autoaprovação e limite de pedidos; nenhum documento é armazenado;
+- métricas diárias agregadas (visualizações e cliques de contato), sem IP ou identificador, e painel de desempenho no anúncio publicado;
+- páginas `/como-anunciar` e `/calculadora-de-ganhos`, incluídas no sitemap e no rodapé;
+- análise e plano em `docs/ROADMAP-COMPETITIVO.md`;
+- validação local: `pnpm check`, suíte completa (116 testes), `pnpm build` e conferência do SQL gerado; não houve teste contra MySQL real nesta etapa.
+
 ## 2026-10-25 — correção visual pós-publicação
 
 - a revisão do screenshot real mostrou que a etapa anterior tornou o conteúdo configurável, mas preservou defaults e settings antigos o suficiente para a mudança pública parecer pequena;

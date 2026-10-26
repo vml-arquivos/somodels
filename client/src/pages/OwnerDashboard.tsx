@@ -7,6 +7,113 @@ import PortfolioEditor from "@/components/PortfolioEditor";
 import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
 import { portfolioPublicationLabel } from "@shared/portfolio";
+const identityLabels: Record<string, string> = {
+  pending: "Em análise pela equipe",
+  approved: "Identidade verificada",
+  rejected: "Verificação recusada",
+  expired: "Verificação expirada",
+  error: "Erro na verificação",
+};
+
+function IdentityPanel() {
+  const identity = trpc.profiles.identity.useQuery();
+  const request = trpc.profiles.requestIdentity.useMutation({
+    onSuccess: async () => {
+      toast.success("Solicitação enviada. A equipe entrará em contato por e-mail.");
+      await identity.refetch();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const row = identity.data;
+  const expired = Boolean(
+    row?.status === "approved" && row.expiresAt && new Date(row.expiresAt) <= new Date()
+  );
+  const status = expired ? "expired" : row?.status;
+  const canRequest = !row || status === "rejected" || status === "expired" || status === "error";
+  return (
+    <section className="studio-panel" aria-label="Verificação de identidade">
+      <p className="studio-kicker">Verificação de identidade</p>
+      <h2>{status ? identityLabels[status] : "Verificação ainda não solicitada"}</h2>
+      <p className="studio-muted">
+        A verificação é exigida para enviar o anúncio para revisão e libera o
+        selo “Identidade verificada”. Nossa equipe confirma seus dados em uma
+        videochamada reservada; nenhum documento é publicado.
+      </p>
+      {row?.status === "rejected" && row.reviewReason && (
+        <p role="alert">Motivo informado: {row.reviewReason}</p>
+      )}
+      {canRequest && (
+        <button
+          className="studio-cta"
+          disabled={request.isPending}
+          onClick={() => request.mutate()}
+        >
+          {request.isPending ? "Enviando…" : "Solicitar verificação"}
+        </button>
+      )}
+    </section>
+  );
+}
+
+function StatsPanel({ profileId }: { profileId: number }) {
+  const [days, setDays] = useState<7 | 30>(30);
+  const stats = trpc.profiles.stats.useQuery({ id: profileId, days });
+  const max = Math.max(1, ...(stats.data?.daily.map(d => d.views) ?? [1]));
+  return (
+    <section className="studio-panel" aria-label="Desempenho do anúncio">
+      <p className="studio-kicker">Desempenho</p>
+      <h2>Visitas e contatos</h2>
+      <div className="studio-actions">
+        {([7, 30] as const).map(option => (
+          <button
+            key={option}
+            className={days === option ? "primary" : ""}
+            aria-pressed={days === option}
+            onClick={() => setDays(option)}
+          >
+            Últimos {option} dias
+          </button>
+        ))}
+      </div>
+      {stats.isLoading ? (
+        <p>Carregando métricas…</p>
+      ) : stats.error ? (
+        <p role="alert">{stats.error.message}</p>
+      ) : stats.data ? (
+        <>
+          <p>
+            <strong>{stats.data.totals.views}</strong> visualizações ·{" "}
+            <strong>{stats.data.totals.contactClicks}</strong> cliques para contato
+          </p>
+          <div
+            role="img"
+            aria-label={`Visualizações por dia nos últimos ${stats.data.days} dias`}
+            style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 64 }}
+          >
+            {stats.data.daily.map(d => (
+              <span
+                key={d.date}
+                title={`${d.date}: ${d.views} visualizações`}
+                style={{
+                  flex: 1,
+                  minWidth: 2,
+                  height: `${Math.max(4, (d.views / max) * 100)}%`,
+                  background: "var(--s-accent, #c0508c)",
+                  borderRadius: 2,
+                  opacity: d.views ? 1 : 0.25,
+                }}
+              />
+            ))}
+          </div>
+          <small className="studio-muted">
+            Contagem agregada por dia, sem identificar visitantes.
+          </small>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 export default function OwnerDashboard() {
   const { user, loading, logout } = useAuth();
   const [id, setId] = useState<number | null>(null);
@@ -74,6 +181,7 @@ export default function OwnerDashboard() {
               </button>
               <Link href="/alterar-senha?returnTo=/titular">Alterar senha</Link>
             </div>
+            <IdentityPanel />
             <div className="studio-split">
               <aside className="studio-panel">
                 <h2>Meus anúncios</h2>
@@ -132,6 +240,7 @@ export default function OwnerDashboard() {
                             {archive.isPending ? "Arquivando…" : "Arquivar anúncio"}
                           </button>
                         )}
+                        {detail.data.profile.isPublished && <StatsPanel profileId={id} />}
                         {readiness.isLoading ? (
                           <p>Calculando checklist…</p>
                         ) : readiness.data ? (

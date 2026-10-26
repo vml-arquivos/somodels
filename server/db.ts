@@ -1,9 +1,10 @@
 import { contactLinks, defaultSiteSettings, portfolioCategories } from "../shared/portfolio";
 import { createHash } from "node:crypto";
-import { and, asc, desc, eq, like, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, like, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   ageVerifications,
+  analyticsDaily,
   authSessions,
   auditLogs,
   blocks,
@@ -22,6 +23,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV, isAgeVerificationConfigured } from "./_core/env";
+import { assertIdentityReviewAllowed, identityValidityDays } from "./identity-review";
 import {
   canActOnProfile,
   decodeReportReason,
@@ -62,6 +64,7 @@ export async function isDatabaseReady() {
     // only that MySQL accepts a connection. This prevents Coolify from marking
     // a container healthy when the application code is ahead of its migrations.
     await db.execute(sql`SELECT \`portfolioReviewed\` FROM \`profiles\` LIMIT 0`);
+    await db.execute(sql`SELECT \`priceFromCents\`, \`services\`, \`attendancePlaces\` FROM \`profiles\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\` FROM \`site_settings\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\` FROM \`finance_entries\` LIMIT 0`);
     return true;
@@ -598,6 +601,8 @@ const parseJson = (value: string | null | undefined) => {
   }
 };
 const serialize = (value: unknown) => JSON.stringify(value ?? []);
+// Escapa curingas do LIKE para que o termo digitado seja sempre literal.
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, "\\$&");
 
 export function hydrateProfile(row: any) {
   return {
@@ -607,6 +612,9 @@ export function hydrateProfile(row: any) {
     contactOptions: parseJson(row.contactOptions),
     preferences: parseJson(row.preferences),
     languages: parseJson(row.languages),
+    services: parseJson(row.services),
+    attendancePlaces: parseJson(row.attendancePlaces),
+    priceFromCents: row.priceFromCents ?? null,
     demoContactDisabled: !ENV.demoContactsEnabled,
   };
 }
@@ -617,6 +625,8 @@ export function hydratePublicProfile(row: any) {
   const contactOptions = parseJson(row.contactOptions);
   const preferences = parseJson(row.preferences);
   const languages = parseJson(row.languages);
+  const services = parseJson(row.services);
+  const attendancePlaces = parseJson(row.attendancePlaces);
   const contactAllowed = !row.isDemo && !row.isTest && row.portfolioReviewed;
   return {
     id: row.id,
@@ -631,6 +641,10 @@ export function hydratePublicProfile(row: any) {
     attributes,
     preferences,
     languages,
+    services,
+    attendancePlaces,
+    priceFromCents: row.priceFromCents ?? null,
+    identityVerified: Boolean(Number(row.identityVerified ?? 0)),
     availabilityLabel: row.availabilityLabel ?? null,
     isAvailableNow: Boolean(row.isAvailableNow),
     avatarUrl: row.avatarUrl ?? null,
@@ -664,6 +678,24 @@ function activeProfileOwner() {
   return sql`EXISTS (SELECT 1 FROM ${users} WHERE ${users.id} = ${profiles.ownerId} AND ${users.accountStatus} = 'active')`;
 }
 
+// Subconsulta com alias explícito (iv) para não depender da resolução de colunas
+// sem qualificador. A validade é comparada com um parâmetro de data da aplicação
+// (mesmo fuso usado ao gravar), não com NOW() do servidor MySQL.
+function identityApprovedExists() {
+  return sql`EXISTS (SELECT 1 FROM identity_verifications iv WHERE iv.userId = ${profiles.ownerId} AND iv.status = 'approved' AND (iv.expiresAt IS NULL OR iv.expiresAt > ${new Date()}))`;
+}
+
+// Colunas do perfil + selo derivado de identidade aprovada e dentro da validade.
+// O selo nunca expõe dados do documento: apenas um booleano público.
+function publicProfileSelection() {
+  return {
+    ...getTableColumns(profiles),
+    identityVerified: sql<number>`${identityApprovedExists()}`.as(
+      "identityVerified"
+    ),
+  };
+}
+
 export async function listPublishedProfiles(input: {
   search?: string;
   city?: string;
@@ -673,7 +705,11 @@ export async function listPublishedProfiles(input: {
   ageMin?: number;
   ageMax?: number;
   availableNow?: boolean;
-  sort?: "featured" | "recent" | "available";
+  priceMaxCents?: number;
+  service?: string;
+  place?: string;
+  verifiedOnly?: boolean;
+  sort?: "featured" | "recent" | "available" | "price_asc";
   limit?: number;
   offset?: number;
   publicAllowed?: boolean;
@@ -708,9 +744,26 @@ export async function listPublishedProfiles(input: {
   if (input.ageMax !== undefined)
     conditions.push(sql`${profiles.age} <= ${input.ageMax}`);
   if (input.availableNow) conditions.push(eq(profiles.isAvailableNow, true));
+  if (input.priceMaxCents !== undefined)
+    conditions.push(
+      sql`${profiles.priceFromCents} IS NOT NULL AND ${profiles.priceFromCents} <= ${input.priceMaxCents}`
+    );
+  if (input.service)
+    conditions.push(like(profiles.services, `%${escapeLike(input.service)}%`));
+  if (input.place)
+    conditions.push(like(profiles.attendancePlaces, `%${escapeLike(input.place)}%`));
+  if (input.verifiedOnly)
+    conditions.push(identityApprovedExists());
   const order =
     input.sort === "recent"
       ? [desc(profiles.updatedAt), desc(profiles.id)]
+      : input.sort === "price_asc"
+        ? [
+            sql`${profiles.priceFromCents} IS NULL`,
+            asc(profiles.priceFromCents),
+            desc(profiles.isFeatured),
+            desc(profiles.id),
+          ]
       : input.sort === "available"
         ? [
             desc(profiles.isAvailableNow),
@@ -720,7 +773,7 @@ export async function listPublishedProfiles(input: {
           ]
         : [desc(profiles.isFeatured), desc(profiles.updatedAt), desc(profiles.id)];
   const rows = await db
-    .select()
+    .select(publicProfileSelection())
     .from(profiles)
     .where(and(...conditions))
     .orderBy(...order)
@@ -786,7 +839,7 @@ export async function getPublicProfile(slug: string, publicAllowed = true) {
       eq(profiles.isTest, false)
     );
   const rows = await db
-    .select()
+    .select(publicProfileSelection())
     .from(profiles)
     .where(and(...profileConditions))
     .limit(1);
@@ -817,7 +870,7 @@ export async function getPublicProfile(slug: string, publicAllowed = true) {
       eq(profiles.isTest, false)
     );
   const relatedRows = await db
-    .select()
+    .select(publicProfileSelection())
     .from(profiles)
     .where(and(...relatedConditions))
     .orderBy(desc(profiles.isFeatured), desc(profiles.updatedAt), desc(profiles.id))
@@ -913,6 +966,9 @@ export async function saveProfile(
     contactOptions: serialize(input.contactOptions),
     preferences: serialize(input.preferences),
     languages: serialize(input.languages),
+    services: serialize((input as any).services),
+    attendancePlaces: serialize((input as any).attendancePlaces),
+    priceFromCents: (input as any).priceFromCents ?? null,
     phone: input.phone ?? null,
     whatsapp: input.whatsapp ?? null,
     telegram: input.telegram ?? null,
@@ -1835,6 +1891,7 @@ export async function getSafeExternalContact(
     entityId: profileId,
     metadata: { method },
   });
+  await bumpDailyMetric(profile.id, profile.city, "contact_click");
   return { href, method, offPlatform: true as const };
 }
 
@@ -2009,4 +2066,227 @@ export async function reorderOwnedMedia(
     });
   });
   return { success: true };
+}
+
+
+// ---------------------------------------------------------------------------
+// Verificação de identidade (fluxo manual, sem provider externo)
+// ---------------------------------------------------------------------------
+
+export async function requestIdentityVerification(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const current = await getIdentityVerification(userId);
+  const now = new Date();
+  if (current?.status === "pending") return current;
+  if (
+    current?.status === "approved" &&
+    !(current.expiresAt && current.expiresAt <= now)
+  )
+    return current;
+  await db
+    .insert(identityVerifications)
+    .values({ userId, provider: "manual", status: "pending" });
+  await writeAuditLog({
+    actorUserId: userId,
+    action: "identity.requested",
+    entityType: "user",
+    entityId: userId,
+  });
+  return getIdentityVerification(userId);
+}
+
+export async function listIdentityQueue(
+  status: "pending" | "approved" | "rejected" = "pending"
+) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: identityVerifications.id,
+      userId: identityVerifications.userId,
+      status: identityVerifications.status,
+      provider: identityVerifications.provider,
+      reviewReason: identityVerifications.reviewReason,
+      approvedAt: identityVerifications.approvedAt,
+      expiresAt: identityVerifications.expiresAt,
+      createdAt: identityVerifications.createdAt,
+      userName: users.name,
+      userEmail: users.email,
+    })
+    .from(identityVerifications)
+    .innerJoin(users, eq(users.id, identityVerifications.userId))
+    .where(eq(identityVerifications.status, status))
+    .orderBy(asc(identityVerifications.createdAt))
+    .limit(200);
+}
+
+export async function reviewIdentityVerification(input: {
+  id: number;
+  actorUserId: number;
+  decision: "approved" | "rejected";
+  reason?: string;
+  validityDays?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [row] = await db
+    .select()
+    .from(identityVerifications)
+    .where(eq(identityVerifications.id, input.id))
+    .limit(1);
+  assertIdentityReviewAllowed({
+    row,
+    actorUserId: input.actorUserId,
+    decision: input.decision,
+    reason: input.reason,
+  });
+  const reason = input.reason?.trim() || null;
+  const now = new Date();
+  const days = identityValidityDays(input.validityDays);
+  await db
+    .update(identityVerifications)
+    .set(
+      input.decision === "approved"
+        ? {
+            status: "approved",
+            approvedAt: now,
+            expiresAt: new Date(now.getTime() + days * 24 * 60 * 60 * 1000),
+            reviewReason: reason,
+          }
+        : { status: "rejected", reviewReason: reason }
+    )
+    .where(
+      and(
+        eq(identityVerifications.id, input.id),
+        eq(identityVerifications.status, "pending")
+      )
+    );
+  await writeAuditLog({
+    actorUserId: input.actorUserId,
+    action:
+      input.decision === "approved" ? "identity.approved" : "identity.rejected",
+    entityType: "user",
+    entityId: row.userId,
+    metadata: { verificationId: row.id, provider: "manual" },
+  });
+  return { id: row.id, status: input.decision };
+}
+
+// ---------------------------------------------------------------------------
+// Métricas do anunciante (contadores diários agregados, sem IP nem identificador)
+// ---------------------------------------------------------------------------
+
+export type ProfileMetric = "profile_view" | "contact_click";
+
+function saoPauloDateKey(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+// Métricas nunca podem quebrar a jornada principal: falhas são apenas registradas.
+export async function bumpDailyMetric(
+  profileId: number,
+  city: string,
+  eventName: ProfileMetric
+) {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    await db
+      .insert(analyticsDaily)
+      .values({
+        dateKey: saoPauloDateKey(),
+        profileId,
+        eventName,
+        city: city || "",
+        total: 1,
+      })
+      .onDuplicateKeyUpdate({
+        set: { total: sql`${analyticsDaily.total} + 1` },
+      });
+  } catch (error) {
+    console.warn("[Analytics] Falha ao registrar métrica:", error);
+  }
+}
+
+export async function recordPublicProfileView(
+  slug: string,
+  viewerUserId?: number | null
+) {
+  const db = await getDb();
+  if (!db) return { recorded: false };
+  const [row] = await db
+    .select({ id: profiles.id, ownerId: profiles.ownerId, city: profiles.city })
+    .from(profiles)
+    .where(
+      and(
+        eq(profiles.slug, slug),
+        eq(profiles.status, "approved"),
+        eq(profiles.isPublished, true),
+        eq(profiles.portfolioReviewed, true),
+        eq(profiles.isActive, true),
+        sql`${profiles.deletedAt} IS NULL`,
+        activeProfileOwner(),
+        ...(!ENV.allowFakeData
+          ? [eq(profiles.isDemo, false), eq(profiles.isTest, false)]
+          : [])
+      )
+    )
+    .limit(1);
+  if (!row || (viewerUserId && viewerUserId === row.ownerId))
+    return { recorded: false };
+  await bumpDailyMetric(row.id, row.city, "profile_view");
+  return { recorded: true };
+}
+
+export async function getOwnerProfileStats(
+  ownerId: number,
+  profileId: number,
+  days = 30
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const owned = await getOwnerProfile(ownerId, profileId);
+  if (!owned) throw new Error("Perfil não pertence à conta");
+  const span = Math.min(Math.max(Math.floor(days), 1), 90);
+  const since = saoPauloDateKey(new Date(Date.now() - (span - 1) * 86400000));
+  const rows = await db
+    .select({
+      dateKey: analyticsDaily.dateKey,
+      eventName: analyticsDaily.eventName,
+      total: analyticsDaily.total,
+    })
+    .from(analyticsDaily)
+    .where(
+      and(
+        eq(analyticsDaily.profileId, profileId),
+        sql`${analyticsDaily.dateKey} >= ${since}`
+      )
+    )
+    .orderBy(asc(analyticsDaily.dateKey));
+  const byDay = new Map<string, { date: string; views: number; contactClicks: number }>();
+  for (let i = span - 1; i >= 0; i--) {
+    const key = saoPauloDateKey(new Date(Date.now() - i * 86400000));
+    byDay.set(key, { date: key, views: 0, contactClicks: 0 });
+  }
+  for (const row of rows) {
+    const entry = byDay.get(row.dateKey);
+    if (!entry) continue;
+    if (row.eventName === "profile_view") entry.views += row.total;
+    if (row.eventName === "contact_click") entry.contactClicks += row.total;
+  }
+  const daily = Array.from(byDay.values());
+  return {
+    days: span,
+    totals: {
+      views: daily.reduce((sum, d) => sum + d.views, 0),
+      contactClicks: daily.reduce((sum, d) => sum + d.contactClicks, 0),
+    },
+    daily,
+  };
 }

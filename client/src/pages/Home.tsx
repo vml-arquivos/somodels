@@ -6,6 +6,11 @@ import {
   portfolioCategories,
   portfolioPolicy,
 } from "@shared/portfolio";
+import {
+  attendancePlaceOptions,
+  priceBands,
+  serviceOptions,
+} from "@shared/discovery-options";
 import StudioHeader from "@/components/StudioHeader";
 import PublicFooter from "@/components/PublicFooter";
 import Seo from "@/components/Seo";
@@ -110,6 +115,14 @@ export function DiscoveryPage({
       ageMin: filters.ageMin ? Number(filters.ageMin) : undefined,
       ageMax: filters.ageMax ? Number(filters.ageMax) : undefined,
       availableNow: filters.availableNow || undefined,
+      priceMaxCents: filters.priceMax ? Number(filters.priceMax) : undefined,
+      service: (filters.service || undefined) as
+        | (typeof serviceOptions)[number]
+        | undefined,
+      place: (filters.place || undefined) as
+        | (typeof attendancePlaceOptions)[number]
+        | undefined,
+      verifiedOnly: filters.verifiedOnly || undefined,
       sort: filters.sort,
       limit: DISCOVERY_PAGE_SIZE + 1,
       offset: filters.page * DISCOVERY_PAGE_SIZE,
@@ -127,6 +140,10 @@ export function DiscoveryPage({
       filters.ageMin ||
       filters.ageMax ||
       filters.availableNow ||
+      filters.priceMax ||
+      filters.service ||
+      filters.place ||
+      filters.verifiedOnly ||
       filters.sort !== "featured"
   );
   const activeFiltersCount =
@@ -137,8 +154,12 @@ export function DiscoveryPage({
       filters.attribute,
       filters.ageMin,
       filters.ageMax,
+      filters.priceMax,
+      filters.service,
+      filters.place,
     ].filter(Boolean).length +
     (filters.availableNow ? 1 : 0) +
+    (filters.verifiedOnly ? 1 : 0) +
     (filters.sort !== "featured" ? 1 : 0);
   const canonicalPath = fixedCity
     ? cityPath(fixedCity)
@@ -514,6 +535,20 @@ export function DiscoveryPage({
                   >
                     Disponível agora
                   </button>
+                  <button
+                    type="button"
+                    className={filters.verifiedOnly ? "active" : ""}
+                    aria-pressed={filters.verifiedOnly}
+                    onClick={() =>
+                      setFilters(current => ({
+                        ...current,
+                        verifiedOnly: !current.verifiedOnly,
+                        page: 0,
+                      }))
+                    }
+                  >
+                    Identidade verificada
+                  </button>
                   {quickAttributes.slice(0, 3).map(attribute => (
                     <button
                       type="button"
@@ -601,6 +636,44 @@ export function DiscoveryPage({
                       }
                     />
                     <select
+                      aria-label="Faixa de preço"
+                      value={filters.priceMax}
+                      onChange={event =>
+                        updateFilter("priceMax", event.target.value)
+                      }
+                    >
+                      <option value="">Qualquer preço</option>
+                      {priceBands.map(band => (
+                        <option key={band.maxCents} value={String(band.maxCents)}>
+                          {band.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label="Local de atendimento"
+                      value={filters.place}
+                      onChange={event =>
+                        updateFilter("place", event.target.value)
+                      }
+                    >
+                      <option value="">Qualquer local de atendimento</option>
+                      {attendancePlaceOptions.map(place => (
+                        <option key={place}>{place}</option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label="Serviço oferecido"
+                      value={filters.service}
+                      onChange={event =>
+                        updateFilter("service", event.target.value)
+                      }
+                    >
+                      <option value="">Qualquer serviço</option>
+                      {serviceOptions.map(service => (
+                        <option key={service}>{service}</option>
+                      ))}
+                    </select>
+                    <select
                       aria-label="Ordenar anúncios"
                       value={filters.sort}
                       onChange={event =>
@@ -613,6 +686,7 @@ export function DiscoveryPage({
                       <option value="featured">Mais relevantes</option>
                       <option value="available">Disponíveis primeiro</option>
                       <option value="recent">Atualizados recentemente</option>
+                      <option value="price_asc">Menor preço</option>
                     </select>
                     <button
                       type="button"
@@ -627,6 +701,10 @@ export function DiscoveryPage({
                           ageMin: "",
                           ageMax: "",
                           availableNow: false,
+                          priceMax: "",
+                          service: "",
+                          place: "",
+                          verifiedOnly: false,
                           sort: "featured",
                           page: 0,
                         })

@@ -583,7 +583,9 @@
   color: var(--s-muted);
 }
 .studio-cover
-  > span:not(.studio-listing-age):not(.studio-listing-availability) {
+  > span:not(.studio-listing-age):not(.studio-listing-availability):not(
+    .studio-listing-verified
+  ) {
   font-size: 4rem;
   color: var(--s-muted);
 }
@@ -609,7 +611,8 @@
   border-radius: 0;
 }
 .studio-listing-age,
-.studio-listing-availability {
+.studio-listing-availability,
+.studio-listing-verified {
   position: absolute;
   z-index: 2;
   padding: 5px 9px;
@@ -629,6 +632,19 @@
   right: 12px;
   bottom: 12px;
   background: #1e7d58;
+}
+.studio-listing-verified {
+  top: 12px;
+  right: 12px;
+  background: #2a5db0;
+}
+.studio-listing-price {
+  margin: 6px 0;
+  color: var(--s-muted);
+  font-size: 0.9rem;
+}
+.studio-listing-price strong {
+  color: var(--s-text, inherit);
 }
 .studio-listing-card-body {
   padding: 18px 18px 10px;

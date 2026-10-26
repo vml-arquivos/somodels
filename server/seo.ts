@@ -121,6 +121,14 @@ function staticSeo(pathname: string) {
       title: `Contato — ${ENV.siteName}`,
       description: "Orientações para contato com a plataforma.",
     },
+    "/como-anunciar": {
+      title: `Como anunciar — ${ENV.siteName}`,
+      description: "Passo a passo para criar, verificar e publicar seu anúncio com segurança.",
+    },
+    "/calculadora-de-ganhos": {
+      title: `Calculadora de ganhos — ${ENV.siteName}`,
+      description: "Simule uma estimativa mensal de ganhos a partir do seu valor por hora e da sua rotina.",
+    },
   };
   return pages[pathname];
 }

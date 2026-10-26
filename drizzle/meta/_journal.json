@@ -50,6 +50,13 @@
       "when": 1789990500000,
       "tag": "0006_profile_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1790380000000,
+      "tag": "0007_profile_discovery",
+      "breakpoints": true
     }
   ]
 }

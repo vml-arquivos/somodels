@@ -172,6 +172,9 @@ export const profiles = mysqlTable(
     contactOptions: text("contactOptions"),
     preferences: text("preferences"),
     languages: text("languages"),
+    priceFromCents: int("priceFromCents"),
+    services: text("services"),
+    attendancePlaces: text("attendancePlaces"),
     availabilityLabel: varchar("availabilityLabel", { length: 160 }),
     isAvailableNow: boolean("isAvailableNow").default(false).notNull(),
     phone: varchar("phone", { length: 40 }),
@@ -196,6 +199,7 @@ export const profiles = mysqlTable(
     cityIdx: index("profiles_city_idx").on(table.city),
     statusIdx: index("profiles_status_idx").on(table.status),
     lifecycleIdx: index("profiles_lifecycle_idx").on(table.isActive, table.deletedAt),
+    priceIdx: index("profiles_price_idx").on(table.priceFromCents),
   }),
 );
 

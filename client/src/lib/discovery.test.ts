@@ -7,7 +7,7 @@ import {
 
 describe("discovery URL state", () => {
   it("starts with empty filters on an empty query", () => {
-    expect(parseDiscoverySearch("")).toEqual({ search: "", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", availableNow: false, sort: "featured", page: 0 });
+    expect(parseDiscoverySearch("")).toEqual({ search: "", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", availableNow: false, priceMax: "", service: "", place: "", verifiedOnly: false, sort: "featured", page: 0 });
   });
 
   it("parses shareable filters", () => {
@@ -20,6 +20,10 @@ describe("discovery URL state", () => {
       ageMin: "25",
       ageMax: "35",
       availableNow: false,
+      priceMax: "",
+      service: "",
+      place: "",
+      verifiedOnly: false,
       sort: "featured",
       page: 2,
     });
@@ -52,15 +56,15 @@ describe("discovery URL state", () => {
   });
 
   it("omits empty filters when building a URL", () => {
-    expect(buildDiscoverySearch({ search: "", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", availableNow: false, sort: "featured", page: 0 })).toBe("");
+    expect(buildDiscoverySearch({ search: "", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", availableNow: false, priceMax: "", service: "", place: "", verifiedOnly: false, sort: "featured", page: 0 })).toBe("");
   });
 
   it("builds a stable page number for sharing", () => {
-    expect(buildDiscoverySearch({ search: "ana", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", availableNow: false, sort: "featured", page: 2 })).toBe("?q=ana&page=3");
+    expect(buildDiscoverySearch({ search: "ana", city: "", region: "", category: "", attribute: "", ageMin: "", ageMax: "", availableNow: false, priceMax: "", service: "", place: "", verifiedOnly: false, sort: "featured", page: 2 })).toBe("?q=ana&page=3");
   });
 
   it("keeps the fixed city out of the query string", () => {
-    expect(buildDiscoverySearch({ search: "", city: "Brasília", region: "DF", category: "Acompanhante", attribute: "Com local", ageMin: "25", ageMax: "35", availableNow: false, sort: "featured", page: 0 }, "Brasília")).toBe("?region=DF&category=Acompanhante&attribute=Com+local&minAge=25&maxAge=35");
+    expect(buildDiscoverySearch({ search: "", city: "Brasília", region: "DF", category: "Acompanhante", attribute: "Com local", ageMin: "25", ageMax: "35", availableNow: false, priceMax: "", service: "", place: "", verifiedOnly: false, sort: "featured", page: 0 }, "Brasília")).toBe("?region=DF&category=Acompanhante&attribute=Com+local&minAge=25&maxAge=35");
   });
 
   it("keeps availability and sort in the shareable URL", () => {
@@ -76,5 +80,25 @@ describe("discovery URL state", () => {
 
   it("trims city paths before encoding", () => {
     expect(cityPath("  Recife  ")).toBe("/cidade/Recife");
+  });
+
+  it("round-trips price, service, place and verified filters", () => {
+    const query = "?priceMax=30000&service=Massagem&place=A+domic%C3%ADlio&verified=1&sort=price_asc";
+    const filters = parseDiscoverySearch(query);
+    expect(filters).toMatchObject({
+      priceMax: "30000",
+      service: "Massagem",
+      place: "A domicílio",
+      verifiedOnly: true,
+      sort: "price_asc",
+    });
+    expect(buildDiscoverySearch(filters)).toBe("?priceMax=30000&service=Massagem&place=A+domic%C3%ADlio&verified=1&sort=price_asc");
+  });
+
+  it("drops values outside the controlled vocabulary", () => {
+    const filters = parseDiscoverySearch("?priceMax=12345&service=Qualquer&place=Outro");
+    expect(filters.priceMax).toBe("");
+    expect(filters.service).toBe("");
+    expect(filters.place).toBe("");
   });
 });

@@ -179,7 +179,7 @@ async function startServer() {
     const cities = Array.from(new Set(published.map(profile => profile.city).filter(Boolean)));
     const categories = Array.from(new Set(published.flatMap(profile => profile.categories).filter(Boolean)));
     const origin = ENV.canonicalOrigin || "https://eromodels.com.br";
-    const pages = ["/", "/termos", "/privacidade", "/seguranca", "/denuncia", "/ajuda", "/contato"];
+    const pages = ["/", "/termos", "/privacidade", "/seguranca", "/denuncia", "/ajuda", "/contato", "/como-anunciar", "/calculadora-de-ganhos"];
     const urls = [
       ...pages,
       ...cities.map(city => `/cidade/${encodeURIComponent(city)}`),

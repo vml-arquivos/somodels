@@ -19,6 +19,7 @@ const tabs = {
   profiles: "Anúncios",
   moderation: "Moderação",
   reports: "Denúncias",
+  identity: "Verificações",
   finance: "Financeiro",
   settings: "Página inicial",
   audit: "Auditoria",
@@ -51,6 +52,7 @@ export default function AdminDashboard() {
     [page, setPage] = useState(0),
     [auditPage, setAuditPage] = useState(0);
   const [reportDecision, setReportDecision] = useState("");
+  const [identityReason, setIdentityReason] = useState("");
   const [uid, setUid] = useState<number | null>(null),
     [pid, setPid] = useState<number | null>(null),
     [editingProfile, setEditingProfile] = useState(false),
@@ -91,6 +93,16 @@ export default function AdminDashboard() {
   });
   const reports = trpc.safety.adminReports.useQuery(undefined, {
     enabled: allowed && tab === "reports",
+  });
+  const identityQueue = trpc.admin.identityQueue.useQuery(
+    { status: "pending" },
+    { enabled: allowed && tab === "identity" }
+  );
+  const reviewIdentity = trpc.admin.reviewIdentity.useMutation({
+    onSuccess: async () => {
+      setIdentityReason("");
+      await identityQueue.refetch();
+    },
   });
   const finance = trpc.management.finance.useQuery(undefined, {
     enabled: allowed && tab === "finance",
@@ -1153,6 +1165,95 @@ export default function AdminDashboard() {
                                     Reabrir
                                   </button>
                                 )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )}
+            {tab === "identity" && (
+              <section className="studio-panel">
+                <div className="studio-title">
+                  <div>
+                    <p className="studio-kicker">Trust &amp; Safety</p>
+                    <h2>Verificações de identidade</h2>
+                    <p className="studio-muted">
+                      Confirme o titular em videochamada reservada, comparando
+                      documento e rosto ao vivo. Não armazene nem anexe documentos
+                      aqui. Aprovações valem por 12 meses e ficam auditadas; você
+                      não pode analisar a sua própria verificação.
+                    </p>
+                  </div>
+                </div>
+                <Failure error={identityQueue.error || reviewIdentity.error} />
+                <label>
+                  Motivo (obrigatório para recusar)
+                  <textarea
+                    rows={2}
+                    maxLength={500}
+                    value={identityReason}
+                    onChange={event => setIdentityReason(event.target.value)}
+                    placeholder="Ex.: documento ilegível; rosto não confere; faltou comparecer à chamada."
+                  />
+                </label>
+                {identityQueue.isLoading ? (
+                  <p>Carregando solicitações…</p>
+                ) : !identityQueue.data?.length ? (
+                  <p>Nenhuma verificação pendente.</p>
+                ) : (
+                  <div className="studio-table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Titular</th>
+                          <th>E-mail</th>
+                          <th>Solicitada</th>
+                          <th>Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {identityQueue.data.map(item => (
+                          <tr key={item.id}>
+                            <td>
+                              #{item.userId} {item.userName || "Sem nome"}
+                            </td>
+                            <td>{item.userEmail || "—"}</td>
+                            <td>{date(item.createdAt)}</td>
+                            <td>
+                              <div className="studio-actions">
+                                <button
+                                  className="primary"
+                                  disabled={reviewIdentity.isPending}
+                                  onClick={() =>
+                                    reviewIdentity.mutate({
+                                      id: item.id,
+                                      decision: "approved",
+                                      reason: identityReason || undefined,
+                                    })
+                                  }
+                                >
+                                  Aprovar
+                                </button>
+                                <button
+                                  className="danger"
+                                  disabled={
+                                    reviewIdentity.isPending ||
+                                    identityReason.trim().length < 5
+                                  }
+                                  onClick={() =>
+                                    reviewIdentity.mutate({
+                                      id: item.id,
+                                      decision: "rejected",
+                                      reason: identityReason,
+                                    })
+                                  }
+                                >
+                                  Recusar
+                                </button>
                               </div>
                             </td>
                           </tr>

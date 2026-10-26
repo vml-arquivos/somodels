@@ -45,6 +45,11 @@ export default function PublicFooter() {
         </nav>
       </div>
       <div className="studio-footer-bottom">
+        <span>
+          <Link href="/como-anunciar">Como anunciar</Link>
+          {" · "}
+          <Link href="/calculadora-de-ganhos">Calculadora de ganhos</Link>
+        </span>
         <span>{footer.signature}</span>
         <span>{footer.closing}</span>
       </div>

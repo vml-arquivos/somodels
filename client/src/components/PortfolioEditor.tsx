@@ -8,6 +8,14 @@ import {
   portfolioTermsVersion,
   contactLinks,
 } from "@shared/portfolio";
+import {
+  attendancePlaceOptions,
+  centsToReais,
+  reaisToCents,
+  serviceOptions,
+  type AttendancePlace,
+  type ServiceOption,
+} from "@shared/discovery-options";
 import { toast } from "sonner";
 
 type Props = {
@@ -43,6 +51,14 @@ export default function PortfolioEditor({
     preferences: (initial?.preferences || []).join(", "),
     contactOptions: (initial?.contactOptions || []).join(", "),
     isAvailableNow: Boolean(initial?.isAvailableNow),
+    priceFrom: centsToReais(initial?.priceFromCents),
+    services: ((initial?.services || []) as string[]).filter(
+      (v): v is ServiceOption => (serviceOptions as readonly string[]).includes(v)
+    ),
+    attendancePlaces: ((initial?.attendancePlaces || []) as string[]).filter(
+      (v): v is AttendancePlace =>
+        (attendancePlaceOptions as readonly string[]).includes(v)
+    ),
   });
   const [busy, setBusy] = useState(false);
   const [consent, setConsent] = useState(false);
@@ -128,8 +144,16 @@ export default function PortfolioEditor({
     }
     setBusy(true);
     try {
+      const { priceFrom, ...formFields } = form;
+      const priceFromCents = reaisToCents(priceFrom);
+      if (priceFrom.trim() && priceFromCents === null) {
+        toast.error("Informe um valor válido em reais (ex.: 250 ou 250,00)");
+        setBusy(false);
+        return;
+      }
       const payload = {
-        ...form,
+        ...formFields,
+        priceFromCents,
         id: initial?.id,
         slug:
           form.slug ||
@@ -301,6 +325,60 @@ export default function PortfolioEditor({
                 }
               />
               {c}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <label>
+        Valor a partir de (R$ por hora)
+        <input
+          inputMode="decimal"
+          maxLength={12}
+          placeholder="Ex.: 250"
+          value={form.priceFrom}
+          onChange={e => update("priceFrom", e.target.value)}
+        />
+      </label>
+      <fieldset>
+        <legend>Local de atendimento</legend>
+        <div className="studio-actions">
+          {attendancePlaceOptions.map(place => (
+            <label className="studio-check" key={place}>
+              <input
+                type="checkbox"
+                checked={form.attendancePlaces.includes(place)}
+                onChange={e =>
+                  update(
+                    "attendancePlaces",
+                    e.target.checked
+                      ? [...form.attendancePlaces, place]
+                      : form.attendancePlaces.filter(v => v !== place)
+                  )
+                }
+              />
+              {place}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Serviços oferecidos</legend>
+        <div className="studio-actions">
+          {serviceOptions.map(service => (
+            <label className="studio-check" key={service}>
+              <input
+                type="checkbox"
+                checked={form.services.includes(service)}
+                onChange={e =>
+                  update(
+                    "services",
+                    e.target.checked
+                      ? [...form.services, service]
+                      : form.services.filter(v => v !== service)
+                  )
+                }
+              />
+              {service}
             </label>
           ))}
         </div>

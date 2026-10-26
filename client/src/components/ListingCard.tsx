@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { formatBRL } from "@shared/discovery-options";
 
 export default function ListingCard({ profile }: { profile: any }) {
   const categories = Array.isArray(profile.categories) ? profile.categories : [];
@@ -22,6 +23,9 @@ export default function ListingCard({ profile }: { profile: any }) {
           {profile.isAvailableNow && (
             <span className="studio-listing-availability">Disponível agora</span>
           )}
+          {profile.identityVerified && (
+            <span className="studio-listing-verified">✓ Verificada</span>
+          )}
         </div>
         <div className="studio-listing-card-body">
           <div className="studio-listing-meta">
@@ -35,6 +39,11 @@ export default function ListingCard({ profile }: { profile: any }) {
           </p>
           {profile.description && (
             <p className="studio-listing-description">{profile.description}</p>
+          )}
+          {typeof profile.priceFromCents === "number" && (
+            <p className="studio-listing-price">
+              A partir de <strong>{formatBRL(profile.priceFromCents)}</strong>
+            </p>
           )}
           {attributes.length > 0 && (
             <p className="studio-listing-attributes">
