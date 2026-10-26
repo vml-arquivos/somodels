@@ -28,6 +28,10 @@ Execute `corepack enable`, `corepack pnpm install --frozen-lockfile`, `corepack 
 
 Inicie com `NODE_ENV=production node dist/index.js`. O servidor usa `process.env.PORT` e expõe `GET /healthz`, que retorna JSON com `ok: true` para health checks. Não use um processo separado para frontend: o servidor de produção serve `dist/public`.
 
+### Coolify com Dockerfile
+
+Nesta imagem, o `Dockerfile` já executa `node dist/migrate.mjs` antes de iniciar `node dist/index.js`. No recurso do Coolify, mantenha **Pre-deployment** e **Post-deployment** vazios. Não configure `pnpm exec drizzle-kit migrate` no container runtime: o estágio final contém apenas o bundle de produção e não precisa do CLI do pnpm; configurar esse comando faz o deploy terminar com `pnpm: not found` mesmo quando o container está saudável.
+
 ## Segurança operacional
 
 Use HTTPS, mantenha `JWT_SECRET` longo e aleatório, limite o tamanho de upload conforme a política do negócio, mantenha o banco com SSL quando o provedor oferecer essa opção e configure backups. Com `AUTO_PUBLISH_ENABLED=true`, o titular publica após os gates automáticos; a moderação continua como pós-moderação e pode suspender ou ocultar a qualquer momento. Com a flag desligada, o fluxo volta para pendência administrativa.
