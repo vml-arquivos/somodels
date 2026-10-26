@@ -292,7 +292,7 @@ export default function PortfolioEditor({
       toast.success(
         result.isPublished
           ? "Anúncio publicado na vitrine"
-          : "Anúncio enviado para revisão"
+          : "Anúncio salvo. Falta pouco para publicar"
       );
       onSaved(id);
     } catch (e) {
@@ -481,9 +481,8 @@ export default function PortfolioEditor({
     <div className="studio-editor">
       {!initial?.id && (
         <div className="studio-notice" role="status">
-          Comece preenchendo o que já souber e salve o rascunho. Os campos
-          restantes, o termo e as fotos/vídeos poderão ser adicionados depois,
-          retomando este mesmo anúncio na lista ao lado.
+          Preencha o que souber e salve. Dá para voltar depois e terminar. Envie
+          as fotos e toque em &ldquo;Publicar anúncio&rdquo; para entrar no ar.
         </div>
       )}
       <div className="studio-fields">
@@ -497,7 +496,7 @@ export default function PortfolioEditor({
           />
         </label>
         <label>
-          Slug do perfil (URL pública)
+          Endereço do perfil (opcional)
           <input
             maxLength={160}
             placeholder="Ex.: marina-alves"
@@ -704,26 +703,13 @@ export default function PortfolioEditor({
         onChange={value => update("services", value)}
       />
       <p className="studio-muted">
-        Os contatos ficam protegidos durante o cadastro e só podem gerar ligação
-        ou WhatsApp pelo fluxo autorizado após aprovação e publicação.{" "}
+        Seu número só aparece quando alguém toca em &ldquo;WhatsApp&rdquo; ou
+        &ldquo;Ligar&rdquo; no seu anúncio. Ele não fica escrito na página.{" "}
         {links.tel
           ? "Telefone válido para ligação."
           : "Informe um telefone válido."}{" "}
         {links.whatsapp ? "Link de WhatsApp será gerado automaticamente." : ""}
       </p>
-      {(links.tel || links.whatsapp) && (
-        <div
-          className="studio-contact-preview"
-          aria-label="Prévia privada dos links de contato"
-        >
-          {links.tel && <a href={links.tel}>testar ligação</a>}
-          {links.whatsapp && (
-            <a href={links.whatsapp} target="_blank" rel="noreferrer">
-              testar WhatsApp
-            </a>
-          )}
-        </div>
-      )}
       <label className="studio-check">
         <input
           type="checkbox"
@@ -749,14 +735,8 @@ export default function PortfolioEditor({
             prepara um anúncio em nome do titular.
           </p>
         </>
-      ) : (
-        <p className="studio-muted">
-          O aceite de maioridade, autorização e responsabilidade é único na
-          conta. Ele não é repetido ao salvar, editar ou anexar mídia deste
-          anúncio.
-        </p>
-      )}
-      <div className="studio-actions">
+      ) : null}
+      <div className="studio-actions ep-publish-bar">
         <button disabled={busy} onClick={() => void saveDraft()}>
           Salvar rascunho
         </button>
@@ -770,20 +750,13 @@ export default function PortfolioEditor({
           </button>
         )}
       </div>
-      {!admin && (
-        <p className="studio-notice">
-          O aceite de maioridade, autorização e responsabilidade é feito uma
-          única vez na conta. Se a conta ainda não estiver confirmada, abra
-          <a href="/conta"> Minha conta</a> para concluir antes de publicar.
-        </p>
-      )}
-      <section className="studio-panel">
-        <h3>Fotos e vídeos do anúncio</h3>
+      <section className="studio-panel ep-photos">
+        <h3>Fotos e vídeos</h3>
         <>
-          <label>
+          <label className="ep-file">
             {admin
-              ? "Adicionar arquivo em nome do titular"
-              : "Adicionar arquivo"}
+              ? "Adicionar arquivos em nome do titular"
+              : "Escolha as fotos e vídeos (pode marcar vários de uma vez)"}
             <input
               disabled={busy || (admin && !consent)}
               type="file"
@@ -798,8 +771,7 @@ export default function PortfolioEditor({
           <p className="studio-muted">
             {admin && !consent
               ? "Marque a autorização operacional acima para liberar o envio."
-              : "Imagens até 12 MB e vídeos até 100 MB. Você pode selecionar vários arquivos; o rascunho é salvo automaticamente quando necessário."}{" "}
-            A galeria só fica pública quando o anúncio for publicado.
+              : "Fotos até 12 MB e vídeos até 100 MB. Use só imagens que você pode publicar."}
           </p>
           {uploadQueue.length > 0 && (
             <div className="studio-upload-queue" aria-live="polite">
@@ -859,7 +831,10 @@ export default function PortfolioEditor({
                     />
                   )}
                   <p>
-                    {m.status} · {m.kind === "photo" ? "Foto" : "Vídeo"}
+                    {{ approved: "No ar", pending: "Processando", rejected: "Recusada" }[
+                      m.status as string
+                    ] ?? m.status}{" "}
+                    · {m.kind === "photo" ? "Foto" : "Vídeo"}
                   </p>
                   {!admin && (
                     <div className="studio-fields">

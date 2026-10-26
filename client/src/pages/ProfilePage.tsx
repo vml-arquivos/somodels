@@ -7,6 +7,7 @@ import StudioHeader from "@/components/StudioHeader";
 import PublicFooter from "@/components/PublicFooter";
 import Seo from "@/components/Seo";
 import AdultGate, { useAdultAccess } from "@/components/AdultGate";
+import { usePublicLight } from "@/contexts/ThemeContext";
 import ListingCard from "@/components/ListingCard";
 import { formatBRL } from "@shared/discovery-options";
 import {
@@ -19,9 +20,15 @@ const contactMethods = ["whatsapp", "phone", "telegram"] as const;
 type ContactMethod = (typeof contactMethods)[number];
 
 const contactLabels: Record<ContactMethod, string> = {
-  whatsapp: "Abrir WhatsApp",
+  whatsapp: "Chamar no WhatsApp",
   phone: "Ligar agora",
-  telegram: "Abrir Telegram",
+  telegram: "Chamar no Telegram",
+};
+
+const contactClass: Record<ContactMethod, string> = {
+  whatsapp: "ep-btn ep-btn-wa",
+  phone: "ep-btn ep-btn-primary",
+  telegram: "ep-btn ep-btn-ghost",
 };
 
 function isContactMethod(value: unknown): value is ContactMethod {
@@ -36,14 +43,21 @@ function DetailList({ title, items }: { title: string; items: unknown }) {
     : [];
   if (!values.length) return null;
   return (
-    <div className="studio-profile-detail-group">
+    <div className="ep-detail">
       <dt>{title}</dt>
-      <dd>{values.join(" · ")}</dd>
+      <dd>
+        {values.map(value => (
+          <span className="ep-chip-static" key={String(value)}>
+            {String(value)}
+          </span>
+        ))}
+      </dd>
     </div>
   );
 }
 
 export default function ProfilePage() {
+  usePublicLight();
   const { slug = "" } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const utils = trpc.useUtils();
@@ -58,6 +72,7 @@ export default function ProfilePage() {
   const profileId = data?.profile.id ?? 0;
   const flags = config.data?.featureFlags;
   const [reportOpen, setReportOpen] = useState(false);
+  const [activePhoto, setActivePhoto] = useState(0);
   const [reportCategory, setReportCategory] = useState<ReportCategory>("other");
   const [reportDescription, setReportDescription] = useState("");
 
@@ -119,6 +134,8 @@ export default function ProfilePage() {
     onError: error => toast.error(error.message),
   });
 
+  useEffect(() => setActivePhoto(0), [slug]);
+
   const trackView = trpc.profiles.trackView.useMutation();
   const publicProfileId = data?.profile.id;
   useEffect(() => {
@@ -141,427 +158,399 @@ export default function ProfilePage() {
   if (!adultAccess.ready)
     return <AdultGate access={adultAccess}>{null}</AdultGate>;
 
+  const profile = data?.profile;
+  const photoUrls = data
+    ? Array.from(
+        new Set(
+          [
+            profile?.avatarUrl,
+            ...data.media
+              .filter(media => !media.isPremium && media.kind === "photo")
+              .map(media => media.url),
+          ].filter((url): url is string => Boolean(url))
+        )
+      )
+    : [];
+  const videos = data
+    ? data.media.filter(
+        media => !media.isPremium && media.kind === "video" && media.url
+      )
+    : [];
+  const currentPhoto = photoUrls[Math.min(activePhoto, photoUrls.length - 1)];
+  const canContact =
+    flags?.secureContactEnabled === true &&
+    settings.data?.showContact === true &&
+    !blockStatus.data?.blocked;
+
   return (
-    <div className="studio">
+    <div className="studio studio-public ep-page">
       <StudioHeader />
-      <main className="studio-main">
-        <Link href="/">← Voltar aos anúncios</Link>
-        {result.isLoading ? (
-          <p>Carregando anúncio…</p>
-        ) : result.error ? (
-          <p role="alert">Não foi possível carregar o anúncio.</p>
-        ) : !data ? (
-          <section className="studio-panel">
-            <h1>Anúncio indisponível</h1>
-            <p>
-              Este anúncio pode estar em revisão, inativo ou ainda não
-              publicado.
+      <main className="ep-main ep-profile-page">
+        <div className="ep-wrap">
+          <nav className="ep-breadcrumb" aria-label="Navegação">
+            <Link href="/">← Todos os anúncios</Link>
+          </nav>
+          {result.isLoading ? (
+            <p className="ep-note">Carregando anúncio…</p>
+          ) : result.error ? (
+            <p className="ep-note" role="alert">
+              Não foi possível carregar o anúncio. Tente de novo.
             </p>
-          </section>
-        ) : (
-          <>
-            <Seo
-              title={`${data.profile.stageName} — Ero Models`}
-              description={
-                data.profile.description || "Anúncio adulto na Ero Models"
-              }
-              path={`/perfil/${slug}`}
-              image={data.profile.avatarUrl || undefined}
-              jsonLd={{
-                "@context": "https://schema.org",
-                "@type": "ProfilePage",
-                name: data.profile.stageName,
-                url: new URL(
-                  `/perfil/${slug}`,
-                  window.location.origin
-                ).toString(),
-                dateModified: new Date(data.profile.updatedAt).toISOString(),
-                mainEntity: {
-                  "@type": "Person",
-                  name: data.profile.stageName,
-                  jobTitle: "Acompanhante",
-                  description: data.profile.description || undefined,
-                  image: data.profile.avatarUrl || undefined,
-                  worksFor: { "@type": "Organization", name: "Ero Models" },
-                },
-              }}
-              noindex={Boolean(
-                config.data?.robotsNoIndex ||
-                  config.data?.ageVerificationRequired ||
-                  !config.data?.publicLaunchEnabled
-              )}
-            />
-            <section className="studio-profile-hero studio-listing-detail-hero">
-              <div className="studio-profile-cover">
-                <div className="studio-cover">
-                  {data.profile.avatarUrl ? (
-                    <img
-                      src={data.profile.avatarUrl}
-                      alt={`Capa do anúncio de ${data.profile.stageName}`}
-                    />
-                  ) : (
-                    <span>{data.profile.stageName.slice(0, 1)}</span>
-                  )}
-                  <span className="studio-listing-age">+18</span>
-                  {data.profile.isAvailableNow && (
-                    <span className="studio-listing-availability">
-                      Disponível agora
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div>
-                <p className="studio-kicker">
-                  {(data.profile.categories || []).join(" · ") ||
-                    "Acompanhante"}
-                </p>
-                <h1>{data.profile.stageName}</h1>
-                <p className="studio-profile-location">
-                  {data.profile.city}
-                  {data.profile.region ? ` / ${data.profile.region}` : ""}
-                  {data.profile.neighborhood
-                    ? ` · ${data.profile.neighborhood}`
-                    : ""}
-                </p>
-                {data.profile.age && <p>{data.profile.age} anos</p>}
-                {data.profile.identityVerified && (
-                  <p className="studio-listing-status">
-                    ✓ Identidade verificada pela Ero Models
-                  </p>
+          ) : !data || !profile ? (
+            <section className="ep-empty">
+              <h1>Anúncio indisponível</h1>
+              <p>Este anúncio saiu do ar ou o endereço está errado.</p>
+              <Link className="ep-btn ep-btn-primary" href="/">
+                Ver outros anúncios
+              </Link>
+            </section>
+          ) : (
+            <>
+              <Seo
+                title={`${profile.stageName} — Ero Models`}
+                description={
+                  profile.description || "Anúncio de acompanhante na Ero Models"
+                }
+                path={`/perfil/${slug}`}
+                image={profile.avatarUrl || undefined}
+                jsonLd={{
+                  "@context": "https://schema.org",
+                  "@type": "ProfilePage",
+                  name: profile.stageName,
+                  url: new URL(
+                    `/perfil/${slug}`,
+                    window.location.origin
+                  ).toString(),
+                  dateModified: new Date(profile.updatedAt).toISOString(),
+                  mainEntity: {
+                    "@type": "Person",
+                    name: profile.stageName,
+                    jobTitle: "Acompanhante",
+                    description: profile.description || undefined,
+                    image: profile.avatarUrl || undefined,
+                    worksFor: { "@type": "Organization", name: "Ero Models" },
+                  },
+                }}
+                noindex={Boolean(
+                  config.data?.robotsNoIndex ||
+                    config.data?.ageVerificationRequired ||
+                    !config.data?.publicLaunchEnabled
                 )}
-                {typeof data.profile.priceFromCents === "number" && (
-                  <p className="studio-listing-price">
-                    A partir de{" "}
-                    <strong>{formatBRL(data.profile.priceFromCents)}</strong>{" "}
-                    por hora
-                  </p>
-                )}
-                {data.profile.availabilityLabel && (
-                  <p className="studio-listing-status">
-                    {data.profile.availabilityLabel}
-                  </p>
-                )}
-                <p className="studio-description">
-                  {data.profile.description ||
-                    "O titular ainda não adicionou uma apresentação pública para este anúncio."}
-                </p>
+              />
 
-                <div
-                  className="studio-actions"
-                  aria-label="Ações de segurança do anúncio"
-                >
-                  {user && flags?.favoritesEnabled && (
-                    <button
-                      disabled={favorite.isPending || unfavorite.isPending}
-                      onClick={async () => {
-                        if (favoriteStatus.data?.favorited)
-                          await unfavorite.mutateAsync({
-                            profileId: data.profile.id,
-                          });
-                        else
-                          await favorite.mutateAsync({
-                            profileId: data.profile.id,
-                          });
-                        await refreshSafety();
-                      }}
-                    >
-                      {favoriteStatus.data?.favorited
-                        ? "Remover favorito"
-                        : "Salvar anúncio"}
-                    </button>
+              <div className="ep-profile-grid">
+                <section className="ep-gallery" aria-label="Fotos do anúncio">
+                  <div className="ep-gallery-main">
+                    {currentPhoto ? (
+                      <img
+                        src={currentPhoto}
+                        alt={`Foto de ${profile.stageName}`}
+                      />
+                    ) : (
+                      <span className="ep-gallery-empty">
+                        {profile.stageName.slice(0, 1)}
+                      </span>
+                    )}
+                    {profile.isAvailableNow && (
+                      <span className="ep-card-now">Disponível agora</span>
+                    )}
+                  </div>
+                  {photoUrls.length > 1 && (
+                    <ul className="ep-thumbs">
+                      {photoUrls.map((url, index) => (
+                        <li key={url}>
+                          <button
+                            type="button"
+                            className={index === activePhoto ? "is-on" : ""}
+                            aria-label={`Ver foto ${index + 1}`}
+                            onClick={() => setActivePhoto(index)}
+                          >
+                            <img src={url} alt="" loading="lazy" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                  {user && flags?.blockingEnabled && (
-                    <button
-                      disabled={block.isPending || unblock.isPending}
-                      onClick={() =>
-                        blockStatus.data?.blocked
-                          ? unblock.mutate({ profileId: data.profile.id })
-                          : block.mutate({ profileId: data.profile.id })
-                      }
-                    >
-                      {blockStatus.data?.blocked ? "Desbloquear" : "Bloquear"}
-                    </button>
-                  )}
-                  {user && flags?.reportsEnabled && (
-                    <button onClick={() => setReportOpen(value => !value)}>
-                      Denunciar
-                    </button>
-                  )}
-                </div>
+                </section>
 
-                {!user &&
-                  (flags?.secureContactEnabled ||
-                    flags?.favoritesEnabled ||
-                    flags?.blockingEnabled ||
-                    flags?.reportsEnabled) && (
-                    <p className="studio-muted">
-                      <Link href={`/login?returnTo=/perfil/${slug}`}>
-                        Entre na sua conta
-                      </Link>{" "}
-                      para usar contato e recursos de segurança.
+                <aside className="ep-profile-info">
+                  <p className="ep-eyebrow">
+                    {(profile.categories || []).join(" · ") || "Acompanhante"}
+                  </p>
+                  <h1>{profile.stageName}</h1>
+                  <p className="ep-profile-place">
+                    {profile.age ? `${profile.age} anos · ` : ""}
+                    {profile.neighborhood ? `${profile.neighborhood}, ` : ""}
+                    {profile.city}
+                    {profile.region ? ` / ${profile.region}` : ""}
+                  </p>
+                  <div className="ep-slide-tags">
+                    {profile.identityVerified && (
+                      <span className="ep-tag ep-tag-light">Verificada</span>
+                    )}
+                    {profile.availabilityLabel && (
+                      <span className="ep-tag ep-tag-dark">
+                        {profile.availabilityLabel}
+                      </span>
+                    )}
+                  </div>
+                  {typeof profile.priceFromCents === "number" && (
+                    <p className="ep-profile-price">
+                      <small>A partir de</small>
+                      <strong>{formatBRL(profile.priceFromCents)}</strong>
+                      <small>por hora</small>
                     </p>
                   )}
 
-                {user &&
-                  flags?.secureContactEnabled &&
-                  settings.data?.showContact === true &&
-                  !blockStatus.data?.blocked && (
-                    <section
-                      className="studio-contact-panel"
-                      aria-label="Contato do anúncio"
-                    >
-                      <p className="studio-kicker">Contato direto</p>
-                      <h2>Fale com este anúncio</h2>
-                      <p className="studio-muted">
-                        A saída para o canal externo é registrada para
-                        segurança. A conversa passa a ocorrer fora da Ero
-                        Models.
-                      </p>
+                  {canContact && (
+                    <div className="ep-contact" aria-label="Contato do anúncio">
                       {availableContactMethods.length ? (
-                        <div className="studio-actions">
-                          {availableContactMethods.map(method => (
-                            <button
-                              className="studio-cta"
-                              key={method}
-                              disabled={contact.isPending}
-                              onClick={() =>
-                                contact.mutate({
-                                  profileId: data.profile.id,
-                                  method,
-                                })
-                              }
-                            >
-                              {contactLabels[method]}
-                            </button>
-                          ))}
-                        </div>
+                        availableContactMethods.map(method => (
+                          <button
+                            key={method}
+                            type="button"
+                            className={contactClass[method]}
+                            disabled={contact.isPending}
+                            onClick={() =>
+                              contact.mutate({
+                                profileId: profile.id,
+                                method,
+                              })
+                            }
+                          >
+                            {contactLabels[method]}
+                          </button>
+                        ))
                       ) : (
-                        <p>
-                          Nenhum canal autorizado está disponível neste momento.
+                        <p className="ep-note">
+                          Este anúncio ainda não informou um contato.
                         </p>
                       )}
-                    </section>
-                  )}
-
-                {reportOpen && user && flags?.reportsEnabled && (
-                  <section
-                    className="studio-panel"
-                    aria-label="Formulário de denúncia"
-                  >
-                    <h3>Denunciar este anúncio</h3>
-                    <label>
-                      Categoria
-                      <select
-                        value={reportCategory}
-                        onChange={event =>
-                          setReportCategory(
-                            event.target.value as ReportCategory
-                          )
-                        }
-                      >
-                        {reportCategories.map(category => (
-                          <option key={category} value={category}>
-                            {reportCategoryLabels[category]}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Descrição
-                      <textarea
-                        rows={5}
-                        maxLength={200}
-                        value={reportDescription}
-                        onChange={event =>
-                          setReportDescription(event.target.value)
-                        }
-                        placeholder="Explique objetivamente o que aconteceu. Não inclua documentos, senhas ou dados sensíveis."
-                      />
-                    </label>
-                    <div className="studio-actions">
-                      <button
-                        className="primary"
-                        disabled={
-                          report.isPending ||
-                          reportDescription.trim().length < 10
-                        }
-                        onClick={() =>
-                          report.mutate({
-                            profileId: data.profile.id,
-                            category: reportCategory,
-                            description: reportDescription,
-                          })
-                        }
-                      >
-                        Enviar denúncia
-                      </button>
-                      <button onClick={() => setReportOpen(false)}>
-                        Cancelar
-                      </button>
+                      <p className="ep-contact-note">
+                        A conversa acontece fora da Ero Models. Combine tudo
+                        direto e nunca pague adiantado.
+                      </p>
                     </div>
-                  </section>
-                )}
-              </div>
-            </section>
+                  )}
 
-            <section
-              className="studio-profile-details"
-              aria-labelledby="details-title"
-            >
-              <div className="studio-panel">
-                <p className="studio-kicker">Informações públicas</p>
-                <h2 id="details-title">Especificações do anúncio</h2>
-                <dl className="studio-details">
-                  <dt>Localização</dt>
-                  <dd>
-                    {data.profile.city}
-                    {data.profile.region ? ` / ${data.profile.region}` : ""}
-                  </dd>
-                  {(data.profile.neighborhood || data.profile.locationNote) && (
-                    <>
-                      <dt>Bairro ou região aproximada</dt>
-                      <dd>
-                        {data.profile.neighborhood || data.profile.locationNote}
-                      </dd>
-                    </>
+                  <div className="ep-profile-links">
+                    {user && flags?.favoritesEnabled && (
+                      <button
+                        type="button"
+                        disabled={favorite.isPending || unfavorite.isPending}
+                        onClick={async () => {
+                          if (favoriteStatus.data?.favorited)
+                            await unfavorite.mutateAsync({
+                              profileId: profile.id,
+                            });
+                          else
+                            await favorite.mutateAsync({
+                              profileId: profile.id,
+                            });
+                          await refreshSafety();
+                        }}
+                      >
+                        {favoriteStatus.data?.favorited
+                          ? "Remover dos favoritos"
+                          : "Salvar nos favoritos"}
+                      </button>
+                    )}
+                    {user && flags?.blockingEnabled && (
+                      <button
+                        type="button"
+                        disabled={block.isPending || unblock.isPending}
+                        onClick={() =>
+                          blockStatus.data?.blocked
+                            ? unblock.mutate({ profileId: profile.id })
+                            : block.mutate({ profileId: profile.id })
+                        }
+                      >
+                        {blockStatus.data?.blocked ? "Desbloquear" : "Bloquear"}
+                      </button>
+                    )}
+                    {flags?.reportsEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => setReportOpen(value => !value)}
+                      >
+                        Denunciar anúncio
+                      </button>
+                    )}
+                  </div>
+
+                  {reportOpen && flags?.reportsEnabled && (
+                    <form
+                      className="ep-report"
+                      aria-label="Denunciar este anúncio"
+                      onSubmit={event => {
+                        event.preventDefault();
+                        report.mutate({
+                          profileId: profile.id,
+                          category: reportCategory,
+                          description: reportDescription,
+                        });
+                      }}
+                    >
+                      <h2>Denunciar este anúncio</h2>
+                      <label>
+                        Motivo
+                        <select
+                          value={reportCategory}
+                          onChange={event =>
+                            setReportCategory(
+                              event.target.value as ReportCategory
+                            )
+                          }
+                        >
+                          {reportCategories.map(category => (
+                            <option key={category} value={category}>
+                              {reportCategoryLabels[category]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        O que aconteceu
+                        <textarea
+                          rows={4}
+                          maxLength={200}
+                          value={reportDescription}
+                          onChange={event =>
+                            setReportDescription(event.target.value)
+                          }
+                          placeholder="Conte em poucas palavras. Não envie documentos nem senhas."
+                        />
+                      </label>
+                      <div className="ep-report-actions">
+                        <button
+                          type="submit"
+                          className="ep-btn ep-btn-primary"
+                          disabled={
+                            report.isPending ||
+                            reportDescription.trim().length < 10
+                          }
+                        >
+                          Enviar denúncia
+                        </button>
+                        <button
+                          type="button"
+                          className="ep-btn ep-btn-ghost"
+                          onClick={() => setReportOpen(false)}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
                   )}
-                  {data.profile.age && (
-                    <>
+                </aside>
+              </div>
+
+              <section className="ep-profile-block">
+                <h2>Sobre</h2>
+                <p className="ep-profile-about">
+                  {profile.description ||
+                    "Esta pessoa ainda não escreveu uma apresentação."}
+                </p>
+              </section>
+
+              <section className="ep-profile-block" aria-labelledby="details-title">
+                <h2 id="details-title">Informações</h2>
+                <dl className="ep-details">
+                  <div className="ep-detail">
+                    <dt>Cidade</dt>
+                    <dd>
+                      {profile.city}
+                      {profile.region ? ` / ${profile.region}` : ""}
+                    </dd>
+                  </div>
+                  {(profile.neighborhood || profile.locationNote) && (
+                    <div className="ep-detail">
+                      <dt>Bairro</dt>
+                      <dd>{profile.neighborhood || profile.locationNote}</dd>
+                    </div>
+                  )}
+                  {profile.age && (
+                    <div className="ep-detail">
                       <dt>Idade</dt>
-                      <dd>{data.profile.age} anos</dd>
-                    </>
+                      <dd>{profile.age} anos</dd>
+                    </div>
                   )}
-                  <dt>Disponibilidade</dt>
-                  <dd>
-                    {data.profile.isAvailableNow
-                      ? "Disponível agora"
-                      : data.profile.availabilityLabel ||
-                        "Consultar no contato"}
-                  </dd>
+                  <div className="ep-detail">
+                    <dt>Disponibilidade</dt>
+                    <dd>
+                      {profile.isAvailableNow
+                        ? "Disponível agora"
+                        : profile.availabilityLabel || "Combine pelo contato"}
+                    </dd>
+                  </div>
+                  <DetailList title="Categorias" items={profile.categories} />
                   <DetailList
-                    title="Categorias"
-                    items={data.profile.categories}
+                    title="Onde atende"
+                    items={profile.attendancePlaces}
                   />
-                  <DetailList
-                    title="Local de atendimento"
-                    items={data.profile.attendancePlaces}
-                  />
-                  <DetailList title="Serviços" items={data.profile.services} />
+                  <DetailList title="Serviços" items={profile.services} />
                   <DetailList
                     title="Características"
-                    items={data.profile.attributes}
+                    items={profile.attributes}
                   />
-                  <DetailList title="Idiomas" items={data.profile.languages} />
+                  <DetailList title="Idiomas" items={profile.languages} />
                   <DetailList
                     title="Preferências"
-                    items={data.profile.preferences}
+                    items={profile.preferences}
                   />
                   <DetailList
-                    title="Formas de atendimento"
-                    items={data.profile.contactOptions}
+                    title="Como atende"
+                    items={profile.contactOptions}
                   />
                   <DetailList
-                    title="Formas de pagamento"
-                    items={data.profile.paymentMethods}
+                    title="Pagamento"
+                    items={profile.paymentMethods}
                   />
                 </dl>
-              </div>
-              <div className="studio-panel studio-profile-trust">
-                <p className="studio-kicker">Uso responsável</p>
-                <h2>Antes de entrar em contato</h2>
-                <p>
-                  Confirme informações, limites e condições diretamente com o
-                  titular. Não faça pagamentos antecipados para a plataforma e
-                  interrompa a interação diante de pressão, ameaça ou pedido
-                  suspeito.
-                </p>
-                <Link href="/seguranca">Ver orientações de segurança</Link>
-              </div>
-            </section>
-
-            <section aria-labelledby="gallery-title">
-              <div className="studio-title">
-                <div>
-                  <p className="studio-kicker">Conteúdo autorizado</p>
-                  <h2 id="gallery-title">Fotos e vídeos do anúncio</h2>
-                </div>
-                <small>{data.media.length} arquivo(s) publicado(s)</small>
-              </div>
-              <div className="studio-gallery studio-ad-gallery">
-                {data.media
-                  .filter(media => media.isPremium || media.url)
-                  .map(media => (
-                    <figure
-                      key={media.id}
-                      className={`studio-profile-media-card ${media.kind === "video" ? "is-video" : ""}`}
-                    >
-                      {media.isPremium ? (
-                        <div className="studio-panel" role="status">
-                          <p className="studio-kicker">Conteúdo reservado</p>
-                          <strong>
-                            Este conteúdo premium não está disponível
-                          </strong>
-                          <p className="studio-muted">
-                            A plataforma ainda não oferece checkout ou liberação
-                            paga.
-                          </p>
-                        </div>
-                      ) : (
-                        <>
-                          {media.kind === "photo" ? (
-                            <img
-                              src={media.url!}
-                              alt={
-                                media.title ||
-                                `Foto de ${data.profile.stageName}`
-                              }
-                              loading="lazy"
-                            />
-                          ) : (
-                            <video
-                              src={media.url!}
-                              controls
-                              preload="metadata"
-                              aria-label={
-                                media.title ||
-                                `Vídeo de ${data.profile.stageName}`
-                              }
-                            />
-                          )}
-                          {media.kind === "video" && (
-                            <span className="studio-media-kind">Vídeo</span>
-                          )}
-                        </>
-                      )}
-                      {media.title && <figcaption>{media.title}</figcaption>}
-                    </figure>
-                  ))}
-              </div>
-              {!data.media.filter(media => media.isPremium || media.url)
-                .length && (
-                <div className="studio-panel">
-                  <p>Este anúncio ainda não possui mídia pública aprovada.</p>
-                </div>
-              )}
-            </section>
-
-            {data.related?.length > 0 && (
-              <section aria-labelledby="related-title">
-                <div className="studio-title">
-                  <div>
-                    <p className="studio-kicker">Mais na mesma cidade</p>
-                    <h2 id="related-title">Outros anúncios próximos</h2>
-                  </div>
-                </div>
-                <div className="studio-cards">
-                  {data.related.map(profile => (
-                    <ListingCard key={profile.id} profile={profile} />
-                  ))}
-                </div>
               </section>
-            )}
-          </>
-        )}
+
+              {videos.length > 0 && (
+                <section className="ep-profile-block">
+                  <h2>Vídeos</h2>
+                  <div className="ep-videos">
+                    {videos.map(media => (
+                      <video
+                        key={media.id}
+                        src={media.url!}
+                        controls
+                        preload="metadata"
+                        aria-label={
+                          media.title || `Vídeo de ${profile.stageName}`
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section className="ep-safety-note">
+                <h2>Cuidados ao marcar</h2>
+                <p>
+                  Confirme valores e condições direto com a pessoa. Não faça
+                  pagamento adiantado nem Pix para &ldquo;garantir&rdquo; horário.
+                  Desconfie de pressa, ameaça ou pedido estranho e{" "}
+                  <Link href="/seguranca">veja as dicas de segurança</Link>.
+                </p>
+              </section>
+
+              {data.related?.length > 0 && (
+                <section className="ep-profile-block" aria-labelledby="related-title">
+                  <h2 id="related-title">Outros anúncios em {profile.city}</h2>
+                  <div className="ep-grid">
+                    {data.related.map(item => (
+                      <ListingCard key={item.id} profile={item} />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+        </div>
       </main>
       <PublicFooter />
     </div>

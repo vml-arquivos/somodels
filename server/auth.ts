@@ -105,9 +105,9 @@ export async function bootstrapLocalAccounts() {
 }
 
 export function assertPasswordPolicy(password: string) {
-  if (password.length < 16) throw new TRPCError({ code: "BAD_REQUEST", message: "A senha precisa ter pelo menos 16 caracteres" });
-  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "A senha precisa combinar maiúsculas, minúsculas e números" });
+  if (password.length < 10) throw new TRPCError({ code: "BAD_REQUEST", message: "A senha precisa ter pelo menos 10 caracteres" });
+  if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "A senha precisa ter letras e números" });
   }
 }
 

@@ -6,11 +6,12 @@ import { trpc } from "@/lib/trpc";
 import PortfolioEditor from "@/components/PortfolioEditor";
 import AccountTermsPanel from "@/components/AccountTermsPanel";
 import StudioHeader from "@/components/StudioHeader";
+import { usePublicLight } from "@/contexts/ThemeContext";
 import Seo from "@/components/Seo";
 import { portfolioPublicationLabel } from "@shared/portfolio";
 import { evaluateListingQuality } from "@shared/listing-quality";
 const identityLabels: Record<string, string> = {
-  pending: "Em análise pela equipe",
+  pending: "Em análise",
   approved: "Identidade verificada",
   rejected: "Verificação recusada",
   expired: "Verificação expirada",
@@ -308,6 +309,7 @@ function StatsPanel({ profileId }: { profileId: number }) {
 }
 
 export default function OwnerDashboard() {
+  usePublicLight();
   const { user, loading, logout } = useAuth();
   const [location, navigate] = useLocation();
   const [id, setId] = useState<number | null>(null);
@@ -353,7 +355,7 @@ export default function OwnerDashboard() {
     setVersion(v => v + 1);
   }
   return (
-    <div className="studio">
+    <div className="studio studio-public ep-page">
       <Seo
         title="Meus anúncios — Ero Models"
         description="Área privada do titular dos anúncios."
@@ -364,18 +366,16 @@ export default function OwnerDashboard() {
           aria-label="Navegação do titular"
           className="studio-header-account-nav"
         >
-          <Link href="/conta">Minha conta</Link>
-          <Link href="/">Explorar anúncios</Link>
+          <Link href="/">Ver o site</Link>
           {user && <button onClick={() => void logout()}>Sair</button>}
         </nav>
       </StudioHeader>
-      <main className="studio-main">
-        <p className="studio-kicker">Área do titular</p>
-        <h1>Seu anúncio, sob seu controle.</h1>
-        <p className="studio-muted">
-          Preencha o essencial, salve quando quiser e publique quando os
-          requisitos estiverem completos. Revisão manual só entra em casos
-          específicos.
+      <main className="studio-main ep-dash">
+        <p className="ep-eyebrow">Meu painel</p>
+        <h1>Seus anúncios</h1>
+        <p className="ep-auth-intro">
+          Preencha o perfil, envie as fotos que quiser e publique. O anúncio
+          entra no ar na hora, sem fila de aprovação.
         </p>
         {loading ? (
           <p>Carregando…</p>
@@ -387,8 +387,10 @@ export default function OwnerDashboard() {
           </Link>
         ) : (
           <>
-            <div className="studio-actions">
+            <AccountTermsPanel />
+            <div className="ep-dash-actions">
               <button
+                className="ep-btn ep-btn-primary"
                 onClick={() => {
                   setId(null);
                   navigate("/titular");
@@ -397,11 +399,7 @@ export default function OwnerDashboard() {
               >
                 Novo anúncio
               </button>
-              <Link href="/alterar-senha?returnTo=/titular">Alterar senha</Link>
             </div>
-            <AccountPanel user={user} />
-            <AccountTermsPanel />
-            <IdentityPanel />
             <div className="studio-split">
               <aside className="studio-panel">
                 <h2>Meus anúncios</h2>
@@ -424,7 +422,7 @@ export default function OwnerDashboard() {
                         {p.city} · {portfolioPublicationLabel(p)}
                       </small>
                       <small>
-                        {p.rejectionReason || "Atualizado recentemente"}
+                        {p.rejectionReason || "Salvo"}
                       </small>
                     </button>
                   ))
@@ -458,15 +456,15 @@ export default function OwnerDashboard() {
                         className="studio-panel"
                         aria-label="Status de publicação"
                       >
-                        <p className="studio-kicker">Status operacional</p>
+                        <p className="studio-kicker">Situação do anúncio</p>
                         <h2>
                           {portfolioPublicationLabel(detail.data.profile)}
                         </h2>
                         <p>
                           {detail.data.profile.isPublished
-                            ? "Publicado na vitrine."
+                            ? "Seu anúncio está no ar."
                             : detail.data.profile.rejectionReason ||
-                              "Ainda não publicado."}
+                              "Ainda não está no ar."}
                         </p>
                         {detail.data.profile.isPublished && (
                           <Link
@@ -515,22 +513,22 @@ export default function OwnerDashboard() {
                           <p>Calculando checklist…</p>
                         ) : readiness.data ? (
                           <div>
-                            <h3>Checklist de publicação</h3>
+                            <h3>Falta algo para publicar?</h3>
                             <ul>
                               <li>
                                 {readiness.data.terms.current
-                                  ? "✓ Termo vigente aceito"
-                                  : "○ Aceite do termo ainda pendente"}
+                                  ? "✓ Termos da conta aceitos"
+                                  : "○ Confirme os termos da conta"}
                               </li>
                               <li>
                                 {readiness.data.approvedMediaCount > 0
-                                  ? "✓ Mídia pública aprovada"
-                                  : "○ Aprove ao menos uma mídia pública"}
+                                  ? "✓ Tem foto no anúncio"
+                                  : "○ Envie pelo menos uma foto"}
                               </li>
                               <li>
                                 {readiness.data.pendingMediaCount === 0
-                                  ? "✓ Sem mídia aguardando moderação"
-                                  : `○ ${readiness.data.pendingMediaCount} mídia(s) aguardando moderação`}
+                                  ? "✓ Fotos prontas"
+                                  : `○ ${readiness.data.pendingMediaCount} foto(s) ainda sendo processada(s)`}
                               </li>
                               {readiness.data.publicationBlockers.map(
                                 blocker => (
@@ -552,6 +550,16 @@ export default function OwnerDashboard() {
                 )}
               </section>
             </div>
+            <details className="ep-more ep-dash-more">
+              <summary>Minha conta, verificação e senha</summary>
+              <AccountPanel user={user} />
+              <IdentityPanel />
+              <p>
+                <Link href="/alterar-senha?returnTo=/titular">Alterar senha</Link>
+                {" · "}
+                <Link href="/conta">Minha conta de visitante</Link>
+              </p>
+            </details>
           </>
         )}
       </main>

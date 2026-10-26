@@ -61,7 +61,7 @@ describe("site settings normalization", () => {
     expect(settings.home.footer.tagline).not.toMatch(/Só Models|So Models/i);
   });
 
-  it("updates former default copy to describe automatic publication controls", () => {
+  it("replaces former default copy with the plain-language defaults", () => {
     const settings = normalizeSiteSettings({
       home: {
         hero: {
@@ -77,9 +77,9 @@ describe("site settings normalization", () => {
       },
     });
 
-    expect(settings.home.hero.notes[0]).toBe("Publicação automática");
-    expect(settings.home.holder.text).toContain(
-      "publicar quando estiver pronto"
-    );
+    expect(settings.home.hero.notes[0]).toBe("Só para maiores de 18 anos");
+    expect(settings.home.hero.notes[1]).toBe("Contato direto com quem anuncia");
+    expect(settings.home.holder.text).toContain("Sem fila de aprovação");
+    expect(settings.home.holder.text).not.toMatch(/revisão/i);
   });
 });

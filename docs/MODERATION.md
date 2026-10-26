@@ -8,8 +8,8 @@ Possível menor e tráfico/exploração/coerção recebem prioridade `urgent`. A
 
 ## Fluxo implementado
 
-1. Usuário autenticado denuncia um perfil público elegível.
-2. O backend rejeita auto-denúncia pela jornada pública e deduplica caso aberto do mesmo usuário/alvo.
+1. Qualquer visitante com idade confirmada (com ou sem conta) denuncia um perfil público elegível.
+2. O backend rejeita auto-denúncia pela jornada pública e deduplica caso aberto do mesmo usuário/alvo (denúncias sem conta têm limite por IP e não são deduplicadas).
 3. O caso é gravado em `moderation_cases` com categoria/descrição codificadas em `reason`, prioridade e estado `open`.
 4. A criação é auditada.
 5. Admin acessa fila sem exposição pública do denunciante e pode assumir, encerrar ou reabrir.

@@ -16,6 +16,8 @@ import PublicFooter from "@/components/PublicFooter";
 import Seo from "@/components/Seo";
 import AdultGate, { useAdultAccess } from "@/components/AdultGate";
 import ListingCard from "@/components/ListingCard";
+import FeaturedCarousel from "@/components/FeaturedCarousel";
+import { usePublicLight } from "@/contexts/ThemeContext";
 import {
   buildDiscoverySearch,
   categoryPath,
@@ -25,100 +27,7 @@ import {
   type DiscoveryFilters,
 } from "@/lib/discovery";
 
-const quickAttributes = [
-  "Com local",
-  "Atende externo",
-  "Virtual",
-  "Casal ou dupla",
-];
-
-function LandingHeading({
-  kicker,
-  title,
-  text,
-  align = "left",
-  id,
-}: {
-  kicker: string;
-  title: string;
-  text?: string;
-  align?: "left" | "center";
-  id?: string;
-}) {
-  return (
-    <div className={`studio-landing-heading studio-landing-heading-${align}`}>
-      <p className="studio-kicker">{kicker}</p>
-      <h2 id={id}>{title}</h2>
-      {text ? <p>{text}</p> : null}
-    </div>
-  );
-}
-
-function ProfilePreviewCard({ profile }: { profile: any }) {
-  return (
-    <Link
-      href={`/perfil/${profile.slug}`}
-      className="studio-profile-preview-card"
-    >
-      <div className="studio-profile-preview-image">
-        {profile.avatarUrl ? (
-          <img src={profile.avatarUrl} alt="" loading="lazy" />
-        ) : (
-          <span>{String(profile.stageName || "E").slice(0, 1)}</span>
-        )}
-        {profile.isAvailableNow ? <b>Disponível agora</b> : null}
-      </div>
-      <div>
-        <strong>{profile.stageName}</strong>
-        <span>
-          {[profile.city, profile.region].filter(Boolean).join(" / ") ||
-            "Localização não informada"}
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-function HeroProfileCard({
-  profile,
-  onNext,
-}: {
-  profile: any;
-  onNext: () => void;
-}) {
-  return (
-    <div className="studio-hero-profile-stage">
-      <Link
-        href={`/perfil/${profile.slug}`}
-        className="studio-hero-profile-card"
-      >
-        <div className="studio-hero-profile-image">
-          {profile.avatarUrl ? (
-            <img src={profile.avatarUrl} alt="" />
-          ) : (
-            <span>{String(profile.stageName || "E").slice(0, 1)}</span>
-          )}
-        </div>
-        <div className="studio-hero-profile-caption">
-          <strong>{profile.stageName}</strong>
-          <span>
-            {[profile.city, profile.region, profile.neighborhood]
-              .filter(Boolean)
-              .join(" / ") || "Perfil publicado"}
-          </span>
-        </div>
-      </Link>
-      <button
-        type="button"
-        className="studio-hero-profile-next"
-        onClick={onNext}
-        aria-label="Ver próximo perfil"
-      >
-        Próximo perfil <span aria-hidden="true">↗</span>
-      </button>
-    </div>
-  );
-}
+const quickAttributes = ["Com local", "Atende externo", "Virtual"];
 
 export function DiscoveryPage({
   fixedCity,
@@ -127,6 +36,7 @@ export function DiscoveryPage({
   fixedCity?: string;
   fixedCategory?: string;
 }) {
+  usePublicLight();
   const adultAccess = useAdultAccess();
   const [filters, setFilters] = useState<DiscoveryFilters>(() =>
     parseDiscoverySearch(window.location.search, fixedCity, fixedCategory)
@@ -198,11 +108,18 @@ export function DiscoveryPage({
       : null;
   const items = list.data?.slice(0, DISCOVERY_PAGE_SIZE) ?? [];
   const hasNext = (list.data?.length ?? 0) > DISCOVERY_PAGE_SIZE;
-  const [heroIndex, setHeroIndex] = useState(0);
-  const heroProfiles = items.slice(0, 4);
-  const heroProfile = heroProfiles.length
-    ? heroProfiles[heroIndex % heroProfiles.length]
-    : null;
+  const featuredQuery = trpc.profiles.list.useQuery(
+    {
+      city: fixedCity || undefined,
+      category: fixedCategory || undefined,
+      sort: "featured",
+      limit: 10,
+    },
+    { enabled: open }
+  );
+  const featured = (featuredQuery.data ?? [])
+    .filter(profile => Boolean(profile.avatarUrl))
+    .slice(0, 8);
   const hasNonCanonicalFilter = Boolean(
     filters.search ||
       (!fixedCity && filters.city) ||
@@ -246,7 +163,7 @@ export function DiscoveryPage({
   const description = fixedCity
     ? `Encontre anúncios de acompanhantes adultos em ${fixedCity}.`
     : fixedCategory
-      ? `Explore anúncios adultos na categoria ${fixedCategory}.`
+      ? `Veja os anúncios da categoria ${fixedCategory}.`
       : copy.hero.subtitle;
   const noindex = Boolean(
     config.data?.robotsNoIndex ||
@@ -269,18 +186,6 @@ export function DiscoveryPage({
     const current = `${window.location.pathname}${window.location.search}`;
     if (next !== current) window.history.replaceState(null, "", next);
   }, [filters, fixedCity, fixedCategory]);
-
-  useEffect(() => {
-    setHeroIndex(0);
-  }, [heroProfiles[0]?.id]);
-
-  useEffect(() => {
-    if (heroProfiles.length < 2) return;
-    const timer = window.setInterval(() => {
-      setHeroIndex(current => (current + 1) % heroProfiles.length);
-    }, 7000);
-    return () => window.clearInterval(timer);
-  }, [heroProfiles.length]);
 
   const updateFilter = (
     key: keyof Omit<DiscoveryFilters, "page">,
@@ -338,8 +243,40 @@ export function DiscoveryPage({
   if (!adultAccess.ready)
     return <AdultGate access={adultAccess}>{null}</AdultGate>;
 
+  const heroTitle = fixedCity
+    ? `Acompanhantes em ${fixedCity}`
+    : fixedCategory
+      ? fixedCategory
+      : copy.hero.title;
+  const heroLead =
+    fixedCity || fixedCategory ? description : copy.hero.subtitle;
+  const regionOptions = Array.from(
+    new Set(
+      (locations.data ?? [])
+        .map(location => location.region)
+        .filter((region): region is string => Boolean(region))
+    )
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const clearFilters = () =>
+    setFilters({
+      search: "",
+      city: fixedCity || "",
+      region: "",
+      category: fixedCategory || "",
+      attribute: "",
+      ageMin: "",
+      ageMax: "",
+      availableNow: false,
+      priceMax: "",
+      service: "",
+      place: "",
+      verifiedOnly: false,
+      sort: "featured",
+      page: 0,
+    });
+
   return (
-    <div className="studio studio-landing">
+    <div className="studio studio-public ep-page">
       <Seo
         title={title}
         description={description}
@@ -349,39 +286,23 @@ export function DiscoveryPage({
         jsonLd={jsonLd}
       />
       <StudioHeader />
-      <main className="studio-landing-main">
-        {(fixedCity || fixedCategory) && (
-          <div className="studio-main studio-landing-breadcrumb-wrap">
-            <nav
-              className="studio-breadcrumb"
-              aria-label="Navegação estrutural"
-            >
-              <Link href="/">Início</Link>
-              <span aria-hidden="true">/</span>
-              <span>{fixedCity || fixedCategory}</span>
-            </nav>
-          </div>
-        )}
-
-        <section className="studio-landing-hero" aria-labelledby="hero-title">
-          <div className="studio-landing-hero-inner">
-            <div className="studio-landing-hero-copy">
-              <p className="studio-landing-overline">
-                {copy.hero.eyebrow} <span>•</span> 18+
-              </p>
-              <h1 id="hero-title">
-                {fixedCity
-                  ? `Perfis em ${fixedCity}`
-                  : fixedCategory
-                    ? `Perfis de ${fixedCategory}`
-                    : copy.hero.title}
-              </h1>
-              <p className="studio-landing-hero-lead">
-                {fixedCity || fixedCategory ? description : copy.hero.subtitle}
-              </p>
-              <form className="studio-landing-search" onSubmit={submitSearch}>
-                <label>
-                  <span>{copy.hero.searchLabel}</span>
+      <main className="ep-main">
+        <section className="ep-hero" aria-labelledby="hero-title">
+          <div className="ep-wrap ep-hero-grid">
+            <div className="ep-hero-copy">
+              {(fixedCity || fixedCategory) && (
+                <nav className="ep-breadcrumb" aria-label="Navegação estrutural">
+                  <Link href="/">Início</Link>
+                  <span aria-hidden="true">/</span>
+                  <span>{fixedCity || fixedCategory}</span>
+                </nav>
+              )}
+              <p className="ep-eyebrow">{copy.hero.eyebrow} · 18+</p>
+              <h1 id="hero-title">{heroTitle}</h1>
+              <p className="ep-lead">{heroLead}</p>
+              <form className="ep-search" onSubmit={submitSearch} role="search">
+                <label className="ep-search-field">
+                  <span className="ep-sr">{copy.hero.searchLabel}</span>
                   <input
                     aria-label="Buscar anúncios"
                     placeholder={copy.hero.searchPlaceholder}
@@ -391,8 +312,8 @@ export function DiscoveryPage({
                     }
                   />
                 </label>
-                <label>
-                  <span>{copy.hero.locationLabel}</span>
+                <label className="ep-search-field">
+                  <span className="ep-sr">{copy.hero.locationLabel}</span>
                   <select
                     aria-label="Cidade"
                     value={fixedCity || filters.city}
@@ -411,605 +332,454 @@ export function DiscoveryPage({
                     ))}
                   </select>
                 </label>
-                <button className="primary" type="submit">
+                <button className="ep-btn ep-btn-primary" type="submit">
                   {copy.hero.buttonText}
                 </button>
               </form>
-              <div
-                className="studio-landing-hero-note"
-                aria-label="Características da plataforma"
-              >
+              <ul className="ep-hero-notes" aria-label="Sobre a plataforma">
                 {copy.hero.notes.map(note => (
-                  <span key={note}>{note}</span>
+                  <li key={note}>{note}</li>
                 ))}
-              </div>
+              </ul>
             </div>
-            <div className="studio-landing-hero-visual">
-              {heroProfile ? (
-                <HeroProfileCard
-                  profile={heroProfile}
-                  onNext={() =>
-                    setHeroIndex(current => (current + 1) % heroProfiles.length)
-                  }
-                />
+            <div className="ep-hero-visual">
+              {featured.length ? (
+                <FeaturedCarousel profiles={featured} />
               ) : (
-                <img
-                  src="/images/hero/ero-models-hero.webp"
-                  alt={copy.hero.imageAlt}
-                />
+                <div className="ep-hero-art">
+                  <img
+                    src="/images/hero/ero-models-hero.webp"
+                    alt={copy.hero.imageAlt}
+                    width="720"
+                    height="900"
+                  />
+                  <span className="ep-slide-shade" aria-hidden="true" />
+                  <p>
+                    <strong>{copy.hero.visualTitle}</strong>
+                    <span>{copy.hero.visualSubtitle}</span>
+                  </p>
+                </div>
               )}
-              <div className="studio-landing-hero-badge">
-                <strong>
-                  {heroProfile?.stageName || copy.hero.visualTitle}
-                </strong>
-                <span>
-                  {heroProfile
-                    ? [
-                        heroProfile.city,
-                        heroProfile.region,
-                        heroProfile.neighborhood,
-                      ]
-                        .filter(Boolean)
-                        .join(" / ") || copy.hero.visualSubtitle
-                    : copy.hero.visualSubtitle}
-                </span>
-              </div>
-              <span className="studio-landing-hero-line" aria-hidden="true" />
             </div>
           </div>
         </section>
-
-        <section
-          className="studio-landing-popular studio-main"
-          aria-labelledby="popular-title"
-        >
-          <div>
-            <p className="studio-kicker">{copy.quickLinks.kicker}</p>
-            <h2 id="popular-title">{copy.quickLinks.title}</h2>
-          </div>
-          <div className="studio-popular-links">
-            <a
-              href="#anuncios"
-              onClick={event => {
-                event.preventDefault();
-                scrollToListings();
-              }}
-            >
-              <span>01</span>
-              <strong>{copy.quickLinks.items[0].label}</strong>
-              <b aria-hidden="true">↗</b>
-            </a>
-            <Link href={categoryPath("Acompanhante")}>
-              <span>02</span>
-              <strong>{copy.quickLinks.items[1].label}</strong>
-              <b aria-hidden="true">↗</b>
-            </Link>
-            <Link href="/conta">
-              <span>03</span>
-              <strong>{copy.quickLinks.items[2].label}</strong>
-              <b aria-hidden="true">↗</b>
-            </Link>
-            <Link href="/cadastro">
-              <span>04</span>
-              <strong>{copy.quickLinks.items[3].label}</strong>
-              <b aria-hidden="true">↗</b>
-            </Link>
-          </div>
-        </section>
-
-        <section
-          className="studio-landing-section studio-landing-trust"
-          aria-labelledby="trust-title"
-        >
-          <LandingHeading
-            id="trust-title"
-            kicker={copy.trust.kicker}
-            title={copy.trust.title}
-            text={copy.trust.text}
-            align="center"
-          />
-          <div className="studio-main studio-trust-grid">
-            {copy.trust.points.map(point => (
-              <article key={point.title} className="studio-trust-card">
-                <span className="studio-trust-marker">{point.marker}</span>
-                <h3>{point.title}</h3>
-                <p>{point.text}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section
-          className="studio-landing-holder-cta"
-          aria-labelledby="holder-title"
-        >
-          <div className="studio-main studio-holder-cta-inner">
-            <div>
-              <p className="studio-kicker">{copy.holder.kicker}</p>
-              <h2 id="holder-title">{copy.holder.title}</h2>
-              <p>{copy.holder.text}</p>
-            </div>
-            <Link className="studio-cta" href="/cadastro">
-              {copy.holder.buttonText}
-            </Link>
-            <div
-              className="studio-holder-benefits"
-              aria-label={copy.holder.title}
-            >
-              {copy.holder.benefits.map(benefit => (
-                <span key={benefit}>{benefit}</span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {open && items.length > 0 && (
-          <section
-            className="studio-main studio-profile-rail"
-            aria-labelledby="featured-title"
-          >
-            <LandingHeading
-              id="featured-title"
-              kicker={copy.featured.kicker}
-              title={copy.featured.title}
-              text={copy.featured.text}
-            />
-            <div className="studio-profile-preview-grid">
-              {items.slice(0, 4).map(profile => (
-                <ProfilePreviewCard key={profile.id} profile={profile} />
-              ))}
-            </div>
-          </section>
-        )}
 
         <section
           id="anuncios"
-          className="studio-main studio-discovery-section"
+          className="ep-section ep-listings"
           aria-labelledby="listing-title"
         >
-          <div className="studio-title" id="busca">
-            <div>
-              <p className="studio-kicker">{copy.catalog.kicker}</p>
-              <h2 id="listing-title">
-                {fixedCity
-                  ? `Anúncios em ${fixedCity}`
-                  : fixedCategory
-                    ? `Anúncios: ${fixedCategory}`
-                    : copy.catalog.title}
-              </h2>
-            </div>
-            {open && items.length > 0 ? (
-              <span className="studio-catalog-status">
-                {copy.catalog.status}
-              </span>
-            ) : null}
-          </div>
-
-          {settings.error ? (
-            <p className="studio-error">{copy.catalog.errorText}</p>
-          ) : !open ? (
-            <div className="studio-panel studio-launch-panel studio-landing-empty">
-              <p className="studio-kicker">{copy.catalog.launchKicker}</p>
-              <h3>{copy.catalog.launchTitle}</h3>
-              <p>{copy.catalog.launchText}</p>
-              <Link className="studio-cta" href="/cadastro">
-                {copy.catalog.launchButton}
-              </Link>
-            </div>
-          ) : (
-            <>
-              <div className="studio-discovery-controls">
-                <div className="studio-toolbar studio-toolbar-primary">
-                  <input
-                    aria-label="Buscar anúncios"
-                    placeholder={copy.hero.searchPlaceholder}
-                    value={filters.search}
-                    onChange={event =>
-                      updateFilter("search", event.target.value)
-                    }
-                  />
-                  {!fixedCity && !fixedCategory ? (
-                    <input
-                      aria-label="Cidade"
-                      list="ero-location-options"
-                      placeholder="Cidade ou região"
-                      value={filters.city}
-                      onChange={event =>
-                        updateFilter("city", event.target.value)
-                      }
-                    />
-                  ) : null}
-                </div>
-
-                <div
-                  className="studio-filter-chips"
-                  aria-label="Filtros rápidos"
-                >
-                  <button
-                    type="button"
-                    className={filters.availableNow ? "active" : ""}
-                    aria-pressed={filters.availableNow}
-                    onClick={() =>
-                      setFilters(current => ({
-                        ...current,
-                        availableNow: !current.availableNow,
-                        page: 0,
-                      }))
-                    }
-                  >
-                    Disponível agora
-                  </button>
-                  <button
-                    type="button"
-                    className={filters.verifiedOnly ? "active" : ""}
-                    aria-pressed={filters.verifiedOnly}
-                    onClick={() =>
-                      setFilters(current => ({
-                        ...current,
-                        verifiedOnly: !current.verifiedOnly,
-                        page: 0,
-                      }))
-                    }
-                  >
-                    Identidade verificada
-                  </button>
-                  {quickAttributes.slice(0, 3).map(attribute => (
-                    <button
-                      type="button"
-                      className={
-                        filters.attribute === attribute ? "active" : ""
-                      }
-                      aria-pressed={filters.attribute === attribute}
-                      key={attribute}
-                      onClick={() =>
-                        updateFilter(
-                          "attribute",
-                          filters.attribute === attribute ? "" : attribute
-                        )
-                      }
-                    >
-                      {attribute}
-                    </button>
-                  ))}
-                </div>
-
-                <details
-                  className="studio-filter-details"
-                  open={activeFiltersCount > 0}
-                >
-                  <summary>
-                    Filtros avançados
-                    {activeFiltersCount > 0 ? (
-                      <span>{activeFiltersCount} ativos</span>
-                    ) : null}
-                  </summary>
-                  <div className="studio-toolbar studio-toolbar-advanced">
-                    <select
-                      aria-label="Categoria do anúncio"
-                      disabled={Boolean(fixedCategory)}
-                      value={filters.category}
-                      onChange={event =>
-                        updateFilter("category", event.target.value)
-                      }
-                    >
-                      <option value="">Todas as categorias</option>
-                      {portfolioCategories.map(category => (
-                        <option key={category}>{category}</option>
-                      ))}
-                    </select>
-                    <input
-                      aria-label="Estado ou região"
-                      placeholder="Estado / região"
-                      value={filters.region}
-                      onChange={event =>
-                        updateFilter("region", event.target.value)
-                      }
-                    />
-                    <select
-                      aria-label="Característica do anúncio"
-                      value={filters.attribute}
-                      onChange={event =>
-                        updateFilter("attribute", event.target.value)
-                      }
-                    >
-                      <option value="">Qualquer característica</option>
-                      {quickAttributes.map(attribute => (
-                        <option key={attribute}>{attribute}</option>
-                      ))}
-                      <option value="Viagens">Viagens</option>
-                      <option value="Bilíngue">Bilíngue</option>
-                    </select>
-                    <input
-                      aria-label="Idade mínima"
-                      placeholder="Idade mín."
-                      inputMode="numeric"
-                      maxLength={2}
-                      value={filters.ageMin}
-                      onChange={event =>
-                        updateAgeFilter("ageMin", event.target.value)
-                      }
-                    />
-                    <input
-                      aria-label="Idade máxima"
-                      placeholder="Idade máx."
-                      inputMode="numeric"
-                      maxLength={2}
-                      value={filters.ageMax}
-                      onChange={event =>
-                        updateAgeFilter("ageMax", event.target.value)
-                      }
-                    />
-                    <select
-                      aria-label="Faixa de preço"
-                      value={filters.priceMax}
-                      onChange={event =>
-                        updateFilter("priceMax", event.target.value)
-                      }
-                    >
-                      <option value="">Qualquer preço</option>
-                      {priceBands.map(band => (
-                        <option
-                          key={band.maxCents}
-                          value={String(band.maxCents)}
-                        >
-                          {band.label}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      aria-label="Local de atendimento"
-                      value={filters.place}
-                      onChange={event =>
-                        updateFilter("place", event.target.value)
-                      }
-                    >
-                      <option value="">Qualquer local de atendimento</option>
-                      {attendancePlaceOptions.map(place => (
-                        <option key={place}>{place}</option>
-                      ))}
-                    </select>
-                    <select
-                      aria-label="Serviço oferecido"
-                      value={filters.service}
-                      onChange={event =>
-                        updateFilter("service", event.target.value)
-                      }
-                    >
-                      <option value="">Qualquer serviço</option>
-                      {serviceOptions.map(service => (
-                        <option key={service}>{service}</option>
-                      ))}
-                    </select>
-                    <select
-                      aria-label="Ordenar anúncios"
-                      value={filters.sort}
-                      onChange={event =>
-                        updateFilter(
-                          "sort",
-                          event.target.value as typeof filters.sort
-                        )
-                      }
-                    >
-                      <option value="featured">Mais relevantes</option>
-                      <option value="available">Disponíveis primeiro</option>
-                      <option value="recent">Atualizados recentemente</option>
-                      <option value="price_asc">Menor preço</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() =>
-                        setFilters({
-                          search: "",
-                          city: fixedCity || "",
-                          region: "",
-                          category: fixedCategory || "",
-                          attribute: "",
-                          ageMin: "",
-                          ageMax: "",
-                          availableNow: false,
-                          priceMax: "",
-                          service: "",
-                          place: "",
-                          verifiedOnly: false,
-                          sort: "featured",
-                          page: 0,
-                        })
-                      }
-                    >
-                      Limpar filtros
-                    </button>
-                  </div>
-                </details>
-
-                {(fixedCity || fixedCategory) && (
-                  <p className="studio-page-intro">
-                    {fixedCity
-                      ? `Veja anúncios de acompanhantes adultos em ${fixedCity}. Use os filtros de idade, serviços, local de atendimento e valor para encontrar o perfil ideal. Todos os anúncios passam pelos critérios automáticos de segurança antes de serem publicados.`
-                      : `Explore anúncios adultos na categoria ${fixedCategory}. Use os filtros para refinar a busca por cidade, idade, serviços e valor. Todos os anúncios passam pelos critérios automáticos de segurança antes de serem publicados.`}
-                  </p>
-                )}
-                <div className="studio-result-meta" aria-live="polite">
-                  <span>
+          <div className="ep-wrap">
+            <div className="ep-section-head" id="busca">
+              <div>
+                <h2 id="listing-title">
+                  {fixedCity
+                    ? `Anúncios em ${fixedCity}`
+                    : fixedCategory
+                      ? `Anúncios: ${fixedCategory}`
+                      : copy.catalog.title}
+                </h2>
+                {open && (
+                  <p className="ep-count" aria-live="polite">
                     {list.isFetching
-                      ? "Atualizando resultados…"
+                      ? "Atualizando…"
                       : typeof total === "number"
                         ? `${total} anúncio${total === 1 ? "" : "s"}`
                         : `${items.length}${hasNext ? "+" : ""} anúncio${items.length === 1 ? "" : "s"}`}
-                  </span>
-                  <span>
-                    {locations.data?.length
-                      ? `${locations.data.length} localidades com anúncios publicados`
-                      : "Localizações atualizadas conforme a publicação"}
-                  </span>
-                </div>
+                  </p>
+                )}
               </div>
+            </div>
 
-              {list.isLoading ? (
-                <p>{copy.catalog.loadingText}</p>
-              ) : list.error ? (
-                <p role="alert">{copy.catalog.listErrorText}</p>
-              ) : items.length ? (
-                <>
-                  <div className="studio-cards">
-                    {items.map(profile => (
-                      <ListingCard key={profile.id} profile={profile} />
+            {settings.error ? (
+              <p className="studio-error">{copy.catalog.errorText}</p>
+            ) : !open ? (
+              <div className="ep-empty">
+                <h3>{copy.catalog.launchTitle}</h3>
+                <p>{copy.catalog.launchText}</p>
+                <Link className="ep-btn ep-btn-primary" href="/cadastro">
+                  {copy.catalog.launchButton}
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="ep-filters">
+                  <div className="ep-filter-row">
+                    <input
+                      aria-label="Buscar anúncios"
+                      placeholder={copy.hero.searchPlaceholder}
+                      value={filters.search}
+                      onChange={event =>
+                        updateFilter("search", event.target.value)
+                      }
+                    />
+                    {!fixedCity && (
+                      <select
+                        aria-label="Cidade"
+                        value={filters.city}
+                        onChange={event =>
+                          updateFilter("city", event.target.value)
+                        }
+                      >
+                        <option value="">Todas as cidades</option>
+                        {locations.data?.map(location => (
+                          <option
+                            key={`f-${location.city}-${location.region || ""}`}
+                            value={location.city}
+                          >
+                            {location.city}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {!fixedCategory && (
+                      <select
+                        aria-label="Categoria do anúncio"
+                        value={filters.category}
+                        onChange={event =>
+                          updateFilter("category", event.target.value)
+                        }
+                      >
+                        <option value="">Todas as categorias</option>
+                        {portfolioCategories.map(category => (
+                          <option key={category}>{category}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div className="ep-chip-row" aria-label="Filtros rápidos">
+                    <button
+                      type="button"
+                      className={`ep-chip ${filters.availableNow ? "is-on" : ""}`}
+                      aria-pressed={filters.availableNow}
+                      onClick={() =>
+                        setFilters(current => ({
+                          ...current,
+                          availableNow: !current.availableNow,
+                          page: 0,
+                        }))
+                      }
+                    >
+                      Disponível agora
+                    </button>
+                    <button
+                      type="button"
+                      className={`ep-chip ${filters.verifiedOnly ? "is-on" : ""}`}
+                      aria-pressed={filters.verifiedOnly}
+                      onClick={() =>
+                        setFilters(current => ({
+                          ...current,
+                          verifiedOnly: !current.verifiedOnly,
+                          page: 0,
+                        }))
+                      }
+                    >
+                      Verificada
+                    </button>
+                    {quickAttributes.map(attribute => (
+                      <button
+                        type="button"
+                        className={`ep-chip ${filters.attribute === attribute ? "is-on" : ""}`}
+                        aria-pressed={filters.attribute === attribute}
+                        key={attribute}
+                        onClick={() =>
+                          updateFilter(
+                            "attribute",
+                            filters.attribute === attribute ? "" : attribute
+                          )
+                        }
+                      >
+                        {attribute}
+                      </button>
+                    ))}
+                    {activeFiltersCount > 0 && (
+                      <button
+                        type="button"
+                        className="ep-chip ep-chip-clear"
+                        onClick={clearFilters}
+                      >
+                        Limpar filtros ({activeFiltersCount})
+                      </button>
+                    )}
+                  </div>
+
+                  <details
+                    className="ep-more"
+                    open={Boolean(
+                      filters.region ||
+                        filters.ageMin ||
+                        filters.ageMax ||
+                        filters.priceMax ||
+                        filters.service ||
+                        filters.place ||
+                        filters.sort !== "featured"
+                    )}
+                  >
+                    <summary>Mais filtros</summary>
+                    <div className="ep-more-grid">
+                      <select
+                        aria-label="Estado"
+                        value={filters.region}
+                        onChange={event =>
+                          updateFilter("region", event.target.value)
+                        }
+                      >
+                        <option value="">Qualquer estado</option>
+                        {regionOptions.map(region => (
+                          <option key={region}>{region}</option>
+                        ))}
+                      </select>
+                      <input
+                        aria-label="Idade mínima"
+                        placeholder="Idade mínima"
+                        inputMode="numeric"
+                        maxLength={2}
+                        value={filters.ageMin}
+                        onChange={event =>
+                          updateAgeFilter("ageMin", event.target.value)
+                        }
+                      />
+                      <input
+                        aria-label="Idade máxima"
+                        placeholder="Idade máxima"
+                        inputMode="numeric"
+                        maxLength={2}
+                        value={filters.ageMax}
+                        onChange={event =>
+                          updateAgeFilter("ageMax", event.target.value)
+                        }
+                      />
+                      <select
+                        aria-label="Faixa de preço"
+                        value={filters.priceMax}
+                        onChange={event =>
+                          updateFilter("priceMax", event.target.value)
+                        }
+                      >
+                        <option value="">Qualquer preço</option>
+                        {priceBands.map(band => (
+                          <option
+                            key={band.maxCents}
+                            value={String(band.maxCents)}
+                          >
+                            {band.label}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        aria-label="Local de atendimento"
+                        value={filters.place}
+                        onChange={event =>
+                          updateFilter("place", event.target.value)
+                        }
+                      >
+                        <option value="">Qualquer local</option>
+                        {attendancePlaceOptions.map(place => (
+                          <option key={place}>{place}</option>
+                        ))}
+                      </select>
+                      <select
+                        aria-label="Serviço oferecido"
+                        value={filters.service}
+                        onChange={event =>
+                          updateFilter("service", event.target.value)
+                        }
+                      >
+                        <option value="">Qualquer serviço</option>
+                        {serviceOptions.map(service => (
+                          <option key={service}>{service}</option>
+                        ))}
+                      </select>
+                      <select
+                        aria-label="Ordenar anúncios"
+                        value={filters.sort}
+                        onChange={event =>
+                          updateFilter(
+                            "sort",
+                            event.target.value as typeof filters.sort
+                          )
+                        }
+                      >
+                        <option value="featured">Mais relevantes</option>
+                        <option value="available">Disponíveis primeiro</option>
+                        <option value="recent">Atualizados recentemente</option>
+                        <option value="price_asc">Menor preço</option>
+                      </select>
+                    </div>
+                  </details>
+                </div>
+
+                {(fixedCity || fixedCategory) && (
+                  <p className="ep-page-intro">
+                    {fixedCity
+                      ? `Anúncios de acompanhantes adultos em ${fixedCity}. Filtre por idade, serviços, local de atendimento e valor.`
+                      : `Anúncios da categoria ${fixedCategory}. Filtre por cidade, idade, serviços e valor.`}
+                  </p>
+                )}
+
+                {list.isLoading ? (
+                  <div className="ep-grid" aria-busy="true">
+                    {[0, 1, 2, 3].map(index => (
+                      <div className="ep-card ep-card-skeleton" key={index}>
+                        <div className="ep-card-photo" />
+                      </div>
                     ))}
                   </div>
-                  <nav
-                    className="studio-pagination"
-                    aria-label="Paginação de anúncios"
-                  >
-                    <button
-                      disabled={filters.page === 0 || list.isFetching}
-                      onClick={() =>
-                        setFilters(current => ({
-                          ...current,
-                          page: Math.max(0, current.page - 1),
-                        }))
-                      }
+                ) : list.error ? (
+                  <p role="alert" className="studio-error">
+                    {copy.catalog.listErrorText}
+                  </p>
+                ) : items.length ? (
+                  <>
+                    <div className="ep-grid">
+                      {items.map(profile => (
+                        <ListingCard key={profile.id} profile={profile} />
+                      ))}
+                    </div>
+                    <nav
+                      className="ep-pagination"
+                      aria-label="Paginação de anúncios"
                     >
-                      Anterior
-                    </button>
-                    <span>
-                      Página {filters.page + 1}
-                      {totalPages ? ` de ${totalPages}` : ""}
-                    </span>
-                    <button
-                      disabled={!hasNext || list.isFetching}
-                      onClick={() =>
-                        setFilters(current => ({
-                          ...current,
-                          page: current.page + 1,
-                        }))
-                      }
-                    >
-                      Próxima
-                    </button>
-                  </nav>
-                </>
-              ) : (
-                <div className="studio-panel studio-landing-empty">
-                  <h3>{copy.catalog.resultsEmptyTitle}</h3>
-                  <p>{copy.catalog.resultsEmptyText}</p>
-                  <Link href="/cadastro">
-                    {copy.catalog.resultsEmptyButton}
-                  </Link>
-                </div>
-              )}
-            </>
-          )}
-        </section>
-
-        <section
-          className="studio-landing-search-band"
-          aria-labelledby="personal-search-title"
-        >
-          <div className="studio-main studio-search-band-inner">
-            <div className="studio-search-band-copy">
-              <p className="studio-kicker">{copy.searchBand.kicker}</p>
-              <h2 id="personal-search-title">{copy.searchBand.title}</h2>
-              <p>{copy.searchBand.text}</p>
-              <div className="studio-search-band-chips">
-                {quickAttributes.map(attribute => (
-                  <button
-                    type="button"
-                    key={attribute}
-                    className={filters.attribute === attribute ? "active" : ""}
-                    onClick={() => {
-                      updateFilter("attribute", attribute);
-                      scrollToListings();
-                    }}
-                  >
-                    {attribute}
-                  </button>
-                ))}
-              </div>
-              <button
-                className="studio-cta studio-cta-light"
-                type="button"
-                onClick={scrollToListings}
-              >
-                {copy.searchBand.buttonText}
-              </button>
-            </div>
-            <div className="studio-search-band-art" aria-hidden="true">
-              <div className="studio-search-window">
-                <span>{copy.searchBand.artLabel}</span>
-                <strong>{filters.city || copy.searchBand.artFallback}</strong>
-                <small>{copy.searchBand.artCaption}</small>
-              </div>
-              <span className="studio-search-orbit studio-search-orbit-one" />
-              <span className="studio-search-orbit studio-search-orbit-two" />
-            </div>
+                      <button
+                        type="button"
+                        disabled={filters.page === 0 || list.isFetching}
+                        onClick={() => {
+                          setFilters(current => ({
+                            ...current,
+                            page: Math.max(0, current.page - 1),
+                          }));
+                          scrollToListings();
+                        }}
+                      >
+                        Anterior
+                      </button>
+                      <span>
+                        Página {filters.page + 1}
+                        {totalPages ? ` de ${totalPages}` : ""}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={!hasNext || list.isFetching}
+                        onClick={() => {
+                          setFilters(current => ({
+                            ...current,
+                            page: current.page + 1,
+                          }));
+                          scrollToListings();
+                        }}
+                      >
+                        Próxima
+                      </button>
+                    </nav>
+                  </>
+                ) : (
+                  <div className="ep-empty">
+                    <h3>{copy.catalog.resultsEmptyTitle}</h3>
+                    <p>
+                      {activeFiltersCount > 0 || filters.search
+                        ? "Nada encontrado com esses filtros. Tente tirar algum deles."
+                        : copy.catalog.resultsEmptyText}
+                    </p>
+                    {activeFiltersCount > 0 || filters.search ? (
+                      <button
+                        type="button"
+                        className="ep-btn ep-btn-ghost"
+                        onClick={clearFilters}
+                      >
+                        Limpar filtros
+                      </button>
+                    ) : (
+                      <Link className="ep-btn ep-btn-primary" href="/cadastro">
+                        {copy.catalog.resultsEmptyButton}
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </section>
 
         <section
-          className="studio-main studio-landing-catalog"
-          aria-labelledby="catalog-title"
+          id="categorias"
+          className="ep-section ep-browse"
+          aria-labelledby="categories-title"
         >
-          <LandingHeading
-            id="catalog-title"
-            kicker={copy.categories.kicker}
-            title={copy.categories.title}
-            text={copy.categories.text}
-          />
-          {locations.isLoading || locations.data?.length ? (
-            <div className="studio-category-card-grid" id="categorias">
-              {portfolioCategories.slice(0, 6).map((category, index) => (
-                <Link
-                  key={category}
-                  href={categoryPath(category)}
-                  className="studio-category-card"
-                >
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <strong>{category}</strong>
-                  <b aria-hidden="true">↗</b>
-                </Link>
+          <div className="ep-wrap">
+            <div className="ep-section-head">
+              <h2 id="categories-title">{copy.categories.title}</h2>
+            </div>
+            <ul className="ep-pill-list">
+              {portfolioCategories.map(category => (
+                <li key={category}>
+                  <Link href={categoryPath(category)}>{category}</Link>
+                </li>
               ))}
+            </ul>
+            {open && locations.data?.length ? (
+              <>
+                <h3 className="ep-subhead">{copy.categories.locationsKicker}</h3>
+                <ul className="ep-pill-list">
+                  {locations.data.slice(0, 24).map(location => (
+                    <li key={`${location.city}-${location.region || ""}`}>
+                      <Link href={cityPath(location.city)}>
+                        {location.city}
+                        {location.region ? ` · ${location.region}` : ""}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="ep-section ep-trust" aria-labelledby="trust-title">
+          <div className="ep-wrap">
+            <div className="ep-section-head">
+              <h2 id="trust-title">{copy.trust.title}</h2>
             </div>
-          ) : (
-            <div className="studio-panel studio-landing-empty">
-              <h3>{copy.categories.emptyTitle}</h3>
-              <p>{copy.categories.emptyText}</p>
-              <Link href="/cadastro">{copy.categories.emptyButton}</Link>
-            </div>
-          )}
-          {open && locations.data?.length ? (
-            <div
-              className="studio-city-cloud"
-              aria-label="Localidades com anúncios publicados"
-            >
-              <p className="studio-kicker">{copy.categories.locationsKicker}</p>
-              <div>
-                {locations.data.slice(0, 16).map(location => (
-                  <Link
-                    key={`${location.city}-${location.region || ""}`}
-                    href={cityPath(location.city)}
-                  >
-                    {location.city}
-                    {location.region ? ` / ${location.region}` : ""}
-                  </Link>
+            <ul className="ep-trust-grid">
+              {copy.trust.points.map(point => (
+                <li key={point.title}>
+                  <span className="ep-trust-mark" aria-hidden="true">
+                    {point.marker}
+                  </span>
+                  <div>
+                    <h3>{point.title}</h3>
+                    <p>{point.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section className="ep-holder" aria-labelledby="holder-title">
+          <div className="ep-wrap ep-holder-inner">
+            <div>
+              <h2 id="holder-title">{copy.holder.title}</h2>
+              <p>{copy.holder.text}</p>
+              <ul className="ep-holder-benefits">
+                {copy.holder.benefits.map(benefit => (
+                  <li key={benefit}>{benefit}</li>
                 ))}
-              </div>
+              </ul>
             </div>
-          ) : null}
+            <Link className="ep-btn ep-btn-light" href="/cadastro">
+              {copy.holder.buttonText}
+            </Link>
+          </div>
         </section>
 
         {site.showAbout && !fixedCity && !fixedCategory ? (
-          <section
-            className="studio-landing-about"
-            aria-labelledby="about-title"
-          >
-            <div className="studio-main studio-landing-about-inner">
-              <div>
-                <p className="studio-kicker">{copy.about.kicker}</p>
-                <h2 id="about-title">{copy.about.title}</h2>
-              </div>
+          <section className="ep-section ep-about" aria-labelledby="about-title">
+            <div className="ep-wrap ep-about-inner">
+              <h2 id="about-title">{copy.about.title}</h2>
               <div>
                 <p>{copy.about.text}</p>
-                <p className="studio-landing-policy">{portfolioPolicy}</p>
+                <p className="ep-policy">{portfolioPolicy}</p>
                 <Link href="/seguranca">{copy.about.policyLink}</Link>
               </div>
             </div>

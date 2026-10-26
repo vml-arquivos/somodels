@@ -1,113 +1,112 @@
 import { Link, useLocation } from "wouter";
 import Seo from "@/components/Seo";
-import StudioHeader from "@/components/StudioHeader";
-import PublicFooter from "@/components/PublicFooter";
+import PublicShell from "@/components/PublicShell";
 import ContactForm from "@/components/ContactForm";
 import { trpc } from "@/lib/trpc";
 
 const pages = {
   terms: {
     path: "/termos",
-    title: "Termos da plataforma — Ero Models",
-    description: "Regras de uso, publicação e moderação da Ero Models.",
-    eyebrow: "Regras da plataforma",
-    heading: "Termos de uso e publicação",
+    title: "Termos de uso — Ero Models",
+    description: "Regras de uso e de publicação de anúncios na Ero Models.",
+    eyebrow: "Termos",
+    heading: "Termos de uso",
     paragraphs: [
-      "A Ero Models é uma plataforma adulta para anúncios de acompanhantes. O titular é responsável pela veracidade, legalidade, autorização e atualização do material que envia.",
-      "Anúncios adultos legais dependem de maioridade, consentimento, autorização de mídia e conformidade com a legislação e as regras da plataforma.",
-      "Não são permitidos menores, exploração, coerção, violência, fraude, impersonação, mídia sem consentimento, violação de privacidade, atividade ilegal ou material que infrinja direitos de terceiros.",
-      "A publicação depende de revisão, aceite vigente e dos controles de identidade e consentimento disponíveis. Uma verificação não é garantia de comportamento, segurança ou resultado de qualquer interação.",
+      "A Ero Models publica anúncios de acompanhantes adultos. Quem anuncia é responsável pelas fotos, vídeos, textos e informações que envia.",
+      "Só pode anunciar quem tem 18 anos ou mais e usa fotos e vídeos próprios ou com autorização de quem aparece neles.",
+      "Não é permitido: menores de idade, exploração, coerção, violência, golpe, uso da identidade de outra pessoa, imagem sem consentimento, atividade ilegal ou conteúdo que viole direitos de terceiros.",
+      "O anúncio vai ao ar assim que você publica. A equipe pode ocultar ou remover qualquer anúncio que descumpra estas regras e suspender a conta. A Ero Models não participa do que for combinado entre quem anuncia e quem entra em contato.",
     ],
     bullets: [
-      "Use apenas dados, fotos e vídeos que você está autorizado a publicar.",
-      "Mantenha cidade e disponibilidade atualizadas sem publicar endereço preciso.",
-      "Denuncie conteúdo ou comportamento de risco pela jornada contextual.",
+      "Use só fotos, vídeos e dados que você pode publicar.",
+      "Informe cidade e bairro, nunca o endereço completo.",
+      "Viu algo errado? Denuncie direto no anúncio.",
     ],
   },
   privacy: {
     path: "/privacidade",
     title: "Privacidade — Ero Models",
-    description: "Como a Ero Models minimiza, protege e utiliza dados na plataforma.",
+    description: "Como a Ero Models trata e protege os seus dados.",
     eyebrow: "Privacidade",
-    heading: "Privacidade e proteção de dados",
+    heading: "Privacidade e dados pessoais",
     paragraphs: [
-      "Exibimos publicamente só o necessário para a descoberta de anúncios. Telefone, WhatsApp e Telegram não aparecem na listagem; o contato com o titular é liberado apenas para quem está logado.",
-      "Documentos, senhas e dados internos nunca são exibidos em páginas públicas. Nenhum documento de identidade é publicado.",
-      "Tratamos os dados conforme a Lei Geral de Proteção de Dados (LGPD). Coletamos apenas o necessário para criar a conta, moderar anúncios, proteger a plataforma e atender solicitações. Os dados não são vendidos. Mantemos registros de segurança pelo tempo exigido pela lei e apagamos ou anonimizamos o restante quando a conta é encerrada.",
+      "Nas páginas públicas aparece só o que é preciso para achar um anúncio: fotos, nome do perfil, cidade, bairro e valores. O telefone e o WhatsApp não ficam na listagem; o número só é aberto quando o visitante, já com a idade confirmada, clica no botão de contato.",
+      "Documentos, senhas e dados internos nunca aparecem em páginas públicas.",
+      "Seguimos a Lei Geral de Proteção de Dados (LGPD). Guardamos só o necessário para criar a conta, proteger o site e atender pedidos. Não vendemos dados. Registros de segurança ficam pelo prazo que a lei exige e o restante é apagado ou anonimizado quando a conta é encerrada.",
     ],
     bullets: [
-      "Você pode pedir acesso, correção ou exclusão dos seus dados pelo canal de privacidade informado abaixo.",
-      "Não envie documentos, senhas ou dados sensíveis em descrições públicas ou denúncias.",
-      "A localização pública é aproximada; nunca publique endereço residencial.",
+      "Você pode pedir acesso, correção ou exclusão dos seus dados pela página de contato.",
+      "Não coloque documentos, senhas ou dados sensíveis em descrições ou denúncias.",
+      "Mostre só cidade e bairro. Nunca publique o endereço da sua casa.",
     ],
   },
   safety: {
     path: "/seguranca",
-    title: "Segurança e confiança — Ero Models",
-    description: "Orientações de segurança, consentimento, verificação e contato responsável.",
-    eyebrow: "Segurança e confiança",
-    heading: "Descoberta responsável",
+    title: "Segurança — Ero Models",
+    description: "Dicas de segurança para quem anuncia e para quem contata.",
+    eyebrow: "Segurança",
+    heading: "Dicas de segurança",
     paragraphs: [
-      "A Ero Models combina publicação consentida, revisão humana, proteção de mídia, controles de acesso e ferramentas de denúncia. Esses controles reduzem riscos, mas não eliminam riscos de uma interação fora da plataforma.",
-      "Verificação de identidade ou idade, quando disponível, tem escopo específico e não representa endosso, garantia de conduta ou garantia de segurança pessoal.",
-      "Ao sair para um canal externo, confirme identidade, limites, consentimento e condições diretamente com a outra pessoa. A conversa externa não é controlada pela Ero Models.",
+      "A Ero Models tem confirmação de idade, denúncia em todos os anúncios e equipe para remover o que descumprir as regras. Mesmo assim, o encontro acontece fora do site e ninguém consegue garantir como ele será.",
+      "O selo de verificada só confirma que a identidade foi conferida pela equipe. Não é garantia de conduta nem de segurança.",
+      "Antes de marcar, combine tudo direto com a outra pessoa: valores, limites e condições. A conversa no WhatsApp ou por telefone não é controlada pela Ero Models.",
     ],
     bullets: [
-      "Interrompa a interação diante de pressão, ameaça, extorsão ou pedido de pagamento suspeito.",
-      "Não compartilhe documentos, códigos de autenticação ou endereço residencial.",
-      "Em risco imediato, procure os serviços públicos de emergência adequados à sua localidade.",
+      "Não pague adiantado nem faça Pix para \"garantir\" horário.",
+      "Pare a conversa se houver pressão, ameaça, chantagem ou pedido estranho.",
+      "Não passe documentos, códigos ou o endereço da sua casa.",
+      "Em perigo, ligue 190. Para denunciar exploração de crianças e adolescentes, ligue 100.",
     ],
   },
   reports: {
     path: "/denuncia",
-    title: "Denúncias e remoção — Ero Models",
-    description: "Como denunciar perfil, mídia ou comportamento que viole as regras.",
-    eyebrow: "Trust & Safety",
-    heading: "Denúncias e resposta a incidentes",
+    title: "Denunciar — Ero Models",
+    description: "Como denunciar um anúncio que descumpre as regras.",
+    eyebrow: "Denúncias",
+    heading: "Como denunciar",
     paragraphs: [
-      "A denúncia é feita no próprio anúncio. Ela exige conta, gera um protocolo e vai para análise da nossa equipe. Casos urgentes têm prioridade.",
-      "Possível menor de idade, tráfico, exploração, coerção, violência, ameaça ou extorsão devem receber prioridade urgente. Não inclua documentos, senhas ou evidências sensíveis no campo de texto público.",
-      "Casos de exploração sexual de crianças e adolescentes também podem ser denunciados diretamente ao Disque 100, serviço gratuito e sigiloso do governo federal, disponível todos os dias.",
-      "Podemos ocultar ou suspender o material enquanto o caso é analisado e, quando necessário, comunicar as autoridades competentes. O titular pode pedir revisão da decisão pelo canal de contato.",
+      "Abra o anúncio e toque em \"Denunciar anúncio\". Não precisa de conta. Escolha o motivo, conte o que aconteceu e envie. A equipe analisa e pode ocultar o anúncio enquanto confere.",
+      "Casos com suspeita de menor de idade, exploração, coerção, violência, ameaça ou chantagem têm prioridade. Não coloque documentos, senhas ou provas sensíveis no texto da denúncia.",
+      "Exploração sexual de crianças e adolescentes também pode ser denunciada no Disque 100, gratuito e sigiloso, todos os dias.",
+      "Quem teve o anúncio removido pode pedir revisão pela página de contato.",
     ],
     bullets: [
-      "Use a denúncia no próprio perfil para preservar o contexto do alvo.",
-      "Descreva fatos objetivamente e não exponha a pessoa denunciante.",
-      "Não prometa anonimato absoluto: registros técnicos podem ser necessários para segurança e prevenção de abuso.",
+      "Denuncie direto no anúncio para a equipe saber exatamente qual é.",
+      "Conte os fatos de forma objetiva.",
+      "Guardamos registros técnicos para segurança e para evitar abuso.",
     ],
   },
   help: {
     path: "/ajuda",
     title: "Ajuda — Ero Models",
-    description: "Orientações para titulares, visitantes, publicação, mídia e segurança.",
-    eyebrow: "Central de ajuda",
-    heading: "Como usar a plataforma",
+    description: "Como criar e publicar um anúncio e como usar o site.",
+    eyebrow: "Ajuda",
+    heading: "Como funciona",
     paragraphs: [
-      "Titulares criam e atualizam um anúncio, aceitam o termo vigente e enviam fotos e vídeos para revisão. O anúncio só é publicado depois de aprovado pela moderação.",
-      "Visitantes pesquisam por cidade, categoria, idade, valor, serviços e local de atendimento. As informações são as que o próprio titular publicou; a localização é sempre aproximada.",
-      "Se uma mídia, perfil ou contato parecer irregular, interrompa a interação e use o fluxo de denúncia. Não tente contornar a confirmação de idade, o login ou as proteções da plataforma.",
+      "Quem anuncia cria a conta, preenche o perfil, envia as fotos que quiser e publica. O anúncio entra no ar na hora, sem fila de aprovação. A equipe só age depois, se algo descumprir as regras.",
+      "Quem procura escolhe a cidade e vê os anúncios. Dá para filtrar por bairro, categoria, idade, valor, serviços e local de atendimento. As informações são as que cada pessoa publicou.",
+      "Para falar com quem anuncia, abra o anúncio e toque em WhatsApp ou ligar. Se algo parecer errado, use o botão de denúncia.",
     ],
     bullets: [
-      "Login, área do titular, administração e redefinição de senha são áreas privadas e não aparecem nos buscadores.",
-      "Esqueceu a senha? Peça um link temporário de recuperação pelo canal de contato.",
-      "Planos em destaque são ativados pela equipe após a confirmação do pagamento. A plataforma não intermedeia o combinado entre titular e cliente: contato e condições são tratados diretamente entre as partes.",
+      "Esqueceu a senha? Peça um link novo pela página de contato.",
+      "Planos em destaque são ativados pela equipe depois da confirmação do pagamento.",
+      "A Ero Models não participa do combinado entre quem anuncia e quem contata.",
     ],
   },
   contact: {
     path: "/contato",
     title: "Contato — Ero Models",
-    description: "Canais e orientações para contato com a Ero Models.",
+    description: "Fale com a equipe da Ero Models.",
     eyebrow: "Contato",
-    heading: "Fale com a plataforma",
+    heading: "Fale com a gente",
     paragraphs: [
-      "O contato com titulares é uma saída controlada para o canal informado pelo próprio titular. A Ero Models não controla a conversa depois que ela sai da plataforma.",
-      "Use o canal oficial abaixo para suporte, privacidade, solicitações jurídicas, recuperação de senha e pedidos de remoção.",
-      "Para denunciar um perfil, prefira a ação de denúncia no próprio anúncio.",
+      "Use o formulário abaixo para suporte, dúvidas sobre planos, privacidade, recuperação de senha e pedidos de remoção.",
+      "Para denunciar um anúncio, é mais rápido usar o botão de denúncia dentro dele.",
     ],
     bullets: [
-      "Nunca envie senha, token, documento ou chave de API por mensagem.",
-      "Em denúncia urgente, informe somente o mínimo necessário para a triagem.",
-      "A plataforma não solicita pagamento por canais não documentados.",
+      "Nunca mande senha, código ou documento por mensagem.",
+      "Em denúncia urgente, escreva só o essencial.",
+      "A equipe não pede pagamento por canais fora do site.",
     ],
   },
 } as const;
@@ -128,8 +127,20 @@ export default function InstitutionalPage() {
   const content = pages[routeToPage[location] ?? "help"];
   const config = trpc.system.config.useQuery();
   const contact = config.data?.contact;
+  const showChannel =
+    content.path === "/privacidade" ||
+    content.path === "/ajuda" ||
+    content.path === "/denuncia" ||
+    (content.path === "/contato" &&
+      Boolean(
+        contact?.email || contact?.privacyEmail || contact?.operatorName
+      ));
+  const email =
+    content.path === "/privacidade"
+      ? contact?.privacyEmail || contact?.email
+      : contact?.email || contact?.privacyEmail;
   return (
-    <div className="studio">
+    <>
       <Seo
         title={content.title}
         description={content.description}
@@ -140,52 +151,36 @@ export default function InstitutionalPage() {
             !config.data?.publicLaunchEnabled
         )}
       />
-      <StudioHeader />
-      <main className="studio-main">
-            <nav className="studio-breadcrumb" aria-label="Navegação estrutural">
-            <Link href="/">Anúncios</Link>
+      <PublicShell narrow>
+        <nav className="ep-breadcrumb" aria-label="Navegação">
+          <Link href="/">Anúncios</Link>
           <span aria-hidden="true">/</span>
           <span>{content.eyebrow}</span>
         </nav>
-        <article className="studio-about">
-          <p className="studio-kicker">{content.eyebrow}</p>
+        <article className="ep-doc">
+          <p className="ep-eyebrow">{content.eyebrow}</p>
           <h1>{content.heading}</h1>
-          {content.paragraphs.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
+          {content.paragraphs.map(paragraph => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
           <ul>
-            {content.bullets.map(bullet => <li key={bullet}>{bullet}</li>)}
+            {content.bullets.map(bullet => (
+              <li key={bullet}>{bullet}</li>
+            ))}
           </ul>
         </article>
-        {(content.path === "/contato" ||
-          content.path === "/privacidade" ||
-          content.path === "/ajuda" ||
-          content.path === "/denuncia") &&
-          (content.path !== "/contato" ||
-            contact?.email ||
-            contact?.privacyEmail ||
-            contact?.operatorName) && (
-          <section className="studio-panel" aria-label="Canal oficial">
+        {showChannel && (
+          <section className="ep-box" aria-label="Canal oficial">
             <h2>Canal oficial</h2>
             {content.path !== "/contato" && (
               <p>
-                Use o formulário em <Link href="/contato">Fale conosco</Link>{" "}
-                para suporte, privacidade, recuperação de senha e pedidos de
-                remoção.
+                Para suporte, privacidade, recuperação de senha e pedidos de
+                remoção, use a página de <Link href="/contato">contato</Link>.
               </p>
             )}
-            {(contact?.email || contact?.privacyEmail) && (
+            {email && (
               <p>
-                E-mail:{" "}
-                <a
-                  href={`mailto:${
-                    content.path === "/privacidade"
-                      ? contact.privacyEmail || contact.email
-                      : contact.email || contact.privacyEmail
-                  }`}
-                >
-                  {content.path === "/privacidade"
-                    ? contact.privacyEmail || contact.email
-                    : contact.email || contact.privacyEmail}
-                </a>
+                E-mail: <a href={`mailto:${email}`}>{email}</a>
               </p>
             )}
             {contact?.operatorName && (
@@ -199,15 +194,7 @@ export default function InstitutionalPage() {
           </section>
         )}
         {content.path === "/contato" && <ContactForm />}
-        <section className="studio-panel">
-          <h2>Precisa de ajuda com um perfil?</h2>
-          <p>
-            Volte aos anúncios, abra o perfil correspondente e use a ação de denúncia.
-          </p>
-          <Link className="studio-cta" href="/">Voltar aos anúncios</Link>
-        </section>
-      </main>
-      <PublicFooter />
-    </div>
+      </PublicShell>
+    </>
   );
 }

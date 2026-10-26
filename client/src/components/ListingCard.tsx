@@ -1,73 +1,57 @@
 import { Link } from "wouter";
 import { formatBRL } from "@shared/discovery-options";
 
+// Cartão da vitrine: foto, nome, idade, local e preço. O cartão inteiro é o link.
 export default function ListingCard({ profile }: { profile: any }) {
-  const categories = Array.isArray(profile.categories)
-    ? profile.categories
-    : [];
-  const attributes = Array.isArray(profile.attributes)
-    ? profile.attributes
-    : [];
-  const location = [profile.city, profile.region, profile.neighborhood]
+  const place = [
+    profile.age ? `${profile.age} anos` : null,
+    profile.neighborhood || profile.city,
+  ]
     .filter(Boolean)
-    .join(" / ");
-
+    .join(" · ");
+  const sponsored = Boolean(profile.isSponsored);
+  const featured = !sponsored && Boolean(profile.isFeatured);
   return (
-    <article className="studio-listing-card">
-      <Link href={`/perfil/${profile.slug}`} className="studio-card-main">
-        <div className="studio-cover">
+    <article className="ep-card">
+      <Link
+        href={`/perfil/${profile.slug}`}
+        className="ep-card-link"
+        aria-label={`Ver anúncio de ${profile.stageName}`}
+      >
+        <div className="ep-card-photo">
           {profile.avatarUrl ? (
             <img
               src={profile.avatarUrl}
-              alt={`Capa do anúncio de ${profile.stageName}`}
+              alt={`Foto de ${profile.stageName}`}
               loading="lazy"
+              decoding="async"
             />
           ) : (
-            <span>{String(profile.stageName || "A").slice(0, 1)}</span>
-          )}
-          <span className="studio-listing-age">+18</span>
-          {profile.isAvailableNow && (
-            <span className="studio-listing-availability">
-              Disponível agora
+            <span className="ep-card-initial" aria-hidden="true">
+              {String(profile.stageName || "A").slice(0, 1)}
             </span>
           )}
-          {profile.identityVerified && (
-            <span className="studio-listing-verified">✓ Verificada</span>
-          )}
-        </div>
-        <div className="studio-listing-card-body">
-          <div className="studio-listing-meta">
-            <small>{categories.join(" · ") || "Acompanhante"}</small>
-            {profile.isSponsored ? (
-              <span>Patrocinado</span>
-            ) : (
-              profile.isFeatured && <span>Destaque</span>
+          <div className="ep-card-tags">
+            {sponsored && <span className="ep-tag ep-tag-dark">Patrocinado</span>}
+            {featured && <span className="ep-tag ep-tag-accent">Destaque</span>}
+            {profile.identityVerified && (
+              <span className="ep-tag ep-tag-light">Verificada</span>
             )}
           </div>
+          {profile.isAvailableNow && (
+            <span className="ep-card-now">Disponível agora</span>
+          )}
+        </div>
+        <div className="ep-card-body">
           <h3>{profile.stageName}</h3>
-          <p className="studio-listing-location">
-            {profile.age ? `${profile.age} anos · ` : ""}
-            {location || "Localização não informada"}
-          </p>
-          {profile.description && (
-            <p className="studio-listing-description">{profile.description}</p>
-          )}
+          <p className="ep-card-place">{place || "Localização não informada"}</p>
           {typeof profile.priceFromCents === "number" && (
-            <p className="studio-listing-price">
-              A partir de <strong>{formatBRL(profile.priceFromCents)}</strong>
-            </p>
-          )}
-          {attributes.length > 0 && (
-            <p className="studio-listing-attributes">
-              {attributes.slice(0, 3).join(" · ")}
+            <p className="ep-card-price">
+              a partir de <strong>{formatBRL(profile.priceFromCents)}</strong>
             </p>
           )}
         </div>
       </Link>
-      <div className="studio-listing-card-footer">
-        <span>{profile.availabilityLabel || "Anúncio publicado"}</span>
-        <Link href={`/perfil/${profile.slug}`}>Ver anúncio</Link>
-      </div>
     </article>
   );
 }

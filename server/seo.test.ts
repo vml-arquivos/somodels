@@ -38,6 +38,6 @@ describe("server SEO", () => {
   it("uses the responsible home positioning in the initial head", async () => {
     const seo = await getServerSeo("/");
     expect(seo.title).toContain("Anúncios de acompanhantes adultos");
-    expect(seo.description).toContain("age gate");
+    expect(seo.description).toContain("maiores de 18 anos");
   });
 });

@@ -17,18 +17,15 @@ export default function StudioHeader({
   children?: React.ReactNode;
   minimal?: boolean;
 }) {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, forceLight } = useTheme();
   const { user } = useAuth();
   const settings = trpc.management.settings.useQuery();
   const nav = (settings.data || defaultSiteSettings).home.nav;
-  const isEditorialLanding =
-    !minimal &&
-    (window.location.pathname === "/" ||
-      window.location.pathname.startsWith("/cidade/") ||
-      window.location.pathname.startsWith("/categoria/"));
+  const [menuOpen, setMenuOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(
     null
   );
+  const darkChrome = theme === "dark" && !forceLight;
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event: Event) => {
@@ -44,66 +41,135 @@ export default function StudioHeader({
     };
   }, []);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
   async function installApp() {
     if (!installPrompt) return;
     await installPrompt.prompt();
     const choice = await installPrompt.userChoice;
     if (choice.outcome === "accepted") setInstallPrompt(null);
   }
-  return (
-    <header className="studio-header">
-      <Link href="/" className="studio-brand" aria-label="Ero Models — início">
-        <img
-          src={
-            isEditorialLanding || theme !== "dark"
-              ? "/brand/logo.svg"
-              : "/brand/logo-light.svg"
-          }
-          alt="Ero Models"
-          className="studio-brand-logo"
-          width="180"
-          height="56"
-        />
+
+  const close = () => setMenuOpen(false);
+  const links = (
+    <>
+      <Link href="/#anuncios" onClick={close}>
+        {nav.explore}
       </Link>
-      <div className="studio-header-menu">
+      <Link href="/#categorias" onClick={close}>
+        {nav.categories}
+      </Link>
+      <Link href="/planos" onClick={close}>
+        Planos
+      </Link>
+      <Link href="/como-anunciar" onClick={close}>
+        Como anunciar
+      </Link>
+    </>
+  );
+
+  return (
+    <header className="ep-header">
+      <div className="ep-header-inner">
+        <Link href="/" className="ep-brand" aria-label="Ero Models — início">
+          <img
+            src={darkChrome ? "/brand/logo-light.svg" : "/brand/logo.svg"}
+            alt="Ero Models"
+            className="ep-brand-logo"
+            width="180"
+            height="56"
+          />
+        </Link>
         {!minimal && (
-          <nav aria-label="Navegação principal">
-            <Link href="/#anuncios">{nav.explore}</Link>
-            <Link href="/#busca">{nav.search}</Link>
-            <Link href="/#categorias">{nav.categories}</Link>
-            {user ? (
-              <>
-                <Link href="/conta">{nav.account}</Link>
-                <Link href="/titular">{nav.owner}</Link>
-              </>
-            ) : (
-              <Link href="/login" className="studio-header-login">
-                {nav.login}
-              </Link>
-            )}
+          <nav className="ep-nav" aria-label="Navegação principal">
+            {links}
           </nav>
         )}
-        {children ? (
-          <div className="studio-header-extra">{children}</div>
-        ) : null}
-        {installPrompt ? (
-          <button
-            className="studio-install-button"
-            onClick={() => void installApp()}
-          >
-            {nav.install}
-          </button>
-        ) : null}
-        {toggleTheme ? (
-          <button
-            className="studio-theme-toggle"
-            onClick={toggleTheme}
-            aria-label={`Usar tema ${theme === "dark" ? nav.themeLight : nav.themeDark}`}
-          >
-            {theme === "dark" ? nav.themeLight : nav.themeDark}
-          </button>
-        ) : null}
+        <div className="ep-header-actions">
+          {children ? <div className="ep-header-extra">{children}</div> : null}
+          {installPrompt ? (
+            <button
+              type="button"
+              className="ep-header-link"
+              onClick={() => void installApp()}
+            >
+              {nav.install}
+            </button>
+          ) : null}
+          {toggleTheme && !forceLight ? (
+            <button
+              type="button"
+              className="ep-header-link"
+              onClick={toggleTheme}
+              aria-label={`Usar tema ${theme === "dark" ? nav.themeLight : nav.themeDark}`}
+            >
+              {theme === "dark" ? nav.themeLight : nav.themeDark}
+            </button>
+          ) : null}
+          {!minimal &&
+            (user ? (
+              <>
+                <Link href="/conta" className="ep-header-link ep-hide-sm">
+                  {nav.account}
+                </Link>
+                <Link href="/titular" className="ep-header-cta">
+                  {nav.owner}
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="ep-header-link">
+                  {nav.login}
+                </Link>
+                <Link href="/cadastro" className="ep-header-cta">
+                  {nav.createProfile}
+                </Link>
+              </>
+            ))}
+          {!minimal && (
+            <button
+              type="button"
+              className="ep-menu-button"
+              aria-expanded={menuOpen}
+              aria-controls="ep-mobile-menu"
+              aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+              onClick={() => setMenuOpen(open => !open)}
+            >
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
+            </button>
+          )}
+        </div>
       </div>
+      {!minimal && menuOpen && (
+        <nav
+          id="ep-mobile-menu"
+          className="ep-mobile-menu"
+          aria-label="Menu"
+        >
+          {links}
+          {user ? (
+            <Link href="/conta" onClick={close}>
+              {nav.account}
+            </Link>
+          ) : (
+            <Link href="/login" onClick={close}>
+              {nav.login}
+            </Link>
+          )}
+          <Link href="/contato" onClick={close}>
+            Contato
+          </Link>
+        </nav>
+      )}
     </header>
   );
 }

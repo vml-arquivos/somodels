@@ -29,13 +29,13 @@ export default function ContactForm({
 
   if (sent) {
     return (
-      <section className="studio-panel" aria-live="polite">
+      <section className="ep-box" aria-live="polite">
         <h2>Mensagem enviada</h2>
         <p>
           Recebemos seu contato. Se você deixou um e-mail ou telefone para
           resposta, nossa equipe retorna por ele.
         </p>
-        <button type="button" onClick={() => setSent(false)}>
+        <button type="button" className="ep-btn ep-btn-ghost" onClick={() => setSent(false)}>
           Enviar outra mensagem
         </button>
       </section>
@@ -48,13 +48,13 @@ export default function ContactForm({
   };
 
   return (
-    <section className="studio-panel" aria-label="Fale conosco">
+    <section className="ep-box" aria-label="Fale conosco">
       <h2>Fale conosco</h2>
-      <p className="studio-muted">
-        Não envie senhas, documentos ou códigos. Para retorno, informe um
-        e-mail ou telefone.
+      <p className="ep-auth-intro">
+        Não envie senhas, documentos ou códigos. Para receber a resposta,
+        informe um e-mail ou telefone.
       </p>
-      <form onSubmit={submit} className="studio-contact-form">
+      <form onSubmit={submit} className="ep-form">
         <label>
           Assunto
           <select
@@ -107,11 +107,11 @@ export default function ContactForm({
           />
         </label>
         {send.error && (
-          <p role="alert" className="studio-error">
+          <p role="alert" className="ep-form-error">
             {send.error.message}
           </p>
         )}
-        <button className="primary" type="submit" disabled={send.isPending}>
+        <button className="ep-btn ep-btn-primary" type="submit" disabled={send.isPending}>
           {send.isPending ? "Enviando…" : "Enviar mensagem"}
         </button>
       </form>

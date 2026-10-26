@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import Seo from "@/components/Seo";
-import StudioHeader from "@/components/StudioHeader";
-import PublicFooter from "@/components/PublicFooter";
+import PublicShell from "@/components/PublicShell";
 import { trpc } from "@/lib/trpc";
 import {
   estimateMonthlyEarnings,
@@ -13,60 +12,63 @@ import {
 const steps = [
   {
     title: "Crie sua conta",
-    text: "Cadastro com e-mail e senha. Você precisa ter 18 anos ou mais.",
+    text: "Nome, e-mail e senha. Você precisa ter 18 anos ou mais.",
   },
   {
-    title: "Verifique sua identidade",
-    text: "Solicite a verificação no painel. A equipe confirma seus dados em uma videochamada reservada e libera o selo de identidade verificada.",
+    title: "Monte seu perfil",
+    text: "Escolha o nome que quiser, o estado, a cidade e o bairro, o valor a partir de e o que você oferece. Nunca coloque o endereço da sua casa.",
   },
   {
-    title: "Monte seu anúncio",
-    text: "Nome artístico, cidade, valor a partir de, local de atendimento, serviços e descrição. Nunca publique endereço privado.",
+    title: "Envie suas fotos",
+    text: "Selecione várias de uma vez. Use só fotos e vídeos que você pode publicar.",
   },
   {
-    title: "Envie fotos e vídeos",
-    text: "Use apenas material que você tem autorização para publicar. Toda mídia passa por moderação antes de aparecer.",
+    title: "Publique",
+    text: "O anúncio entra no ar na hora, sem fila de aprovação. Você acompanha visitas e cliques de contato no painel.",
   },
   {
-    title: "Aceite o termo e envie para revisão",
-    text: "Depois da aprovação, seu anúncio entra na vitrine e você acompanha visitas e cliques de contato no painel.",
+    title: "Ganhe selo e destaque (opcional)",
+    text: "Peça a verificação de identidade para receber o selo de verificada e escolha um plano para aparecer mais.",
   },
 ];
 
 const rules = [
-  "Somente maiores de 18 anos, com atividade legal e consentimento.",
-  "Fotos e vídeos próprios ou com autorização expressa de quem aparece.",
-  "Sem endereço residencial, documentos ou dados de terceiros no anúncio.",
-  "Qualquer sinal de menor, coerção, exploração ou fraude leva à suspensão imediata.",
+  "Só maiores de 18 anos, com atividade legal e consentimento.",
+  "Fotos e vídeos seus ou com autorização de quem aparece.",
+  "Nada de endereço residencial, documentos ou dados de outras pessoas.",
+  "Sinal de menor de idade, coerção, exploração ou golpe leva à suspensão na hora.",
 ];
 
 function HowToAdvertise() {
   return (
-    <article className="studio-about">
-      <p className="studio-kicker">Para anunciantes</p>
+    <article className="ep-doc">
+      <p className="ep-eyebrow">Para quem anuncia</p>
       <h1>Como anunciar na Ero Models</h1>
       <p>
-        Um passo a passo curto para colocar seu anúncio no ar com segurança e
-        controle sobre o que é publicado.
+        Em poucos passos o seu anúncio está no ar, e você controla tudo pelo
+        painel.
       </p>
-      <ol>
+      <ol className="ep-steps">
         {steps.map(step => (
           <li key={step.title}>
-            <strong>{step.title}.</strong> {step.text}
+            <strong>{step.title}</strong>
+            <span>{step.text}</span>
           </li>
         ))}
       </ol>
-      <h2>Regras que protegem você e o público</h2>
+      <h2>Regras</h2>
       <ul>
         {rules.map(rule => (
           <li key={rule}>{rule}</li>
         ))}
       </ul>
-      <div className="studio-actions">
-        <Link className="studio-cta" href="/cadastro">
-          Criar meu anúncio
+      <div className="ep-doc-actions">
+        <Link className="ep-btn ep-btn-primary" href="/cadastro">
+          Criar meu perfil
         </Link>
-        <Link href="/calculadora-de-ganhos">Simular meus ganhos</Link>
+        <Link className="ep-btn ep-btn-ghost" href="/calculadora-de-ganhos">
+          Simular meus ganhos
+        </Link>
       </div>
     </article>
   );
@@ -102,15 +104,15 @@ function EarningsCalculator() {
   }, [rate, hours, perWeek, costs]);
 
   return (
-    <article className="studio-about">
-      <p className="studio-kicker">Para anunciantes</p>
+    <article className="ep-doc">
+      <p className="ep-eyebrow">Para quem anuncia</p>
       <h1>Calculadora de ganhos</h1>
       <p>
-        Simule uma estimativa mensal a partir do seu valor por hora e da sua
-        rotina. É apenas uma conta de referência: a Ero Models não garante
-        demanda, atendimentos nem resultados.
+        Veja uma estimativa por mês a partir do seu valor por hora e da sua
+        rotina. É só uma conta de referência: a Ero Models não garante
+        atendimentos nem resultado.
       </p>
-      <div className="studio-fields">
+      <div className="ep-form ep-fields">
         <label>
           Valor por hora (R$)
           <input
@@ -145,33 +147,35 @@ function EarningsCalculator() {
         </label>
       </div>
       <section
-        className="studio-panel"
+        className="ep-box"
         aria-live="polite"
         aria-label="Resultado da simulação"
       >
         {result ? (
           <>
             <p>
-              Receita estimada: <strong>{formatBRL(result.grossCents)}</strong>{" "}
+              Você recebe, em média: <strong>{formatBRL(result.grossCents)}</strong>{" "}
               por mês
             </p>
             <p>
-              Custos informados: <strong>{formatBRL(result.costsCents)}</strong>
+              Seus custos: <strong>{formatBRL(result.costsCents)}</strong>
             </p>
             <p>
-              Resultado estimado: <strong>{formatBRL(result.netCents)}</strong>{" "}
+              Sobra por mês: <strong>{formatBRL(result.netCents)}</strong>{" "}
               por mês
             </p>
           </>
         ) : (
-          <p>Preencha valores válidos para ver a estimativa.</p>
+          <p>Preencha os valores para ver a conta.</p>
         )}
       </section>
-      <div className="studio-actions">
-        <Link className="studio-cta" href="/cadastro">
-          Criar meu anúncio
+      <div className="ep-doc-actions">
+        <Link className="ep-btn ep-btn-primary" href="/cadastro">
+          Criar meu perfil
         </Link>
-        <Link href="/como-anunciar">Ver passo a passo</Link>
+        <Link className="ep-btn ep-btn-ghost" href="/como-anunciar">
+          Ver o passo a passo
+        </Link>
       </div>
     </article>
   );
@@ -185,10 +189,10 @@ export default function AdvertiserPage() {
     ? "Calculadora de ganhos — Ero Models"
     : "Como anunciar — Ero Models";
   const description = calculator
-    ? "Simule uma estimativa mensal de ganhos a partir do seu valor por hora e da sua rotina."
-    : "Passo a passo para criar, verificar e publicar seu anúncio com segurança.";
+    ? "Calcule uma estimativa mensal de ganhos a partir do seu valor por hora."
+    : "Passo a passo para criar e publicar seu anúncio.";
   return (
-    <div className="studio">
+    <>
       <Seo
         title={title}
         description={description}
@@ -197,16 +201,14 @@ export default function AdvertiserPage() {
           config.data?.robotsNoIndex || !config.data?.publicLaunchEnabled
         )}
       />
-      <StudioHeader />
-      <main className="studio-main">
-        <nav className="studio-breadcrumb" aria-label="Navegação estrutural">
+      <PublicShell narrow>
+        <nav className="ep-breadcrumb" aria-label="Navegação">
           <Link href="/">Anúncios</Link>
           <span aria-hidden="true">/</span>
           <span>{calculator ? "Calculadora de ganhos" : "Como anunciar"}</span>
         </nav>
         {calculator ? <EarningsCalculator /> : <HowToAdvertise />}
-      </main>
-      <PublicFooter />
-    </div>
+      </PublicShell>
+    </>
   );
 }

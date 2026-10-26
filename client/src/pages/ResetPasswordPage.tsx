@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
-import StudioHeader from "@/components/StudioHeader";
+import { AuthCard } from "@/components/PublicShell";
 import Seo from "@/components/Seo";
 export default function ResetPasswordPage() {
   const [token] = useState(
@@ -17,71 +17,69 @@ export default function ResetPasswordPage() {
     history.replaceState(null, "", window.location.pathname);
   }, []);
   return (
-    <div className="studio">
-      <Seo title="Redefinir senha — Ero Models" description="Área privada de redefinição de senha." noindex />
-      <StudioHeader />
-      <main className="studio-main studio-narrow">
-        <section className="studio-panel">
-          <h1>Definir nova senha</h1>
-          {mutation.isSuccess ? (
-            <>
-              <p>
-                Senha atualizada. As sessões locais anteriores foram encerradas.
-              </p>
-              <Link href="/login">Voltar ao login</Link>
-            </>
-          ) : !token ? (
-            <p>
-              Abra o link completo de recuperação fornecido pelo administrador.
+    <>
+      <Seo title="Nova senha — Ero Models" description="Defina uma nova senha." noindex />
+      <AuthCard title="Definir nova senha">
+        {mutation.isSuccess ? (
+          <>
+            <p className="ep-auth-intro">
+              Senha atualizada. Entre de novo com a nova senha.
             </p>
-          ) : (
-            <form
-              onSubmit={e => {
-                e.preventDefault();
-                if (password !== confirm)
-                  return setError("As senhas não coincidem");
-                setError("");
-                mutation.mutate({ token, password });
-              }}
-            >
-              <p>
-                Use pelo menos 16 caracteres, com letras maiúsculas, minúsculas
-                e números.
+            <Link className="ep-btn ep-btn-primary" href="/login">
+              Ir para o login
+            </Link>
+          </>
+        ) : !token ? (
+          <p className="ep-auth-intro">
+            Abra o link completo de recuperação que a equipe enviou.
+          </p>
+        ) : (
+          <form
+            className="ep-form"
+            onSubmit={e => {
+              e.preventDefault();
+              if (password !== confirm)
+                return setError("As senhas não são iguais");
+              setError("");
+              mutation.mutate({ token, password });
+            }}
+          >
+            <p className="ep-auth-intro">
+              Use pelo menos 10 caracteres, com letras e números.
+            </p>
+            <label>
+              Nova senha
+              <input
+                autoComplete="new-password"
+                type="password"
+                required
+                minLength={10}
+                maxLength={200}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+            </label>
+            <label>
+              Repita a senha
+              <input
+                autoComplete="new-password"
+                type="password"
+                required
+                value={confirm}
+                onChange={e => setConfirm(e.target.value)}
+              />
+            </label>
+            {error && (
+              <p role="alert" className="ep-form-error">
+                {error}
               </p>
-              <label>
-                Nova senha
-                <input
-                  autoComplete="new-password"
-                  type="password"
-                  required
-                  minLength={16}
-                  maxLength={200}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                />
-              </label>
-              <label>
-                Confirmar senha
-                <input
-                  autoComplete="new-password"
-                  type="password"
-                  required
-                  value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
-                />
-              </label>
-              {error && (
-                <p role="alert" className="studio-error">
-                  {error}
-                </p>
-              )}
-              <button className="primary" disabled={mutation.isPending}>
-                Salvar nova senha
-              </button>
-            </form>
-          )}
-        </section>
-      </main>
-    </div>
+            )}
+            <button className="ep-btn ep-btn-primary" disabled={mutation.isPending}>
+              Salvar nova senha
+            </button>
+          </form>
+        )}
+      </AuthCard>
+    </>
   );
 }

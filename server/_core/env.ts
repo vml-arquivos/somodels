@@ -88,7 +88,8 @@ export const ENV = {
     process.env.IDENTITY_VERIFICATION_ENABLED,
     false
   ),
-  secureContactEnabled: readBoolean(process.env.SECURE_CONTACT_ENABLED, false),
+  // Contato aberto a visitantes com idade confirmada (número só sai no clique, com limite e auditoria).
+  secureContactEnabled: readBoolean(process.env.SECURE_CONTACT_ENABLED, true),
   // O titular autenticado pode publicar a própria mídia sem fila manual. Os gates de identidade,
   // termo, completude, feature flags e publicação continuam obrigatórios; defina false para exigir
   // moderação manual de cada arquivo.
@@ -107,9 +108,9 @@ export const ENV = {
     process.env.CREATOR_CONTENT_18_ENABLED,
     false
   ),
-  favoritesEnabled: readBoolean(process.env.FAVORITES_ENABLED, false),
-  blockingEnabled: readBoolean(process.env.BLOCKING_ENABLED, false),
-  reportsEnabled: readBoolean(process.env.REPORTS_ENABLED, false),
+  favoritesEnabled: readBoolean(process.env.FAVORITES_ENABLED, true),
+  blockingEnabled: readBoolean(process.env.BLOCKING_ENABLED, true),
+  reportsEnabled: readBoolean(process.env.REPORTS_ENABLED, true),
   adminEmails,
   // Armazenamento de mídia: "local" (volume do Coolify), "s3" (S3, R2, Spaces, MinIO) ou "forge".
   storageDriver: (process.env.STORAGE_DRIVER ?? "").trim().toLowerCase(),
@@ -142,13 +143,14 @@ export const ENV = {
     process.env.REQUIRE_AGE_VERIFICATION,
     !isTestMode
   ),
+  // Identidade verificada é opcional (dá o selo), não trava upload nem publicação.
   requireIdentityVerification: readBoolean(
     process.env.REQUIRE_IDENTITY_VERIFICATION,
-    readBoolean(process.env.KYC_REQUIRED, true)
+    readBoolean(process.env.KYC_REQUIRED, false)
   ),
   kycRequired: readBoolean(
     process.env.REQUIRE_IDENTITY_VERIFICATION,
-    readBoolean(process.env.KYC_REQUIRED, true)
+    readBoolean(process.env.KYC_REQUIRED, false)
   ),
   kycProvider: process.env.KYC_PROVIDER ?? "",
   kycApiKey: process.env.KYC_API_KEY ?? "",

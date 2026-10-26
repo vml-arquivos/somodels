@@ -34,15 +34,17 @@ Opção B — S3, Cloudflare R2 ou DigitalOcean Spaces (recomendado para crescer
 - Opcionais (podem ficar para depois): `CONTACT_EMAIL`, `PRIVACY_EMAIL`, `OPERATOR_NAME`, `OPERATOR_DOCUMENT`. Sem elas, o canal de contato é o formulário Fale conosco; as mensagens chegam em Admin → Mensagens. Olhe essa aba todos os dias (pedidos de recuperação de senha e de remoção chegam por lá).
 - `PUBLIC_ACCESS_ENABLED=true` e `PUBLIC_LAUNCH_ENABLED=true`
 - `ROBOTS_NOINDEX=false`, `TEST_MODE=false`, `ALLOW_FAKE_DATA=false`
-- `REPORTS_ENABLED=true`, `FAVORITES_ENABLED=true`, `BLOCKING_ENABLED=true`
+- `REPORTS_ENABLED=true`, `FAVORITES_ENABLED=true`, `BLOCKING_ENABLED=true`, `SECURE_CONTACT_ENABLED=true` (já são o padrão)
+- `ADULT_MARKETPLACE_ENABLED=true`, `ESCORT_LISTINGS_ENABLED=true` (sem elas ninguém consegue publicar)
+- `REQUIRE_IDENTITY_VERIFICATION=false` (padrão: identidade só dá o selo)
 - `SPONSORED_LISTINGS_ENABLED=true` só depois de criar planos com destaque
 - `ADMIN_MFA_REQUIRED=true` só depois que cada admin ativar o autenticador
 
 ## Primeiro dia
 1. Entre no admin e ative a verificação em duas etapas (aba Segurança).
 2. Crie os planos em Admin → Planos (um gratuito e ao menos um com destaque).
-3. Cadastre ou convide os primeiros anunciantes e aprove os perfis na fila.
-4. Quando houver perfis aprovados e publicados, eles aparecem na página inicial, nos filtros, nas cidades e no sitemap.
+3. Cadastre ou convide os primeiros anunciantes. Eles publicam sozinhos; você acompanha em Admin → Anúncios e Denúncias e oculta ou suspende o que descumprir as regras.
+4. Quando houver perfis publicados, eles aparecem na página inicial, nos filtros, nas cidades e no sitemap.
 
 ## Plano pago por Pix (manual)
 1. O titular pede o plano em `/planos` ou no painel.

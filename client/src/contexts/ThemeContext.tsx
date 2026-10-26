@@ -4,6 +4,9 @@ type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
+  /** Páginas públicas ficam sempre claras, mesmo com tema escuro salvo no navegador. */
+  setForceLight: (value: boolean) => void;
+  forceLight: boolean;
   toggleTheme?: () => void;
   switchable: boolean;
 }
@@ -28,9 +31,11 @@ export function ThemeProvider({
     return defaultTheme;
   });
 
+  const [forceLight, setForceLight] = useState(false);
+
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
+    if (theme === "dark" && !forceLight) {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
@@ -39,7 +44,7 @@ export function ThemeProvider({
     if (switchable) {
       try { localStorage.setItem("theme", theme); } catch { /* Theme still works without storage. */ }
     }
-  }, [theme, switchable]);
+  }, [theme, switchable, forceLight]);
 
   const toggleTheme = switchable
     ? () => {
@@ -48,7 +53,9 @@ export function ThemeProvider({
     : undefined;
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, switchable }}>
+    <ThemeContext.Provider
+      value={{ theme, toggleTheme, switchable, setForceLight, forceLight }}
+    >
       {children}
     </ThemeContext.Provider>
   );
@@ -60,4 +67,13 @@ export function useTheme() {
     throw new Error("useTheme must be used within ThemeProvider");
   }
   return context;
+}
+
+/** Use nas páginas públicas: força o visual claro enquanto a página está aberta. */
+export function usePublicLight() {
+  const { setForceLight } = useTheme();
+  useEffect(() => {
+    setForceLight(true);
+    return () => setForceLight(false);
+  }, [setForceLight]);
 }

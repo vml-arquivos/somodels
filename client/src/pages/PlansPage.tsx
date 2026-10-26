@@ -3,8 +3,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import Seo from "@/components/Seo";
-import StudioHeader from "@/components/StudioHeader";
-import PublicFooter from "@/components/PublicFooter";
+import PublicShell from "@/components/PublicShell";
 import { formatBRL } from "@shared/discovery-options";
 
 export default function PlansPage() {
@@ -19,7 +18,7 @@ export default function PlansPage() {
       toast.success(
         result.duplicate
           ? "Você já tem um pedido em andamento para este plano."
-          : "Pedido registrado. A equipe confirma o pagamento e ativa o plano."
+          : "Pedido enviado. A equipe confirma o pagamento e ativa o plano."
       );
       await mine.refetch();
     },
@@ -29,54 +28,61 @@ export default function PlansPage() {
     (mine.data ?? []).filter(s => s.status === "pending").map(s => s.planName)
   );
   return (
-    <div className="studio">
+    <>
       <Seo
-        title="Planos para anunciantes — Ero Models"
-        description="Compare os planos de destaque e escolha como aparecer na vitrine."
+        title="Planos — Ero Models"
+        description="Escolha como o seu anúncio aparece na Ero Models."
         path="/planos"
         noindex={Boolean(
           config.data?.robotsNoIndex || !config.data?.publicLaunchEnabled
         )}
       />
-      <StudioHeader />
-      <main className="studio-main">
-        <nav className="studio-breadcrumb" aria-label="Navegação estrutural">
+      <PublicShell>
+        <nav className="ep-breadcrumb" aria-label="Navegação">
           <Link href="/">Anúncios</Link>
           <span aria-hidden="true">/</span>
           <span>Planos</span>
         </nav>
-        <article className="studio-about">
-          <p className="studio-kicker">Para anunciantes</p>
-          <h1>Planos para anunciantes</h1>
+        <header className="ep-plans-head">
+          <p className="ep-eyebrow">Para quem anuncia</p>
+          <h1>Planos</h1>
           <p>
-            Escolha como o seu anúncio aparece. Planos em destaque sobem na
-            vitrine e são sempre identificados com o rótulo “Patrocinado”. O
-            pagamento é feito por Pix combinado com a equipe e o plano é
-            ativado manualmente após a confirmação; não há renovação automática.
+            Anunciar é simples. Os planos em destaque colocam seu perfil mais
+            acima e levam o rótulo &ldquo;Patrocinado&rdquo;. O pagamento é por
+            Pix combinado com a equipe, e o plano é ativado depois da
+            confirmação. Não há renovação automática.
           </p>
-        </article>
+        </header>
         {plans.isLoading ? (
-          <p>Carregando planos…</p>
+          <p className="ep-note">Carregando planos…</p>
         ) : !plans.data?.length ? (
-          <section className="studio-panel">
+          <section className="ep-empty">
             <h2>Planos em breve</h2>
             <p>
-              Os planos ainda não foram publicados. Você já pode criar seu
-              anúncio e acompanhar visitas e contatos no painel.
+              Enquanto isso, você já pode criar seu perfil e acompanhar visitas
+              e contatos pelo painel.
             </p>
-            <Link className="studio-cta" href="/cadastro">
-              Criar meu anúncio
+            <Link className="ep-btn ep-btn-primary" href="/cadastro">
+              Criar meu perfil
             </Link>
           </section>
         ) : (
-          <div className="studio-plan-grid">
+          <div className="ep-plan-grid">
             {plans.data.map(plan => (
-              <section className="studio-panel" key={plan.id} aria-label={`Plano ${plan.name}`}>
-                {plan.isFeatured && <p className="studio-kicker">Destaque</p>}
+              <section
+                className={`ep-plan${plan.isFeatured ? " is-featured" : ""}`}
+                key={plan.id}
+                aria-label={`Plano ${plan.name}`}
+              >
+                {plan.isFeatured && (
+                  <span className="ep-tag ep-tag-accent">Destaque</span>
+                )}
                 <h2>{plan.name}</h2>
-                <p>
-                  <strong>{plan.priceCents ? formatBRL(plan.priceCents) : "Gratuito"}</strong>
-                  {plan.priceCents ? ` por ${plan.durationDays} dias` : ""}
+                <p className="ep-plan-price">
+                  <strong>
+                    {plan.priceCents ? formatBRL(plan.priceCents) : "Grátis"}
+                  </strong>
+                  {plan.priceCents ? <small> por {plan.durationDays} dias</small> : null}
                 </p>
                 {plan.description && <p>{plan.description}</p>}
                 {plan.benefits.length > 0 && (
@@ -88,14 +94,19 @@ export default function PlansPage() {
                 )}
                 {user ? (
                   <button
-                    className="studio-cta"
+                    className="ep-btn ep-btn-primary"
                     disabled={request.isPending || pendingIds.has(plan.name)}
                     onClick={() => request.mutate({ planId: plan.id })}
                   >
-                    {pendingIds.has(plan.name) ? "Pedido em análise" : "Quero este plano"}
+                    {pendingIds.has(plan.name)
+                      ? "Pedido em andamento"
+                      : "Quero este plano"}
                   </button>
                 ) : (
-                  <Link className="studio-cta" href="/login?returnTo=/titular">
+                  <Link
+                    className="ep-btn ep-btn-primary"
+                    href="/login?returnTo=/titular"
+                  >
                     Entrar para contratar
                   </Link>
                 )}
@@ -103,8 +114,7 @@ export default function PlansPage() {
             ))}
           </div>
         )}
-      </main>
-      <PublicFooter />
-    </div>
+      </PublicShell>
+    </>
   );
 }

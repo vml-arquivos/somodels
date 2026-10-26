@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-26 — site claro e leve, contato aberto e menos travas
+
+- novo visual público claro e limpo (cabeçalho, rodapé, cartões, filtros, planos, login, cadastro, termos, ajuda, 404 e página do anúncio), com o mesmo padrão em todas as páginas; páginas públicas ficam sempre no tema claro, o tema escuro continua só no admin;
+- home com carrossel de anúncios em destaque no topo (passa sozinho, pausa ao tocar ou passar o mouse, setas, pontos e deslizar no celular), busca por cidade e lista com filtros;
+- textos padrão reescritos em português simples; textos antigos salvos no banco são trocados pelos novos quando ainda são os padrões antigos, e o editor da página inicial perdeu as seções que não são mais usadas;
+- página do anúncio com galeria grande, botões de WhatsApp e ligar sempre visíveis, denúncia sem login e dicas de segurança;
+- contato aberto: `safety.contactIntent` e `safety.reportProfile` passaram a aceitar visitante sem conta, desde que a idade esteja confirmada, com limite por IP e registro de auditoria; `SECURE_CONTACT_ENABLED`, `REPORTS_ENABLED`, `BLOCKING_ENABLED` e `FAVORITES_ENABLED` agora vêm ligados por padrão;
+- identidade verificada passou a ser opcional por padrão (`REQUIRE_IDENTITY_VERIFICATION=false`): só dá o selo, não trava upload nem publicação;
+- senha com no mínimo 10 caracteres, com letras e números (antes: 16 com maiúscula e minúscula); contas de bootstrap continuam exigindo 16;
+- login leva direto ao painel do titular; painel com a criação do perfil primeiro e conta/verificação recolhidas; fotos antes do botão de publicar; removidos os botões de testar ligação e WhatsApp;
+- tela de erro em português e sem exibir detalhe técnico em produção.
+
 ## 2026-10-26 — aceite único, localização estruturada e vitrine com perfis reais
 
 - cadastro público exige um único aceite de conta para maioridade, responsabilidade/autorização dos dados e vedação de conteúdo de menores, não consensual ou ilícito; o registro é versionado e auditado, e contas antigas recebem um painel de confirmação única nas áreas Cliente e Titular;

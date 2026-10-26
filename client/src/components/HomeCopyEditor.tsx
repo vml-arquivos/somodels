@@ -202,29 +202,6 @@ export default function HomeCopyEditor({
         />
       </Section>
 
-      <Section title="Links rápidos">
-        <Field
-          label="Eyebrow"
-          value={value.quickLinks.kicker}
-          onChange={next => update("quickLinks", "kicker", next)}
-        />
-        <Field
-          label="Título"
-          value={value.quickLinks.title}
-          onChange={next => update("quickLinks", "title", next)}
-        />
-        {value.quickLinks.items.map((item, index) => (
-          <Field
-            key={`quick-link-${index}`}
-            label={`Link ${index + 1}`}
-            value={item.label}
-            onChange={next =>
-              updateList("quickLinks", "items", index, next, "label")
-            }
-          />
-        ))}
-      </Section>
-
       <Section title="Segurança e confiança">
         <Field
           label="Eyebrow"
@@ -379,45 +356,6 @@ export default function HomeCopyEditor({
           label="Botão de preparação"
           value={value.catalog.launchButton}
           onChange={next => update("catalog", "launchButton", next)}
-        />
-      </Section>
-
-      <Section title="Busca avançada">
-        <Field
-          label="Eyebrow"
-          value={value.searchBand.kicker}
-          onChange={next => update("searchBand", "kicker", next)}
-        />
-        <Field
-          label="Título"
-          value={value.searchBand.title}
-          onChange={next => update("searchBand", "title", next)}
-        />
-        <Field
-          label="Texto"
-          value={value.searchBand.text}
-          onChange={next => update("searchBand", "text", next)}
-          rows={3}
-        />
-        <Field
-          label="Botão"
-          value={value.searchBand.buttonText}
-          onChange={next => update("searchBand", "buttonText", next)}
-        />
-        <Field
-          label="Rótulo da arte"
-          value={value.searchBand.artLabel}
-          onChange={next => update("searchBand", "artLabel", next)}
-        />
-        <Field
-          label="Localização padrão da arte"
-          value={value.searchBand.artFallback}
-          onChange={next => update("searchBand", "artFallback", next)}
-        />
-        <Field
-          label="Legenda da arte"
-          value={value.searchBand.artCaption}
-          onChange={next => update("searchBand", "artCaption", next)}
         />
       </Section>
 

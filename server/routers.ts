@@ -319,7 +319,7 @@ export const appRouter = router({
         z.object({
           name: z.string().trim().min(2).max(120),
           email: z.string().email().max(320),
-          password: z.string().min(16).max(200),
+          password: z.string().min(10).max(200),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -345,7 +345,7 @@ export const appRouter = router({
         z.object({
           name: z.string().trim().min(2).max(120),
           email: z.string().email().max(320),
-          password: z.string().min(16).max(200),
+          password: z.string().min(10).max(200),
           acceptAccountTerms: z.literal(true),
         })
       )
@@ -459,7 +459,7 @@ export const appRouter = router({
       .input(
         z.object({
           currentPassword: z.string().min(1).max(200),
-          nextPassword: z.string().min(16).max(200),
+          nextPassword: z.string().min(10).max(200),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -811,15 +811,22 @@ export const appRouter = router({
     myReports: protectedProcedure.query(({ ctx }) =>
       listUserReports(ctx.user.id)
     ),
-    reportProfile: protectedProcedure
+    // Qualquer visitante com idade confirmada pode denunciar, sem criar conta.
+    reportProfile: publicProcedure
       .input(reportProfileInputSchema)
-      .mutation(({ ctx, input }) => {
-        const decision = reportRateLimiter.consume(`user:${ctx.user.id}`);
+      .mutation(async ({ ctx, input }) => {
+        const decision = reportRateLimiter.consume(
+          ctx.user ? `user:${ctx.user.id}` : `ip:${getClientKey(ctx.req)}`
+        );
         if (!decision.allowed)
           throw new Error(rateLimitMessage(decision.retryAfterSeconds));
-        return createProfileReport(ctx.user.id, input);
+        if (!(await hasValidAgeSession(ctx.req)))
+          throw new Error("Confirme que você tem 18 anos ou mais para denunciar");
+        return createProfileReport(ctx.user?.id ?? null, input);
       }),
-    contactIntent: protectedProcedure
+    // Qualquer visitante com idade confirmada pode abrir o contato: o número só sai
+    // do servidor neste clique, com limite por visitante e registro de auditoria.
+    contactIntent: publicProcedure
       .input(
         z.object({
           profileId: z.number().int().positive(),
@@ -827,7 +834,9 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const decision = contactRateLimiter.consume(`user:${ctx.user.id}`);
+        const decision = contactRateLimiter.consume(
+          ctx.user ? `user:${ctx.user.id}` : `ip:${getClientKey(ctx.req)}`
+        );
         if (!decision.allowed)
           throw new Error(rateLimitMessage(decision.retryAfterSeconds));
         if (!(await readSiteSettings()).showContact) {
@@ -839,7 +848,7 @@ export const appRouter = router({
           );
         }
         return getSafeExternalContact(
-          ctx.user.id,
+          ctx.user?.id ?? null,
           input.profileId,
           input.method
         );

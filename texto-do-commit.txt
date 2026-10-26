@@ -1,13 +1,20 @@
-feat(admin): split dashboards and automate validation
+feat: novo visual do site, contato aberto e publicação sem fila
 
-- separa o painel administrativo em sidebar fixo no desktop e drawer acessível no mobile/PWA;
-- adiciona URLs diretas por área e fallback seguro para slugs inválidos;
-- filtra badges de pendências no servidor pelo escopo efetivo;
-- preserva RBAC, MFA, tRPC, queries, banco, migrations e aprovações de anúncios/mídias;
-- adiciona `pnpm smoke:prod` com 38 verificações de produção sem credenciais reais;
-- executa o smoke automaticamente no GitHub Actions após cada push na `main`, aguardando o rollout do Coolify;
-- documenta os acessos em `docs/ACCESS-MAP-2026-10-26.md`.
+Visual
+- site público refeito em tema claro e leve, igual em todas as páginas (início, anúncio, planos, login, cadastro, termos, ajuda, contato e erro 404)
+- início com carrossel de anúncios em destaque no topo, busca por cidade e lista com filtros
+- página do anúncio com fotos grandes e botões de WhatsApp e ligar sempre visíveis
+- textos reescritos em português simples; textos antigos salvos no banco são trocados pelos novos
 
-Validação local: `pnpm check`, `pnpm test` (153 testes), `pnpm build`, `pnpm smoke:prod` (38/38) e `git diff --check`.
+Menos travas
+- contato e denúncia abertos para quem confirmou 18 anos, sem precisar de conta (com limite por IP e registro)
+- identidade verificada virou opcional: só dá o selo, não trava envio de fotos nem publicação
+- senha com 10 caracteres, letras e números
+- depois do login, vai direto para o painel do titular
+- painel do titular com o perfil primeiro e as fotos antes do botão de publicar; botões de testar ligação e WhatsApp removidos
+- denúncias, bloqueio, favoritos e contato vêm ligados por padrão
 
-Commit final: 53ee690f480a315af4a6e5fc9b33dc3700f120b0
+Outros
+- tela de erro em português, sem mostrar detalhe técnico
+- descrição do site para o Google reescrita
+- documentação e changelog atualizados; testes novos para os padrões do ambiente e a regra de senha

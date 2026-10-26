@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import StudioHeader from "@/components/StudioHeader";
 import PublicFooter from "@/components/PublicFooter";
 import Seo from "@/components/Seo";
+import { usePublicLight } from "@/contexts/ThemeContext";
 import ListingCard from "@/components/ListingCard";
 import AccountTermsPanel from "@/components/AccountTermsPanel";
 
@@ -24,6 +25,7 @@ function formatDate(value: string | Date | null | undefined) {
 }
 
 export default function ClientDashboard() {
+  usePublicLight();
   const { user, loading, logout } = useAuth();
   const utils = trpc.useUtils();
   const [name, setName] = useState("");
@@ -70,7 +72,7 @@ export default function ClientDashboard() {
   });
 
   return (
-    <div className="studio">
+    <div className="studio studio-public ep-page">
       <Seo
         title="Minha conta — Ero Models"
         description="Área privada para dados da conta e gerenciamento do anúncio."
@@ -81,17 +83,17 @@ export default function ClientDashboard() {
           aria-label="Navegação da conta"
           className="studio-header-account-nav"
         >
-          <Link href="/">Explorar anúncios</Link>
-          <Link href="/titular">Gerenciar anúncio</Link>
+          <Link href="/">Ver o site</Link>
+          <Link href="/titular">Meu painel</Link>
           {user && <button onClick={() => void logout()}>Sair</button>}
         </nav>
       </StudioHeader>
       <main className="studio-main">
         <p className="studio-kicker">Minha conta</p>
-        <h1>Seus dados, de forma simples.</h1>
+        <h1>Seus dados</h1>
         <p className="studio-muted">
-          Atualize seus dados de acesso aqui. Informações públicas, fotos,
-          vídeos e detalhes do anúncio ficam na área do titular.
+          Mude seu nome e sua senha aqui. O anúncio, as fotos e os valores ficam
+          no seu painel.
         </p>
 
         {loading ? (
@@ -122,10 +124,9 @@ export default function ClientDashboard() {
               aria-labelledby="account-data-title"
             >
               <p className="studio-kicker">Dados de acesso</p>
-              <h2 id="account-data-title">Editar dados pessoais da conta</h2>
+              <h2 id="account-data-title">Dados da conta</h2>
               <p className="studio-muted">
-                O nome pode ser alterado. O e-mail é somente leitura e não muda
-                nesta área.
+                O e-mail de acesso não pode ser alterado aqui.
               </p>
               <form
                 className="studio-account-form"
@@ -172,16 +173,15 @@ export default function ClientDashboard() {
               aria-labelledby="listing-next-title"
             >
               <p className="studio-kicker">Próximo passo</p>
-              <h2 id="listing-next-title">Criar ou editar seu anúncio</h2>
+              <h2 id="listing-next-title">Seu anúncio</h2>
               <p className="studio-muted">
-                Salve informações aos poucos, retome depois, adicione fotos e
-                vídeos e publique quando o cadastro estiver completo.
+                Crie ou edite seu perfil, envie fotos e publique.
               </p>
               <div className="studio-actions">
                 <Link className="studio-cta" href="/titular">
-                  Abrir área do titular
+                  Abrir meu painel
                 </Link>
-                <Link href="/">Explorar a vitrine</Link>
+                <Link href="/">Ver o site</Link>
               </div>
             </section>
 

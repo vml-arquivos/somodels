@@ -2219,7 +2219,7 @@ export async function listUserReports(userId: number) {
 }
 
 export async function createProfileReport(
-  userId: number,
+  userId: number | null,
   input: { profileId: number; category: ReportCategory; description: string }
 ) {
   if (!ENV.reportsEnabled)
@@ -2227,7 +2227,7 @@ export async function createProfileReport(
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const profile = await requirePublicInteractionProfile(db, input.profileId);
-  if (!canActOnProfile(userId, profile.ownerId))
+  if (userId !== null && !canActOnProfile(userId, profile.ownerId))
     throw new Error(
       "Use o suporte administrativo para relatar o próprio perfil"
     );
@@ -2236,7 +2236,7 @@ export async function createProfileReport(
     description: input.description,
   });
   const priority = priorityForReport(input.category);
-  const [existing] = await db
+  const [existing] = userId === null ? [undefined] : await db
     .select({ id: moderationCases.id, status: moderationCases.status })
     .from(moderationCases)
     .where(
@@ -2389,7 +2389,7 @@ export async function getReportAuditHistory(reportId: number) {
 }
 
 export async function getSafeExternalContact(
-  viewerUserId: number,
+  viewerUserId: number | null,
   profileId: number,
   method: "whatsapp" | "phone" | "telegram"
 ) {
@@ -2398,25 +2398,27 @@ export async function getSafeExternalContact(
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const profile = await requirePublicInteractionProfile(db, profileId);
-  if (!canActOnProfile(viewerUserId, profile.ownerId))
-    throw new Error("Use o painel do titular para revisar seus contatos");
-  const [block] = await db
-    .select({ id: blocks.id })
-    .from(blocks)
-    .where(
-      or(
-        and(
-          eq(blocks.userId, viewerUserId),
-          eq(blocks.blockedProfileId, profileId)
-        ),
-        and(
-          eq(blocks.userId, profile.ownerId),
-          eq(blocks.blockedUserId, viewerUserId)
+  if (viewerUserId !== null) {
+    if (!canActOnProfile(viewerUserId, profile.ownerId))
+      throw new Error("Use o painel do titular para revisar seus contatos");
+    const [block] = await db
+      .select({ id: blocks.id })
+      .from(blocks)
+      .where(
+        or(
+          and(
+            eq(blocks.userId, viewerUserId),
+            eq(blocks.blockedProfileId, profileId)
+          ),
+          and(
+            eq(blocks.userId, profile.ownerId),
+            eq(blocks.blockedUserId, viewerUserId)
+          )
         )
       )
-    )
-    .limit(1);
-  if (block) throw new Error("Contato indisponível");
+      .limit(1);
+    if (block) throw new Error("Contato indisponível");
+  }
   const terms = await getAccountTermsStatus(profile.ownerId);
   if (!terms.current)
     throw new Error("O aceite de conta do titular não está vigente");

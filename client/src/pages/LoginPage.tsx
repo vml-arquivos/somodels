@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import StudioHeader from "@/components/StudioHeader";
+import { AuthCard } from "@/components/PublicShell";
 import Seo from "@/components/Seo";
 export default function LoginPage() {
   const [, navigate] = useLocation();
@@ -19,7 +19,7 @@ export default function LoginPage() {
         safeReturn ||
         (user.isAdmin
           ? "/admin"
-          : "/conta");
+          : "/titular");
       navigate(
         mustChangePassword
           ? `/alterar-senha?returnTo=${encodeURIComponent(target)}`
@@ -31,68 +31,73 @@ export default function LoginPage() {
   const needsCode =
     Boolean(login.error?.message.includes("duas etapas")) || totpCode.length > 0;
   return (
-    <div className="studio">
-      <Seo title="Entrar — Ero Models" description="Acesso privado à conta Ero Models." noindex />
-      <StudioHeader />
-      <main className="studio-main studio-narrow">
-        <section className="studio-panel">
-          <p className="studio-kicker">Acesso à sua conta</p>
-          <h1>Bem-vindo de volta.</h1>
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              login.mutate({ email, password, totpCode: totpCode || undefined });
-            }}
-          >
+    <>
+      <Seo title="Entrar — Ero Models" description="Acesse sua conta na Ero Models." noindex />
+      <AuthCard
+        eyebrow="Entrar"
+        title="Acesse sua conta"
+        footer={
+          <>
+            <p>
+              Ainda não tem conta? <Link href="/cadastro">Criar meu perfil</Link>
+            </p>
+            <p>
+              Esqueceu a senha? <Link href="/contato">Fale com a gente</Link> e
+              escolha &ldquo;Recuperar senha&rdquo;.
+            </p>
+          </>
+        }
+      >
+        <form
+          className="ep-form"
+          onSubmit={e => {
+            e.preventDefault();
+            login.mutate({ email, password, totpCode: totpCode || undefined });
+          }}
+        >
+          <label>
+            E-mail
+            <input
+              type="email"
+              autoComplete="username"
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+          </label>
+          <label>
+            Senha
+            <input
+              type="password"
+              autoComplete="current-password"
+              required
+              maxLength={200}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+            />
+          </label>
+          {needsCode && (
             <label>
-              E-mail
+              Código do aplicativo autenticador
               <input
-                type="email"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={totpCode}
+                onChange={e => setTotpCode(e.target.value.replace(/\D/g, ""))}
               />
             </label>
-            <label>
-              Senha
-              <input
-                type="password"
-                autoComplete="current-password"
-                required
-                maxLength={200}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-            </label>
-            {needsCode && (
-              <label>
-                Código do aplicativo autenticador
-                <input
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={6}
-                  value={totpCode}
-                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, ""))}
-                />
-              </label>
-            )}
-            {login.error && (
-              <p role="alert" className="studio-error">
-                {login.error.message}
-              </p>
-            )}
-            <button className="primary" disabled={login.isPending}>
-              {login.isPending ? "Entrando…" : "Entrar"}
-            </button>
-          </form>
-          <p className="studio-muted">
-            Esqueceu a senha? Peça um link temporário de recuperação em{" "}
-            <a href="/contato">Fale conosco</a>, escolhendo "Recuperar senha".
-            Não compartilhe sua senha.
-          </p>
-        </section>
-      </main>
-    </div>
+          )}
+          {login.error && (
+            <p role="alert" className="ep-form-error">
+              {login.error.message}
+            </p>
+          )}
+          <button className="ep-btn ep-btn-primary" disabled={login.isPending}>
+            {login.isPending ? "Entrando…" : "Entrar"}
+          </button>
+        </form>
+      </AuthCard>
+    </>
   );
 }

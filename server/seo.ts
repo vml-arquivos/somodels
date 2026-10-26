@@ -53,7 +53,7 @@ function staticSeo(pathname: string) {
   if (pathname === "/") {
     return {
       title: `${ENV.siteName} — Anúncios de acompanhantes adultos`,
-      description: "Portal adulto de anúncios de acompanhantes por cidade, região e características, com age gate, moderação e contato controlado.",
+      description: "Anúncios de acompanhantes por cidade e bairro. Veja fotos e valores e fale direto pelo WhatsApp. Só para maiores de 18 anos.",
       image: "/images/hero/ero-models-hero.webp",
       jsonLd: {
         "@context": "https://schema.org",
@@ -79,7 +79,7 @@ function staticSeo(pathname: string) {
     },
     "/cadastro": {
       title: `Criar conta de titular — ${ENV.siteName}`,
-      description: "Crie sua conta para preparar um anúncio adulto.",
+      description: "Crie sua conta e publique seu anúncio.",
     },
     "/titular": {
       title: `Meus anúncios — ${ENV.siteName}`,
@@ -189,7 +189,7 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
     const category = decodeSegment(cleanPath.slice("/categoria/".length), 60);
     return {
       title: `Anúncios ${category} — ${ENV.siteName}`,
-      description: `Explore anúncios adultos na categoria ${category}.`,
+      description: `Veja os anúncios da categoria ${category}.`,
       canonical,
       noindex: !category || hasQuery || !indexable,
       jsonLd: {
@@ -209,7 +209,7 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
         if (profile) {
           return {
             title: `${profile.profile.stageName} — ${ENV.siteName}`,
-            description: profile.profile.description || "Anúncio adulto de acompanhante",
+            description: profile.profile.description || "Anúncio de acompanhante na Ero Models",
             canonical,
             noindex: hasQuery,
             image: profile.profile.avatarUrl || undefined,
@@ -228,7 +228,7 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
     }
     return {
       title: `Anúncio — ${ENV.siteName}`,
-      description: "Anúncio adulto indisponível ou em revisão.",
+      description: "Este anúncio não está mais disponível.",
       canonical,
       noindex: true,
     };

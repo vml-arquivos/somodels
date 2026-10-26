@@ -292,7 +292,7 @@ export const managementRouter = router({
       z.object({
         name: z.string().trim().min(2).max(120),
         email: z.string().email().max(320),
-        password: z.string().min(16).max(200),
+        password: z.string().min(10).max(200),
         role: z.enum(["user", "admin", "super_admin"]),
         adminFunction: z.enum(adminFunctionKeys).nullable().optional(),
       })
@@ -435,7 +435,7 @@ export const managementRouter = router({
         // Validate its alphabet/size without coupling the public input to the
         // SHA-256 digest length stored in the database.
         token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
-        password: z.string().min(16).max(200),
+        password: z.string().min(10).max(200),
       })
     )
     .mutation(async ({ input }) => {
