@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-26 — preparação para entrar no ar
+
+- textos de Privacidade, Denúncia, Ajuda, Contato, Cadastro e Segurança reescritos sem linguagem de pré-lançamento, e sem contradizer a página de planos;
+- e-mail de contato, e-mail de privacidade, nome e documento do responsável configuráveis por variável (`CONTACT_EMAIL`, `PRIVACY_EMAIL`, `OPERATOR_NAME`, `OPERATOR_DOCUMENT`) e exibidos em /contato, /privacidade e /ajuda; a aba Prontidão bloqueia sem canal de contato;
+- `/healthz` passa a conferir também as colunas e tabelas da migration 0008, para o Coolify não manter no ar uma versão à frente do banco;
+- `scripts/smoke-prod.mjs`: teste de 20 verificações pós-deploy (healthz dos três hosts, redirecionamentos, robots, sitemap, páginas públicas, vitrine aberta, canal de contato);
+- roteiro do dia em `docs/GO-LIVE.md`.
+
 ## 2026-10-26 — revisão visual de todas as páginas
 
 - home: o título do topo não passa mais por baixo da foto (tamanho fluido por largura de tela);

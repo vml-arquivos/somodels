@@ -30,12 +30,12 @@ const pages = {
     eyebrow: "Privacidade",
     heading: "Privacidade e proteção de dados",
     paragraphs: [
-      "A plataforma busca exibir somente o necessário para descoberta de anúncios. Telefone, WhatsApp e Telegram não fazem parte do payload público de descoberta; quando habilitado, o contato externo passa por uma intenção autenticada e controlada.",
-      "Documentos, biometria, tokens, chaves e referências internas de armazenamento não devem aparecer em páginas públicas, logs comuns ou dados estruturados.",
-      "O canal formal de privacidade, a entidade operadora, as bases legais e os prazos de retenção precisam ser definidos e revisados antes de um lançamento amplo. Esta página não substitui a política jurídica final.",
+      "Exibimos publicamente só o necessário para a descoberta de anúncios. Telefone, WhatsApp e Telegram não aparecem na listagem; o contato com o titular é liberado apenas para quem está logado.",
+      "Documentos, senhas e dados internos nunca são exibidos em páginas públicas. Nenhum documento de identidade é publicado.",
+      "Tratamos os dados conforme a Lei Geral de Proteção de Dados (LGPD). Coletamos apenas o necessário para criar a conta, moderar anúncios, proteger a plataforma e atender solicitações. Os dados não são vendidos. Mantemos registros de segurança pelo tempo exigido pela lei e apagamos ou anonimizamos o restante quando a conta é encerrada.",
     ],
     bullets: [
-      "Solicite correção, acesso ou exclusão pelo canal de privacidade que será divulgado antes do lançamento.",
+      "Você pode pedir acesso, correção ou exclusão dos seus dados pelo canal de privacidade informado abaixo.",
       "Não envie documentos, senhas ou dados sensíveis em descrições públicas ou denúncias.",
       "A localização pública é aproximada; nunca publique endereço residencial.",
     ],
@@ -64,10 +64,10 @@ const pages = {
     eyebrow: "Trust & Safety",
     heading: "Denúncias e resposta a incidentes",
     paragraphs: [
-      "A denúncia contextual está condicionada à ativação operacional da fila de moderação. Quando habilitada, exige conta autenticada, registra um protocolo e encaminha o caso para triagem humana.",
+      "A denúncia é feita no próprio anúncio. Ela exige conta, gera um protocolo e vai para análise da nossa equipe. Casos urgentes têm prioridade.",
       "Possível menor de idade, tráfico, exploração, coerção, violência, ameaça ou extorsão devem receber prioridade urgente. Não inclua documentos, senhas ou evidências sensíveis no campo de texto público.",
       "Casos de exploração sexual de crianças e adolescentes também podem ser denunciados diretamente ao Disque 100, serviço gratuito e sigiloso do governo federal, disponível todos os dias.",
-      "A plataforma pode ocultar ou suspender material durante a apuração. Prazos, retenção de evidências, recurso e escalonamento precisam seguir a política jurídica e operacional aprovada.",
+      "Podemos ocultar ou suspender o material enquanto o caso é analisado e, quando necessário, comunicar as autoridades competentes. O titular pode pedir revisão da decisão pelo canal de contato.",
     ],
     bullets: [
       "Use a denúncia no próprio perfil para preservar o contexto do alvo.",
@@ -82,14 +82,14 @@ const pages = {
     eyebrow: "Central de ajuda",
     heading: "Como usar a plataforma",
     paragraphs: [
-      "Titulares criam e atualizam um anúncio, aceitam o termo vigente e enviam fotos e vídeos para revisão. A publicação só ocorre após os gates de moderação e identidade aplicáveis ao ambiente.",
-      "Visitantes podem pesquisar por cidade e categoria quando a vitrine estiver aberta. Filtros não devem ser usados para inferir localização precisa, atributos sensíveis ou disponibilidade que não tenha sido informada pelo titular.",
-      "Se uma mídia, perfil ou contato parecer irregular, interrompa a interação e use o fluxo de denúncia. Não tente contornar age gate, autenticação, bloqueio ou proteção de armazenamento.",
+      "Titulares criam e atualizam um anúncio, aceitam o termo vigente e enviam fotos e vídeos para revisão. O anúncio só é publicado depois de aprovado pela moderação.",
+      "Visitantes pesquisam por cidade, categoria, idade, valor, serviços e local de atendimento. As informações são as que o próprio titular publicou; a localização é sempre aproximada.",
+      "Se uma mídia, perfil ou contato parecer irregular, interrompa a interação e use o fluxo de denúncia. Não tente contornar a confirmação de idade, o login ou as proteções da plataforma.",
     ],
     bullets: [
-      "Login, titular, admin, reset de senha e validações são áreas privadas e não devem ser indexados.",
-      "A vitrine pode permanecer fechada até providers e políticas serem homologados.",
-      "Pagamentos, assinaturas e intermediação financeira permanecem desligados; o contato e as condições são tratados diretamente entre as partes fora da plataforma.",
+      "Login, área do titular, administração e redefinição de senha são áreas privadas e não aparecem nos buscadores.",
+      "Esqueceu a senha? Peça um link temporário de recuperação pelo canal de contato.",
+      "Planos em destaque são ativados pela equipe após a confirmação do pagamento. A plataforma não intermedeia o combinado entre titular e cliente: contato e condições são tratados diretamente entre as partes.",
     ],
   },
   contact: {
@@ -99,9 +99,9 @@ const pages = {
     eyebrow: "Contato",
     heading: "Fale com a plataforma",
     paragraphs: [
-      "O contato com titulares, quando habilitado, é uma saída controlada para um canal informado pelo próprio titular. A Ero Models não controla a conversa depois que ela sai da plataforma.",
-      "O canal formal para privacidade, solicitações jurídicas e incidentes deve ser configurado pelo operador antes do lançamento público. Não inventamos um endereço de suporte ou uma identidade jurídica que ainda não foi homologada.",
-      "Para denunciar um perfil, prefira a ação contextual no próprio perfil. Para uma conta administrativa, use o login e os canais internos definidos pelo operador.",
+      "O contato com titulares é uma saída controlada para o canal informado pelo próprio titular. A Ero Models não controla a conversa depois que ela sai da plataforma.",
+      "Use o canal oficial abaixo para suporte, privacidade, solicitações jurídicas, recuperação de senha e pedidos de remoção.",
+      "Para denunciar um perfil, prefira a ação de denúncia no próprio anúncio.",
     ],
     bullets: [
       "Nunca envie senha, token, documento ou chave de API por mensagem.",
@@ -126,6 +126,7 @@ export default function InstitutionalPage() {
   const [location] = useLocation();
   const content = pages[routeToPage[location] ?? "help"];
   const config = trpc.system.config.useQuery();
+  const contact = config.data?.contact;
   return (
     <div className="studio">
       <Seo
@@ -153,10 +154,45 @@ export default function InstitutionalPage() {
             {content.bullets.map(bullet => <li key={bullet}>{bullet}</li>)}
           </ul>
         </article>
+        {(content.path === "/contato" ||
+          content.path === "/privacidade" ||
+          content.path === "/ajuda") && (
+          <section className="studio-panel" aria-label="Canal oficial">
+            <h2>Canal oficial</h2>
+            {contact?.email || contact?.privacyEmail ? (
+              <p>
+                {content.path === "/privacidade" && contact.privacyEmail
+                  ? "Privacidade e dados pessoais: "
+                  : "Suporte e solicitações: "}
+                <a
+                  href={`mailto:${
+                    content.path === "/privacidade"
+                      ? contact.privacyEmail || contact.email
+                      : contact.email || contact.privacyEmail
+                  }`}
+                >
+                  {content.path === "/privacidade"
+                    ? contact.privacyEmail || contact.email
+                    : contact.email || contact.privacyEmail}
+                </a>
+              </p>
+            ) : (
+              <p>Canal de atendimento em configuração.</p>
+            )}
+            {contact?.operatorName && (
+              <p>
+                Responsável: {contact.operatorName}
+                {contact.operatorDocument
+                  ? ` — ${contact.operatorDocument}`
+                  : ""}
+              </p>
+            )}
+          </section>
+        )}
         <section className="studio-panel">
           <h2>Precisa de ajuda com um perfil?</h2>
           <p>
-            Volte aos anúncios, abra o perfil correspondente e use a ação de denúncia quando ela estiver habilitada para o ambiente.
+            Volte aos anúncios, abra o perfil correspondente e use a ação de denúncia.
           </p>
           <Link className="studio-cta" href="/">Voltar aos anúncios</Link>
         </section>

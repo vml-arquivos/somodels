@@ -70,6 +70,10 @@ export async function isDatabaseReady() {
     // a container healthy when the application code is ahead of its migrations.
     await db.execute(sql`SELECT \`portfolioReviewed\` FROM \`profiles\` LIMIT 0`);
     await db.execute(sql`SELECT \`priceFromCents\`, \`services\`, \`attendancePlaces\` FROM \`profiles\` LIMIT 0`);
+    await db.execute(sql`SELECT \`availableUntil\` FROM \`profiles\` LIMIT 0`);
+    await db.execute(sql`SELECT \`isFeatured\`, \`durationDays\`, \`sortOrder\`, \`benefits\` FROM \`plans\` LIMIT 0`);
+    await db.execute(sql`SELECT \`source\`, \`note\`, \`activatedBy\` FROM \`subscriptions\` LIMIT 0`);
+    await db.execute(sql`SELECT \`id\`, \`secretEnc\`, \`lastStep\` FROM \`user_mfa\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\` FROM \`site_settings\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\` FROM \`finance_entries\` LIMIT 0`);
     return true;

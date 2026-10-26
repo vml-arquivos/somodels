@@ -27,7 +27,7 @@ export default function SignupPage() {
           <p className="studio-kicker">Anuncie seu perfil</p>
           <h1>Crie sua conta de anunciante.</h1>
           <p className="studio-muted">
-            O cadastro cria uma conta comum. A publicação do anúncio exige maioridade, autorização do conteúdo, revisão, aceite do termo aplicável e os demais gates de segurança.
+            O cadastro cria uma conta comum. A publicação do anúncio exige maioridade, autorização do conteúdo, revisão, aceite dos termos e as etapas de segurança da plataforma.
           </p>
           <form
             onSubmit={event => {

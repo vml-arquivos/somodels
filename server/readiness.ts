@@ -11,6 +11,8 @@ export type ReadinessInput = {
   storageConfigured: boolean;
   canonicalOriginSet: boolean;
   releaseKnown: boolean;
+  contactChannelSet: boolean;
+  operatorIdentified: boolean;
   adminMfaRequired: boolean;
   flags: {
     reportsEnabled: boolean;
@@ -77,6 +79,22 @@ export function buildReadiness(input: ReadinessInput): ReadinessItem[] {
     input.ageVerificationConfigured ? "ok" : "block",
     "Confirmação de maioridade",
     input.ageVerificationConfigured ? "Configurada." : "Configure AGE_VERIFICATION_MODE."
+  );
+  add(
+    "contact-channel",
+    input.contactChannelSet ? "ok" : "block",
+    "Canal de contato e privacidade",
+    input.contactChannelSet
+      ? "CONTACT_EMAIL definido; aparece em /contato e /privacidade."
+      : "Defina CONTACT_EMAIL (e PRIVACY_EMAIL, se for outro). Sem canal, as páginas de contato e privacidade ficam incompletas."
+  );
+  add(
+    "operator",
+    input.operatorIdentified ? "ok" : "warn",
+    "Identificação do responsável",
+    input.operatorIdentified
+      ? "Responsável identificado nas páginas legais."
+      : "Defina OPERATOR_NAME e OPERATOR_DOCUMENT (nome/razão social e CPF/CNPJ) para a política de privacidade."
   );
   add(
     "storage",

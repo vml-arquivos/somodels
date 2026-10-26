@@ -20,6 +20,12 @@ export const systemRouter = router({
     allowDemoSeed: ENV.allowDemoSeed,
     demoContactsEnabled: ENV.demoContactsEnabled,
     robotsNoIndex: ENV.robotsNoIndex,
+    contact: {
+      email: ENV.contactEmail,
+      privacyEmail: ENV.privacyEmail,
+      operatorName: ENV.operatorName,
+      operatorDocument: ENV.operatorDocument,
+    },
     ageVerificationRequired: ENV.requireAgeVerification && !isAgeVerificationConfigured(),
     ageVerificationConfigured: isAgeVerificationConfigured(),
     ageVerificationMode: ENV.ageVerificationMode,

@@ -836,6 +836,8 @@ export const appRouter = router({
         storageConfigured: status.storage,
         canonicalOriginSet: Boolean(ENV.canonicalOrigin),
         releaseKnown: ENV.release !== "development",
+        contactChannelSet: Boolean(ENV.contactEmail),
+        operatorIdentified: Boolean(ENV.operatorName && ENV.operatorDocument),
         adminMfaRequired: ENV.adminMfaRequired,
         flags: {
           reportsEnabled: ENV.reportsEnabled,

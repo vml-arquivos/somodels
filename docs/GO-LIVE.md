@@ -7,7 +7,19 @@ Use a aba **Admin → Prontidão**: ela lista o que ainda bloqueia. Este roteiro
 2. Publique o pacote. As migrations 0007 e 0008 rodam sozinhas na subida do container.
 3. Confira `/healthz` nos três hosts: `ok: true`, `database: true` e `release` com o commit novo.
 
+## Roteiro de hoje (cerca de 40 minutos)
+1. Backup do banco (5 min).
+2. Subir o pacote no GitHub e esperar o deploy do Coolify (5 a 10 min). Se o healthcheck falhar, o Coolify mantém a versão antiga no ar.
+3. Rodar `node scripts/smoke-prod.mjs https://eromodels.com.br` e conferir `/healthz` (5 min). As falhas de "vitrine aberta" e "canal de contato" são esperadas até o passo 4.
+4. Ajustar as variáveis abaixo no Coolify e reiniciar (10 min).
+5. Entrar no admin, ativar o autenticador, criar os planos e abrir Admin → Prontidão: deve estar sem itens vermelhos (10 min).
+6. Rodar o smoke de novo: tudo OK. Divulgar.
+
+Se algo sair errado: Coolify → Deployments → Redeploy da versão anterior. As migrations só adicionam colunas e tabelas, então a versão antiga continua funcionando com o banco novo.
+
 ## Variáveis no Coolify
+- `CONTACT_EMAIL` (e `PRIVACY_EMAIL`, se for outro): e-mail que aparece em /contato e /privacidade
+- `OPERATOR_NAME` e `OPERATOR_DOCUMENT`: nome ou razão social e CPF/CNPJ do responsável
 - `PUBLIC_ACCESS_ENABLED=true` e `PUBLIC_LAUNCH_ENABLED=true`
 - `ROBOTS_NOINDEX=false`, `TEST_MODE=false`, `ALLOW_FAKE_DATA=false`
 - `REPORTS_ENABLED=true`, `FAVORITES_ENABLED=true`, `BLOCKING_ENABLED=true`

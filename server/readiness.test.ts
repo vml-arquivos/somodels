@@ -12,6 +12,8 @@ const ready: ReadinessInput = {
   storageConfigured: true,
   canonicalOriginSet: true,
   releaseKnown: true,
+  contactChannelSet: true,
+  operatorIdentified: true,
   adminMfaRequired: true,
   flags: {
     reportsEnabled: true,
@@ -52,6 +54,16 @@ describe("buildReadiness", () => {
     });
     expect(items.find(item => item.id === "indexing")?.level).toBe("block");
     expect(items.find(item => item.id === "fake-data")?.level).toBe("block");
+  });
+
+  it("bloqueia sem canal de contato e avisa sem responsável identificado", () => {
+    const items = buildReadiness({
+      ...ready,
+      contactChannelSet: false,
+      operatorIdentified: false,
+    });
+    expect(items.find(item => item.id === "contact-channel")?.level).toBe("block");
+    expect(items.find(item => item.id === "operator")?.level).toBe("warn");
   });
 
   it("tolera contadores indisponíveis", () => {
