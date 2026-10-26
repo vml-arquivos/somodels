@@ -10,6 +10,8 @@ const ready: ReadinessInput = {
   ageVerificationConfigured: true,
   requireIdentityVerification: false,
   storageConfigured: true,
+  storageDriver: "s3",
+  storagePersistent: true,
   canonicalOriginSet: true,
   releaseKnown: true,
   contactChannelSet: true,
@@ -30,6 +32,7 @@ const ready: ReadinessInput = {
     pendingIdentity: 0,
     openReports: 0,
     pendingSubscriptions: 0,
+    newMessages: 0,
     activePlans: 1,
     owners: 3,
   },
@@ -56,14 +59,25 @@ describe("buildReadiness", () => {
     expect(items.find(item => item.id === "fake-data")?.level).toBe("block");
   });
 
-  it("bloqueia sem canal de contato e avisa sem responsável identificado", () => {
+  it("não bloqueia sem e-mail público e avisa sem responsável identificado", () => {
     const items = buildReadiness({
       ...ready,
       contactChannelSet: false,
       operatorIdentified: false,
     });
-    expect(items.find(item => item.id === "contact-channel")?.level).toBe("block");
+    expect(items.find(item => item.id === "contact-channel")?.level).toBe("ok");
     expect(items.find(item => item.id === "operator")?.level).toBe("warn");
+  });
+
+  it("bloqueia armazenamento local fora de volume persistente", () => {
+    const items = buildReadiness({
+      ...ready,
+      storageDriver: "local",
+      storagePersistent: false,
+    });
+    expect(items.find(item => item.id === "storage-persistent")?.level).toBe("block");
+    const ok = buildReadiness({ ...ready, storageDriver: "local", storagePersistent: true });
+    expect(ok.find(item => item.id === "storage-persistent")?.level).toBe("ok");
   });
 
   it("tolera contadores indisponíveis", () => {

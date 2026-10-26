@@ -10,16 +10,28 @@ Use a aba **Admin → Prontidão**: ela lista o que ainda bloqueia. Este roteiro
 ## Roteiro de hoje (cerca de 40 minutos)
 1. Backup do banco (5 min).
 2. Subir o pacote no GitHub e esperar o deploy do Coolify (5 a 10 min). Se o healthcheck falhar, o Coolify mantém a versão antiga no ar.
-3. Rodar `node scripts/smoke-prod.mjs https://eromodels.com.br` e conferir `/healthz` (5 min). As falhas de "vitrine aberta" e "canal de contato" são esperadas até o passo 4.
+3. Rodar `node scripts/smoke-prod.mjs https://eromodels.com.br` e conferir `/healthz` (5 min). A falha de "vitrine aberta" é esperada até o passo 4.
 4. Ajustar as variáveis abaixo no Coolify e reiniciar (10 min).
 5. Entrar no admin, ativar o autenticador, criar os planos e abrir Admin → Prontidão: deve estar sem itens vermelhos (10 min).
 6. Rodar o smoke de novo: tudo OK. Divulgar.
 
 Se algo sair errado: Coolify → Deployments → Redeploy da versão anterior. As migrations só adicionam colunas e tabelas, então a versão antiga continua funcionando com o banco novo.
 
+## Armazenamento de fotos e vídeos (obrigatório)
+Sem isto o envio de mídia falha com "Não foi possível armazenar a mídia".
+
+Opção A — disco do servidor (padrão, sem custo):
+1. Coolify → seu aplicativo → Storages → Add → Volume Mount.
+2. Destino (Destination Path): `/app/storage`. Salve e faça um novo deploy.
+3. Admin → Prontidão: "Volume persistente das mídias" deve ficar verde. Se estiver vermelho, o volume não foi montado e os arquivos somem a cada deploy.
+4. Inclua esse volume nos backups (veja `docs/BACKUP-RESTORE.md`).
+5. Se o erro continuar, veja os logs do aplicativo no Coolify: a linha `[Upload] failed` mostra o motivo (por exemplo, permissão de escrita no volume).
+
+Opção B — S3, Cloudflare R2 ou DigitalOcean Spaces (recomendado para crescer): defina `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` e, para R2/Spaces, `S3_ENDPOINT` e `S3_REGION`. O bucket deve ser privado: o site entrega os arquivos por links temporários, só para quem passou pela confirmação de idade e só de anúncios aprovados.
+
 ## Variáveis no Coolify
-- `CONTACT_EMAIL` (e `PRIVACY_EMAIL`, se for outro): e-mail que aparece em /contato e /privacidade
-- `OPERATOR_NAME` e `OPERATOR_DOCUMENT`: nome ou razão social e CPF/CNPJ do responsável
+- Obrigatórias para abrir: `PUBLIC_ACCESS_ENABLED`, `PUBLIC_LAUNCH_ENABLED`, `ROBOTS_NOINDEX=false`, `TEST_MODE=false`, `ALLOW_FAKE_DATA=false`.
+- Opcionais (podem ficar para depois): `CONTACT_EMAIL`, `PRIVACY_EMAIL`, `OPERATOR_NAME`, `OPERATOR_DOCUMENT`. Sem elas, o canal de contato é o formulário Fale conosco; as mensagens chegam em Admin → Mensagens. Olhe essa aba todos os dias (pedidos de recuperação de senha e de remoção chegam por lá).
 - `PUBLIC_ACCESS_ENABLED=true` e `PUBLIC_LAUNCH_ENABLED=true`
 - `ROBOTS_NOINDEX=false`, `TEST_MODE=false`, `ALLOW_FAKE_DATA=false`
 - `REPORTS_ENABLED=true`, `FAVORITES_ENABLED=true`, `BLOCKING_ENABLED=true`

@@ -55,6 +55,26 @@ export const userMfa = mysqlTable(
   }),
 );
 
+export const contactMessages = mysqlTable(
+  "contact_messages",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    name: varchar("name", { length: 120 }).notNull(),
+    replyTo: varchar("replyTo", { length: 200 }),
+    topic: mysqlEnum("topic", ["support", "privacy", "report", "password", "other"])
+      .default("support")
+      .notNull(),
+    message: text("message").notNull(),
+    status: mysqlEnum("status", ["new", "handled"]).default("new").notNull(),
+    handledBy: int("handledBy"),
+    handledAt: timestamp("handledAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    statusIdx: index("contact_messages_status_idx").on(table.status, table.createdAt),
+  }),
+);
+
 export const authSessions = mysqlTable(
   "auth_sessions",
   {

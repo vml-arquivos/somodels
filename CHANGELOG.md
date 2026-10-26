@@ -1,9 +1,16 @@
 # Changelog
 
+## 2026-10-26 — mídia funcionando e novo painel de contas
+
+- armazenamento de fotos e vídeos: o sistema só sabia usar um serviço interno da plataforma antiga, ausente no Coolify, e por isso o envio falhava ("Não foi possível armazenar a mídia"); agora há três modos (`STORAGE_DRIVER`): `local` (volume em `/app/storage`, padrão), `s3` (S3, R2, Spaces, MinIO) e `forge` (legado). O modo local entrega vídeos com suporte a Range e protege contra caminhos fora da pasta; a aba Prontidão bloqueia se a pasta não estiver em volume persistente;
+- aba Usuários refeita: Clientes (sem anúncio), Titulares (com anúncio) e Administradores em áreas separadas, com contadores, busca com atraso, filtro de situação, avatar, ficha com suspender/reativar, link de senha, anúncios vinculados, zona de risco com confirmação, e níveis de acesso (Administrador, Super administrador, Desenvolvedor); só o desenvolvedor concede Super administrador; no celular a ficha ocupa a tela com botão de voltar;
+- `/healthz` e prontidão passam a considerar o novo armazenamento.
+
 ## 2026-10-26 — preparação para entrar no ar
 
 - textos de Privacidade, Denúncia, Ajuda, Contato, Cadastro e Segurança reescritos sem linguagem de pré-lançamento, e sem contradizer a página de planos;
-- e-mail de contato, e-mail de privacidade, nome e documento do responsável configuráveis por variável (`CONTACT_EMAIL`, `PRIVACY_EMAIL`, `OPERATOR_NAME`, `OPERATOR_DOCUMENT`) e exibidos em /contato, /privacidade e /ajuda; a aba Prontidão bloqueia sem canal de contato;
+- formulário "Fale conosco" em /contato (suporte, recuperação de senha, privacidade, remoção), com limite de 5 envios por hora por IP e campo anti-robô; as mensagens ficam na nova aba Mensagens do admin, com marcação de atendida e auditoria (migration `0009_contact_messages`);
+- e-mail de contato, e-mail de privacidade, nome e documento do responsável são opcionais (`CONTACT_EMAIL`, `PRIVACY_EMAIL`, `OPERATOR_NAME`, `OPERATOR_DOCUMENT`) e só aparecem nas páginas quando preenchidos; a aba Prontidão apenas avisa;
 - `/healthz` passa a conferir também as colunas e tabelas da migration 0008, para o Coolify não manter no ar uma versão à frente do banco;
 - `scripts/smoke-prod.mjs`: teste de 20 verificações pós-deploy (healthz dos três hosts, redirecionamentos, robots, sitemap, páginas públicas, vitrine aberta, canal de contato);
 - roteiro do dia em `docs/GO-LIVE.md`.

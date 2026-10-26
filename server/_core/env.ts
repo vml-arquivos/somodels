@@ -68,6 +68,15 @@ export const ENV = {
   blockingEnabled: readBoolean(process.env.BLOCKING_ENABLED, false),
   reportsEnabled: readBoolean(process.env.REPORTS_ENABLED, false),
   adminEmails,
+  // Armazenamento de mídia: "local" (volume do Coolify), "s3" (S3, R2, Spaces, MinIO) ou "forge".
+  storageDriver: (process.env.STORAGE_DRIVER ?? "").trim().toLowerCase(),
+  storageLocalDir: (process.env.STORAGE_LOCAL_DIR ?? "/app/storage").trim(),
+  s3Endpoint: (process.env.S3_ENDPOINT ?? "").trim(),
+  s3Region: (process.env.S3_REGION ?? "us-east-1").trim(),
+  s3Bucket: (process.env.S3_BUCKET ?? "").trim(),
+  s3AccessKeyId: (process.env.S3_ACCESS_KEY_ID ?? "").trim(),
+  s3SecretAccessKey: (process.env.S3_SECRET_ACCESS_KEY ?? "").trim(),
+  s3ForcePathStyle: readBoolean(process.env.S3_FORCE_PATH_STYLE, false),
   contactEmail: (process.env.CONTACT_EMAIL ?? "").trim(),
   privacyEmail: (process.env.PRIVACY_EMAIL ?? process.env.CONTACT_EMAIL ?? "").trim(),
   operatorName: (process.env.OPERATOR_NAME ?? "").trim(),
@@ -98,11 +107,27 @@ export const ENV = {
   loginRateLimitMax: readInteger(process.env.LOGIN_RATE_LIMIT_MAX, 10),
 };
 
+export function resolveStorageDriver(): "forge" | "s3" | "local" {
+  const explicit = ENV.storageDriver;
+  if (explicit === "forge" || explicit === "s3" || explicit === "local") return explicit;
+  if (ENV.forgeApiUrl && ENV.forgeApiKey) return "forge";
+  if (ENV.s3Bucket && ENV.s3AccessKeyId && ENV.s3SecretAccessKey) return "s3";
+  return "local";
+}
+
+function storageConfigured() {
+  const driver = resolveStorageDriver();
+  if (driver === "forge") return Boolean(ENV.forgeApiUrl && ENV.forgeApiKey);
+  if (driver === "s3")
+    return Boolean(ENV.s3Bucket && ENV.s3AccessKeyId && ENV.s3SecretAccessKey);
+  return Boolean(ENV.storageLocalDir);
+}
+
 export const runtimeConfigStatus = () => ({
   database: Boolean(ENV.databaseUrl),
   sessionSecret: Boolean(ENV.cookieSecret),
   oauth: Boolean(ENV.appId && ENV.oAuthServerUrl && ENV.oauthPortalUrl),
-  storage: Boolean(ENV.forgeApiUrl && ENV.forgeApiKey),
+  storage: storageConfigured(),
   ageVerification: isAgeVerificationConfigured(),
   kyc: Boolean(ENV.kycProvider && ENV.kycApiKey && ENV.kycWebhookSecret),
   payments: Boolean(

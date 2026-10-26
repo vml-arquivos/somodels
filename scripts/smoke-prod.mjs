@@ -52,7 +52,6 @@ let data = {};
 try { data = JSON.parse(cfg.text)?.result?.data?.json ?? {}; } catch {}
 check("vitrine aberta (PUBLIC_ACCESS e PUBLIC_LAUNCH)", data.publicAccessEnabled === true && data.publicLaunchEnabled === true);
 check("modo de teste desligado", data.testMode === false && data.allowFakeData === false);
-check("canal de contato configurado", Boolean(data.contact?.email));
 
 const failed = results.filter(r => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} verificações ok`);

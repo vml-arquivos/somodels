@@ -8,6 +8,7 @@ import {
   authSessions,
   auditLogs,
   blocks,
+  contactMessages,
   creditWallets,
   emailVerifications,
   favorites,
@@ -74,6 +75,7 @@ export async function isDatabaseReady() {
     await db.execute(sql`SELECT \`isFeatured\`, \`durationDays\`, \`sortOrder\`, \`benefits\` FROM \`plans\` LIMIT 0`);
     await db.execute(sql`SELECT \`source\`, \`note\`, \`activatedBy\` FROM \`subscriptions\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\`, \`secretEnc\`, \`lastStep\` FROM \`user_mfa\` LIMIT 0`);
+    await db.execute(sql`SELECT \`id\`, \`topic\`, \`status\` FROM \`contact_messages\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\` FROM \`site_settings\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\` FROM \`finance_entries\` LIMIT 0`);
     return true;
@@ -2719,6 +2721,57 @@ export async function getOperationalCounts() {
     openReports: await one(sql`SELECT COUNT(*) AS total FROM moderation_cases WHERE status IN ('open','in_review')`),
     pendingSubscriptions: await one(sql`SELECT COUNT(*) AS total FROM subscriptions WHERE status='pending'`),
     activePlans: await one(sql`SELECT COUNT(*) AS total FROM plans WHERE isActive=1`),
+    newMessages: await one(sql`SELECT COUNT(*) AS total FROM contact_messages WHERE status='new'`),
     owners: await one(sql`SELECT COUNT(DISTINCT ownerId) AS total FROM profiles WHERE deletedAt IS NULL`),
   };
+}
+
+// Fale conosco: canal de contato dentro da plataforma (sem depender de e-mail).
+export const contactTopics = ["support", "privacy", "report", "password", "other"] as const;
+
+export async function createContactMessage(input: {
+  name: string;
+  replyTo?: string | null;
+  topic: (typeof contactTopics)[number];
+  message: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco de dados indisponível");
+  const inserted = await db.insert(contactMessages).values({
+    name: input.name,
+    replyTo: input.replyTo || null,
+    topic: input.topic,
+    message: input.message,
+  });
+  return { id: Number((inserted as any)[0].insertId) };
+}
+
+export async function listContactMessages(status: "new" | "handled" | "all" = "new") {
+  const db = await getDb();
+  if (!db) return [];
+  const query = db.select().from(contactMessages);
+  const rows =
+    status === "all"
+      ? await query.orderBy(desc(contactMessages.createdAt)).limit(200)
+      : await query
+          .where(eq(contactMessages.status, status))
+          .orderBy(desc(contactMessages.createdAt))
+          .limit(200);
+  return rows;
+}
+
+export async function markContactMessageHandled(id: number, actorUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco de dados indisponível");
+  await db
+    .update(contactMessages)
+    .set({ status: "handled", handledBy: actorUserId, handledAt: new Date() })
+    .where(eq(contactMessages.id, id));
+  await writeAuditLog({
+    actorUserId,
+    action: "contact.handled",
+    entityType: "contact_message",
+    entityId: id,
+  });
+  return { ok: true };
 }

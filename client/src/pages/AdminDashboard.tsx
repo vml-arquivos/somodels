@@ -14,6 +14,7 @@ import HomeCopyEditor from "@/components/HomeCopyEditor";
 import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
 import MfaPanel from "@/components/MfaPanel";
+import UsersManager from "@/components/admin/UsersManager";
 const tabs = {
   overview: "Visão geral",
   users: "Usuários",
@@ -22,6 +23,7 @@ const tabs = {
   reports: "Denúncias",
   identity: "Verificações",
   plans: "Planos",
+  messages: "Mensagens",
   readiness: "Prontidão",
   security: "Segurança",
   finance: "Financeiro",
@@ -44,16 +46,10 @@ export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
   const utils = trpc.useUtils();
   const [tab, setTab] = useState<keyof typeof tabs>("overview"),
-    [search, setSearch] = useState(""),
-    [accountKind, setAccountKind] = useState<"all" | "owners" | "system">(
-      "all"
-    ),
     [profileSearch, setProfileSearch] = useState(""),
     [profileLifecycle, setProfileLifecycle] = useState<
       "all" | "active" | "inactive" | "deleted"
     >("all"),
-    [status, setStatus] = useState<"all" | "active" | "suspended">("all"),
-    [page, setPage] = useState(0),
     [auditPage, setAuditPage] = useState(0);
   const [reportDecision, setReportDecision] = useState("");
   const [identityReason, setIdentityReason] = useState("");
@@ -74,11 +70,8 @@ export default function AdminDashboard() {
   const [paidInput, setPaidInput] = useState("");
   const [subNote, setSubNote] = useState("");
   const [manualSub, setManualSub] = useState({ userId: "", planId: "" });
-  const [uid, setUid] = useState<number | null>(null),
-    [pid, setPid] = useState<number | null>(null),
+  const [pid, setPid] = useState<number | null>(null),
     [editingProfile, setEditingProfile] = useState(false),
-    [newUser, setNewUser] = useState(false),
-    [resetUrl, setResetUrl] = useState(""),
     [reason, setReason] = useState(""),
     [confirmed, setConfirmed] = useState(false);
   const allowed = !!user && user.isAdmin && !user.mustChangePassword;
@@ -91,14 +84,6 @@ export default function AdminDashboard() {
   const overview = trpc.management.overview.useQuery(undefined, {
     enabled: allowed && tab === "overview",
   });
-  const accounts = trpc.management.users.useQuery(
-    { page, search, status, kind: accountKind },
-    { enabled: allowed && tab === "users" }
-  );
-  const detail = trpc.management.userDetail.useQuery(
-    { id: uid || 0 },
-    { enabled: allowed && !!uid && tab === "users" }
-  );
   const profiles = trpc.admin.profiles.useQuery(
     { search: profileSearch || undefined, lifecycle: profileLifecycle },
     { enabled: allowed && (tab === "profiles" || tab === "moderation") }
@@ -136,6 +121,18 @@ export default function AdminDashboard() {
   });
   const subsQuery = trpc.admin.subscriptions.useQuery(undefined, {
     enabled: allowed && tab === "plans",
+  });
+  const [messageFilter, setMessageFilter] = useState<"new" | "handled">("new");
+  const messagesQuery = trpc.admin.contactMessages.useQuery(
+    { status: messageFilter },
+    { enabled: allowed && tab === "messages" }
+  );
+  const handleMessage = trpc.admin.handleContactMessage.useMutation({
+    onSuccess: async () => {
+      toast.success("Mensagem marcada como atendida");
+      await messagesQuery.refetch();
+    },
+    onError: error => toast.error(error.message),
   });
   const readinessQuery = trpc.admin.readiness.useQuery(undefined, {
     enabled: allowed && tab === "readiness",
@@ -175,14 +172,7 @@ export default function AdminDashboard() {
     { page: auditPage },
     { enabled: allowed && tab === "audit" }
   );
-  const [site, setSite] = useState(defaultSiteSettings),
-    [userForm, setUserForm] = useState({
-      name: "",
-      email: "",
-      password: "",
-      role: "user" as "user" | "admin",
-      accountStatus: "active" as "active" | "suspended",
-    });
+  const [site, setSite] = useState(defaultSiteSettings);
   const [entry, setEntry] = useState({
     description: "",
     amount: "",
@@ -192,56 +182,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (settings.data) setSite(settings.data);
   }, [settings.data]);
-  useEffect(() => {
-    if (detail.data) {
-      const u = detail.data.user;
-      setUserForm({
-        name: u.name || "",
-        email: u.email || "",
-        password: "",
-        role: u.role === "admin" ? "admin" : "user",
-        accountStatus: u.accountStatus,
-      });
-    }
-  }, [detail.data]);
   const refresh = async () => {
     await utils.invalidate();
   };
   const error = (e: any) => toast.error(e.message);
-  const update = trpc.management.updateUser.useMutation({
-    onSuccess: () => {
-      toast.success("Conta atualizada; sessões encerradas");
-      refresh();
-    },
-    onError: error,
-  });
-  const create = trpc.management.createUser.useMutation({
-    onSuccess: r => {
-      setNewUser(false);
-      setUid(r.id);
-      setUserForm(f => ({ ...f, password: "" }));
-      toast.success("Conta criada. A troca de senha será obrigatória.");
-      refresh();
-    },
-    onError: error,
-  });
-  const remove = trpc.management.anonymizeUser.useMutation({
-    onSuccess: () => {
-      setUid(null);
-      toast.success("Conta anonimizada e acesso encerrado");
-      refresh();
-    },
-    onError: error,
-  });
-  const reset = trpc.management.resetLink.useMutation({
-    onSuccess: r => {
-      setResetUrl(r.url);
-      toast.success(
-        "Link válido por 30 minutos. Compartilhe somente com o titular."
-      );
-    },
-    onError: error,
-  });
   const saveSite = trpc.management.saveSettings.useMutation({
     onSuccess: () => {
       toast.success("Página inicial atualizada");
@@ -382,7 +326,6 @@ export default function AdminDashboard() {
                   key={key}
                   onClick={() => {
                     setTab(key as any);
-                    setResetUrl("");
                   }}
                 >
                   {label}
@@ -458,317 +401,14 @@ export default function AdminDashboard() {
                 )}
               </>
             )}
-            {tab === "users" && (
-              <>
-                <div className="studio-toolbar">
-                  <input
-                    aria-label="Buscar usuários"
-                    placeholder="Buscar nome ou e-mail"
-                    value={search}
-                    onChange={e => {
-                      setSearch(e.target.value);
-                      setPage(0);
-                    }}
-                  />
-                  <select
-                    aria-label="Status"
-                    value={status}
-                    onChange={e => {
-                      setStatus(e.target.value as any);
-                      setPage(0);
-                    }}
-                  >
-                    <option value="all">Todos os status</option>
-                    <option value="active">Ativos</option>
-                    <option value="suspended">Suspensos</option>
-                  </select>
-                  <select
-                    aria-label="Tipo de conta"
-                    value={accountKind}
-                    onChange={e => {
-                      setAccountKind(e.target.value as typeof accountKind);
-                      setPage(0);
-                    }}
-                  >
-                    <option value="all">Todos os tipos</option>
-                    <option value="owners">Titulares de anúncios</option>
-                    <option value="system">Usuários do sistema</option>
-                  </select>
-                  <button
-                    className="primary"
-                    onClick={() => {
-                      setNewUser(true);
-                      setUid(null);
-                      setResetUrl("");
-                      setUserForm({
-                        name: "",
-                        email: "",
-                        password: "",
-                        role: "user",
-                        accountStatus: "active",
-                      });
-                    }}
-                  >
-                    Criar conta
-                  </button>
-                </div>
-                <Failure error={accounts.error} />
-                <div className="studio-split">
-                  <section className="studio-panel">
-                    <h2>
-                      {accountKind === "owners"
-                        ? "Titulares de anúncios"
-                        : accountKind === "system"
-                          ? "Usuários do sistema"
-                          : "Contas"}{" "}
-                      <small>{accounts.data?.total ?? "—"}</small>
-                    </h2>
-                    {accounts.isLoading ? (
-                      <p>Carregando…</p>
-                    ) : (
-                      accounts.data?.items.map(u => (
-                        <button
-                          className={`studio-list-item ${uid === u.id ? "selected" : ""}`}
-                          key={u.id}
-                          onClick={() => {
-                            setUid(u.id);
-                            setNewUser(false);
-                            setResetUrl("");
-                          }}
-                        >
-                          <strong>{u.name || "Sem nome"}</strong>
-                          <small>{u.email || "Sem e-mail"}</small>
-                          <small>
-                            {u.role === "user"
-                              ? "Titular de anúncio"
-                              : "Usuário do sistema"}{" "}
-                            · {u.accountStatus}
-                          </small>
-                        </button>
-                      ))
-                    )}
-                    <div className="studio-actions">
-                      <button
-                        disabled={!page}
-                        onClick={() => setPage(p => p - 1)}
-                      >
-                        Anterior
-                      </button>
-                      <span>Página {page + 1}</span>
-                      <button
-                        disabled={
-                          (page + 1) * 25 >= (accounts.data?.total || 0)
-                        }
-                        onClick={() => setPage(p => p + 1)}
-                      >
-                        Próxima
-                      </button>
-                    </div>
-                  </section>
-                  <section className="studio-panel">
-                    <h2>
-                      {newUser
-                        ? "Nova conta"
-                        : detail.data?.user.role === "user"
-                          ? "Ficha do titular de anúncio"
-                          : "Ficha do usuário do sistema"}
-                    </h2>
-                    <Failure error={detail.error} />
-                    {newUser || detail.data ? (
-                      <>
-                        <div className="studio-fields">
-                          <label>
-                            Nome
-                            <input
-                              value={userForm.name}
-                              onChange={e =>
-                                setUserForm(f => ({
-                                  ...f,
-                                  name: e.target.value,
-                                }))
-                              }
-                            />
-                          </label>
-                          <label>
-                            E-mail
-                            <input
-                              type="email"
-                              value={userForm.email}
-                              onChange={e =>
-                                setUserForm(f => ({
-                                  ...f,
-                                  email: e.target.value,
-                                }))
-                              }
-                            />
-                          </label>
-                          <label>
-                            Papel
-                            <select
-                              disabled={
-                                !["dev", "super_admin"].includes(user!.role)
-                              }
-                              value={userForm.role}
-                              onChange={e =>
-                                setUserForm(f => ({
-                                  ...f,
-                                  role: e.target.value as any,
-                                }))
-                              }
-                            >
-                              <option value="user">Titular</option>
-                              <option value="admin">Administrador</option>
-                            </select>
-                          </label>
-                          {newUser ? (
-                            <label>
-                              Senha temporária
-                              <input
-                                type="password"
-                                autoComplete="new-password"
-                                minLength={16}
-                                value={userForm.password}
-                                onChange={e =>
-                                  setUserForm(f => ({
-                                    ...f,
-                                    password: e.target.value,
-                                  }))
-                                }
-                              />
-                              <small>
-                                16 caracteres, maiúscula, minúscula e número.
-                              </small>
-                            </label>
-                          ) : (
-                            <label>
-                              Situação
-                              <select
-                                value={userForm.accountStatus}
-                                onChange={e =>
-                                  setUserForm(f => ({
-                                    ...f,
-                                    accountStatus: e.target.value as any,
-                                  }))
-                                }
-                              >
-                                <option value="active">Ativa</option>
-                                <option value="suspended">Suspensa</option>
-                              </select>
-                            </label>
-                          )}
-                        </div>
-                        <div className="studio-actions">
-                          <button
-                            className="primary"
-                            disabled={
-                              create.isPending ||
-                              update.isPending ||
-                              (!newUser && !detail.data?.editable)
-                            }
-                            onClick={() =>
-                              newUser
-                                ? create.mutate(userForm)
-                                : update.mutate({ id: uid!, ...userForm })
-                            }
-                          >
-                            {newUser ? "Criar conta" : "Salvar alterações"}
-                          </button>
-                          {!newUser && (
-                            <button
-                              disabled={
-                                !detail.data?.editable || reset.isPending
-                              }
-                              onClick={() => reset.mutate({ id: uid! })}
-                            >
-                              Gerar link de senha
-                            </button>
-                          )}
-                        </div>
-                        {resetUrl && (
-                          <div className="studio-notice">
-                            <p>
-                              Link de uso único, válido por 30 minutos. O
-                              sistema não enviou e-mail.
-                            </p>
-                            <input
-                              aria-label="Link temporário"
-                              readOnly
-                              value={resetUrl}
-                            />
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await navigator.clipboard.writeText(resetUrl);
-                                  toast.success("Link copiado");
-                                } catch {
-                                  toast.error(
-                                    "Selecione e copie o link manualmente"
-                                  );
-                                }
-                              }}
-                            >
-                              Copiar link
-                            </button>
-                          </div>
-                        )}
-                        {!newUser && detail.data && (
-                          <>
-                            <dl className="studio-details">
-                              <dt>Papel atual</dt>
-                              <dd>{detail.data.user.role}</dd>
-                              <dt>Cadastro</dt>
-                              <dd>{date(detail.data.user.createdAt)}</dd>
-                              <dt>Último acesso</dt>
-                              <dd>{date(detail.data.user.lastSignedIn)}</dd>
-                              <dt>E-mail confirmado</dt>
-                              <dd>{date(detail.data.user.emailVerifiedAt)}</dd>
-                            </dl>
-                            <h3>Anúncios vinculados</h3>
-                            {detail.data.profiles.map(p => (
-                              <button
-                                className="studio-list-item"
-                                key={p.id}
-                                onClick={() => {
-                                  chooseProfile(p.id);
-                                  setTab("profiles");
-                                }}
-                              >
-                                {p.stageName} · {p.city} · {p.status}
-                              </button>
-                            ))}
-                            {!detail.data.profiles.length && (
-                              <p>Nenhum anúncio.</p>
-                            )}
-                            <button
-                              className="danger"
-                              disabled={
-                                !detail.data.editable ||
-                                detail.data.user.role !== "user" ||
-                                remove.isPending
-                              }
-                              onClick={() => {
-                                if (
-                                  window.prompt(
-                                    "Remove nome, e-mail e acesso da conta. Os perfis ficam suspensos; arquivos e histórico são preservados. Digite EXCLUIR:"
-                                  ) === "EXCLUIR"
-                                )
-                                  remove.mutate({
-                                    id: uid!,
-                                    confirmation: "EXCLUIR",
-                                  });
-                              }}
-                            >
-                              Anonimizar conta e encerrar acesso
-                            </button>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      <p>Selecione uma conta para conferir seus dados.</p>
-                    )}
-                  </section>
-                </div>
-              </>
+            {tab === "users" && user && (
+              <UsersManager
+                actor={{ id: user.id, role: user.role }}
+                onOpenProfile={profileId => {
+                  chooseProfile(profileId);
+                  setTab("profiles");
+                }}
+              />
             )}
             {(tab === "profiles" || tab === "moderation") && (
               <>
@@ -1233,6 +873,68 @@ export default function AdminDashboard() {
                       </tbody>
                     </table>
                   </div>
+                )}
+              </section>
+            )}
+            {tab === "messages" && (
+              <section className="studio-panel">
+                <div className="studio-title">
+                  <div>
+                    <p className="studio-kicker">Atendimento</p>
+                    <h2>Mensagens do Fale conosco</h2>
+                    <p className="studio-muted">
+                      Pedidos de suporte, privacidade, recuperação de senha e
+                      remoção. Responda pelo contato deixado e marque como
+                      atendida.
+                    </p>
+                  </div>
+                  <div className="studio-actions">
+                    {(["new", "handled"] as const).map(value => (
+                      <button
+                        key={value}
+                        className={messageFilter === value ? "primary" : ""}
+                        onClick={() => setMessageFilter(value)}
+                      >
+                        {value === "new" ? "Novas" : "Atendidas"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Failure error={messagesQuery.error} />
+                {messagesQuery.isLoading ? (
+                  <p>Carregando mensagens…</p>
+                ) : !messagesQuery.data?.length ? (
+                  <p>Nenhuma mensagem {messageFilter === "new" ? "nova" : "atendida"}.</p>
+                ) : (
+                  messagesQuery.data.map((item: any) => (
+                    <article key={item.id} className="studio-panel">
+                      <p className="studio-kicker">
+                        {{
+                          support: "Suporte",
+                          privacy: "Privacidade",
+                          report: "Denúncia / remoção",
+                          password: "Recuperar senha",
+                          other: "Outro",
+                        }[item.topic as string] ?? item.topic}{" "}
+                        · {date(item.createdAt)}
+                      </p>
+                      <h3>{item.name}</h3>
+                      <p>
+                        Contato para resposta:{" "}
+                        <strong>{item.replyTo || "não informado"}</strong>
+                      </p>
+                      <p style={{ whiteSpace: "pre-wrap" }}>{item.message}</p>
+                      {item.status === "new" && (
+                        <button
+                          className="primary"
+                          disabled={handleMessage.isPending}
+                          onClick={() => handleMessage.mutate({ id: item.id })}
+                        >
+                          Marcar como atendida
+                        </button>
+                      )}
+                    </article>
+                  ))
                 )}
               </section>
             )}

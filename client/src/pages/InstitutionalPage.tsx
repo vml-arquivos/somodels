@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import Seo from "@/components/Seo";
 import StudioHeader from "@/components/StudioHeader";
 import PublicFooter from "@/components/PublicFooter";
+import ContactForm from "@/components/ContactForm";
 import { trpc } from "@/lib/trpc";
 
 const pages = {
@@ -156,14 +157,24 @@ export default function InstitutionalPage() {
         </article>
         {(content.path === "/contato" ||
           content.path === "/privacidade" ||
-          content.path === "/ajuda") && (
+          content.path === "/ajuda" ||
+          content.path === "/denuncia") &&
+          (content.path !== "/contato" ||
+            contact?.email ||
+            contact?.privacyEmail ||
+            contact?.operatorName) && (
           <section className="studio-panel" aria-label="Canal oficial">
             <h2>Canal oficial</h2>
-            {contact?.email || contact?.privacyEmail ? (
+            {content.path !== "/contato" && (
               <p>
-                {content.path === "/privacidade" && contact.privacyEmail
-                  ? "Privacidade e dados pessoais: "
-                  : "Suporte e solicitações: "}
+                Use o formulário em <Link href="/contato">Fale conosco</Link>{" "}
+                para suporte, privacidade, recuperação de senha e pedidos de
+                remoção.
+              </p>
+            )}
+            {(contact?.email || contact?.privacyEmail) && (
+              <p>
+                E-mail:{" "}
                 <a
                   href={`mailto:${
                     content.path === "/privacidade"
@@ -176,8 +187,6 @@ export default function InstitutionalPage() {
                     : contact.email || contact.privacyEmail}
                 </a>
               </p>
-            ) : (
-              <p>Canal de atendimento em configuração.</p>
             )}
             {contact?.operatorName && (
               <p>
@@ -189,6 +198,7 @@ export default function InstitutionalPage() {
             )}
           </section>
         )}
+        {content.path === "/contato" && <ContactForm />}
         <section className="studio-panel">
           <h2>Precisa de ajuda com um perfil?</h2>
           <p>

@@ -19,7 +19,8 @@ import {
   publicProcedure,
   router,
 } from "./_core/trpc";
-import { ENV, isAgeVerificationConfigured, runtimeConfigStatus } from "./_core/env";
+import { ENV, isAgeVerificationConfigured, resolveStorageDriver, runtimeConfigStatus } from "./_core/env";
+import { isLocalStoragePersistent } from "./storage";
 import { buildReadiness } from "./readiness";
 import { otpauthUrl } from "./totp";
 import { verifyPassword } from "./auth-crypto";
@@ -35,7 +36,11 @@ import {
   revokeLocalSession,
 } from "./auth";
 import {
+  contactTopics,
   countPublishedProfiles,
+  createContactMessage,
+  listContactMessages,
+  markContactMessageHandled,
   getOperationalCounts,
   activateSubscription,
   cancelSubscription,
@@ -123,6 +128,11 @@ const viewRateLimiter = createInMemoryRateLimiter({
 const identityRequestLimiter = createInMemoryRateLimiter({
   max: 5,
   windowMs: 24 * 60 * 60 * 1000,
+  maxKeys: 20_000,
+});
+const contactLimiter = createInMemoryRateLimiter({
+  max: 5,
+  windowMs: 60 * 60 * 1000,
   maxKeys: 20_000,
 });
 const planRequestLimiter = createInMemoryRateLimiter({
@@ -791,6 +801,41 @@ export const appRouter = router({
         return requestSubscription(ctx.user.id, input.planId);
       }),
   }),
+  contact: router({
+    send: publicProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(2, "Informe seu nome").max(120),
+          replyTo: z
+            .string()
+            .trim()
+            .max(200)
+            .optional()
+            .or(z.literal("")),
+          topic: z.enum(contactTopics),
+          message: z
+            .string()
+            .trim()
+            .min(10, "Escreva uma mensagem com pelo menos 10 caracteres")
+            .max(3000),
+          // Campo-isca: pessoas não o veem; robôs costumam preenchê-lo.
+          website: z.string().max(200).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (input.website) return { ok: true };
+        const decision = contactLimiter.consume(`ip:${getClientKey(ctx.req)}`);
+        if (!decision.allowed)
+          throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+        await createContactMessage({
+          name: input.name,
+          replyTo: input.replyTo || null,
+          topic: input.topic,
+          message: input.message,
+        });
+        return { ok: true };
+      }),
+  }),
   premium: router({
     createIntent: protectedProcedure
       .input(z.object({ mediaId: z.number().int().positive() }))
@@ -823,6 +868,14 @@ export const appRouter = router({
       .mutation(({ ctx, input }) =>
         reviewIdentityVerification({ ...input, actorUserId: ctx.user.id })
       ),
+    contactMessages: adminProcedure
+      .input(z.object({ status: z.enum(["new", "handled", "all"]).optional() }).optional())
+      .query(({ input }) => listContactMessages(input?.status ?? "new")),
+    handleContactMessage: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ ctx, input }) =>
+        markContactMessageHandled(input.id, ctx.user.id)
+      ),
     readiness: adminProcedure.query(async () => {
       const status = runtimeConfigStatus();
       return buildReadiness({
@@ -834,6 +887,11 @@ export const appRouter = router({
         ageVerificationConfigured: status.ageVerification,
         requireIdentityVerification: ENV.requireIdentityVerification,
         storageConfigured: status.storage,
+        storageDriver: resolveStorageDriver(),
+        storagePersistent:
+          resolveStorageDriver() === "local"
+            ? await isLocalStoragePersistent()
+            : true,
         canonicalOriginSet: Boolean(ENV.canonicalOrigin),
         releaseKnown: ENV.release !== "development",
         contactChannelSet: Boolean(ENV.contactEmail),

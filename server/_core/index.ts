@@ -1,5 +1,5 @@
 import { getMediaById } from "../db";
-import { storageGetSignedUrl } from "../storage";
+import { serveStoredObject } from "../storage";
 import { readSiteSettings } from "../site-config";
 import "dotenv/config";
 import express from "express";
@@ -215,7 +215,7 @@ async function startServer() {
       if (!media) return res.status(404).send("Arquivo indisponível");
       const profile = await getAdminProfile(media.profileId);
       if (!profile || (profile.profile.ownerId !== ctx.user.id && !hasAdminAuthority(ctx.user))) return res.status(403).send("Acesso negado");
-      res.redirect(307, await storageGetSignedUrl(media.storageKey));
+      await serveStoredObject(res, media.storageKey);
     } catch { res.status(503).send("Não foi possível visualizar o arquivo"); }
   });
   app.post("/api/upload/media", async (req, res) => {

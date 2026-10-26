@@ -32,9 +32,24 @@ const paging = z
     page: z.number().int().min(0).default(0),
     search: z.string().trim().max(120).default(""),
     status: z.enum(["all", "active", "suspended"]).default("all"),
-    kind: z.enum(["all", "owners", "system"]).default("all"),
+    // clients: contas sem anúncio · owners: titulares (com anúncio) · admins: equipe
+    kind: z.enum(["all", "clients", "owners", "admins", "system"]).default("all"),
   })
   .default({ page: 0, search: "", status: "all", kind: "all" });
+const hasProfileSql = sql`EXISTS (SELECT 1 FROM profiles pr WHERE pr.ownerId = users.id AND pr.deletedAt IS NULL)`;
+const accountKindWhere = (kind: string) => {
+  switch (kind) {
+    case "clients":
+      return sql`${users.role} = 'user' AND NOT ${hasProfileSql}`;
+    case "owners":
+      return sql`${users.role} = 'user' AND ${hasProfileSql}`;
+    case "admins":
+    case "system":
+      return sql`${users.role} <> 'user'`;
+    default:
+      return undefined;
+  }
+};
 const idSchema = z.object({ id: z.number().int().positive() });
 const userFields = {
   id: users.id,
@@ -139,24 +154,43 @@ export const managementRouter = router({
           )
         : undefined,
       input.status === "all" ? undefined : eq(users.accountStatus, input.status),
-      input.kind === "all"
-        ? undefined
-        : input.kind === "owners"
-          ? eq(users.role, "user")
-          : sql`${users.role} <> 'user'`
+      accountKindWhere(input.kind)
     );
     const [total] = await db
       .select({ count: sql<number>`count(*)` })
       .from(users)
       .where(where);
     const items = await db
-      .select(userFields)
+      .select({
+        ...userFields,
+        profilesCount: sql<number>`(SELECT COUNT(*) FROM profiles pc WHERE pc.ownerId = users.id AND pc.deletedAt IS NULL)`,
+      })
       .from(users)
       .where(where)
       .orderBy(desc(users.id))
       .limit(25)
       .offset(input.page * 25);
-    return { items, total: Number(total.count) };
+    return {
+      items: items.map(item => ({ ...item, profilesCount: Number(item.profilesCount ?? 0) })),
+      total: Number(total.count),
+    };
+  }),
+  userSummary: adminProcedure.query(async ({ ctx }) => {
+    const db = await database();
+    const visible = adminVisibility(ctx.user);
+    const count = async (extra?: any) => {
+      const [row] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(and(visible, extra));
+      return Number(row?.count ?? 0);
+    };
+    return {
+      clients: await count(accountKindWhere("clients")),
+      owners: await count(accountKindWhere("owners")),
+      admins: await count(accountKindWhere("admins")),
+      suspended: await count(eq(users.accountStatus, "suspended")),
+    };
   }),
   userDetail: adminProcedure.input(idSchema).query(async ({ ctx, input }) => {
     const db = await database();
@@ -176,11 +210,16 @@ export const managementRouter = router({
       idSchema.extend({
         name: z.string().trim().min(2).max(120),
         email: z.string().email().max(320),
-        role: z.enum(["user", "admin"]),
+        role: z.enum(["user", "admin", "super_admin"]),
         accountStatus: z.enum(["active", "suspended"]),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.role === "super_admin" && effectiveAdminRole(ctx.user) !== "dev")
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Só o desenvolvedor pode conceder o nível Super administrador",
+        });
       const db = await database();
       await db.transaction(async tx => {
         const [target] = await tx
@@ -229,12 +268,17 @@ export const managementRouter = router({
         name: z.string().trim().min(2).max(120),
         email: z.string().email().max(320),
         password: z.string().min(16).max(200),
-        role: z.enum(["user", "admin"]),
+        role: z.enum(["user", "admin", "super_admin"]),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.role === "super_admin" && effectiveAdminRole(ctx.user) !== "dev")
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Só o desenvolvedor pode conceder o nível Super administrador",
+        });
       if (
-        input.role === "admin" &&
+        input.role !== "user" &&
         !["dev", "super_admin"].includes(effectiveAdminRole(ctx.user) || "")
       )
         throw new TRPCError({ code: "FORBIDDEN" });

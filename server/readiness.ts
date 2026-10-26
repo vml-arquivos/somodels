@@ -9,6 +9,8 @@ export type ReadinessInput = {
   ageVerificationConfigured: boolean;
   requireIdentityVerification: boolean;
   storageConfigured: boolean;
+  storageDriver: "local" | "s3" | "forge";
+  storagePersistent: boolean;
   canonicalOriginSet: boolean;
   releaseKnown: boolean;
   contactChannelSet: boolean;
@@ -29,6 +31,7 @@ export type ReadinessInput = {
     pendingIdentity: number;
     openReports: number;
     pendingSubscriptions: number;
+    newMessages: number;
     activePlans: number;
     owners: number;
   } | null;
@@ -82,11 +85,11 @@ export function buildReadiness(input: ReadinessInput): ReadinessItem[] {
   );
   add(
     "contact-channel",
-    input.contactChannelSet ? "ok" : "block",
+    "ok",
     "Canal de contato e privacidade",
     input.contactChannelSet
-      ? "CONTACT_EMAIL definido; aparece em /contato e /privacidade."
-      : "Defina CONTACT_EMAIL (e PRIVACY_EMAIL, se for outro). Sem canal, as páginas de contato e privacidade ficam incompletas."
+      ? "Formulário Fale conosco ativo e e-mail público exibido em /contato e /privacidade."
+      : "Formulário Fale conosco ativo (mensagens na aba Mensagens). Opcional: defina CONTACT_EMAIL para exibir também um e-mail."
   );
   add(
     "operator",
@@ -94,14 +97,26 @@ export function buildReadiness(input: ReadinessInput): ReadinessItem[] {
     "Identificação do responsável",
     input.operatorIdentified
       ? "Responsável identificado nas páginas legais."
-      : "Defina OPERATOR_NAME e OPERATOR_DOCUMENT (nome/razão social e CPF/CNPJ) para a política de privacidade."
+      : "Recomendado: defina OPERATOR_NAME e OPERATOR_DOCUMENT (nome/razão social e CPF/CNPJ) antes de divulgar o site em larga escala."
   );
   add(
     "storage",
     input.storageConfigured ? "ok" : "block",
     "Armazenamento de fotos e vídeos",
-    input.storageConfigured ? "Configurado." : "Sem armazenamento, anunciantes não conseguem enviar mídia."
+    input.storageConfigured
+      ? `Configurado (${input.storageDriver === "local" ? "disco do servidor" : input.storageDriver === "s3" ? "S3/compatível" : "serviço interno"}).`
+      : "Sem armazenamento, anunciantes não conseguem enviar mídia."
   );
+  if (input.storageDriver === "local") {
+    add(
+      "storage-persistent",
+      input.storagePersistent ? "ok" : "block",
+      "Volume persistente das mídias",
+      input.storagePersistent
+        ? "Pasta de mídias montada em volume: sobrevive a novos deploys."
+        : "A pasta de mídias NÃO está num volume. Os arquivos somem a cada deploy. No Coolify: Storages → Add → Volume Mount com destino /app/storage."
+    );
+  }
   add(
     "reports",
     input.flags.reportsEnabled ? "ok" : "warn",
@@ -173,12 +188,12 @@ export function buildReadiness(input: ReadinessInput): ReadinessItem[] {
         ? `${c.publishedProfiles} anúncio(s) na vitrine.`
         : "Nenhum anúncio publicado ainda: a vitrine aparece vazia para o público."
     );
-    const backlog = c.pendingProfiles + c.pendingMedia + c.pendingIdentity + c.pendingSubscriptions + c.openReports;
+    const backlog = c.pendingProfiles + c.pendingMedia + c.pendingIdentity + c.pendingSubscriptions + c.openReports + c.newMessages;
     add(
       "backlog",
       backlog === 0 ? "ok" : c.openReports > 0 ? "warn" : "ok",
       "Fila de trabalho",
-      `${c.pendingProfiles} anúncio(s), ${c.pendingMedia} mídia(s), ${c.pendingIdentity} verificação(ões), ${c.pendingSubscriptions} pedido(s) de plano e ${c.openReports} denúncia(s) aguardando.`
+      `${c.pendingProfiles} anúncio(s), ${c.pendingMedia} mídia(s), ${c.pendingIdentity} verificação(ões), ${c.pendingSubscriptions} pedido(s) de plano e ${c.openReports} denúncia(s) e ${c.newMessages} mensagem(ns) aguardando.`
     );
   }
   return items;

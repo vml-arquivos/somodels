@@ -26,6 +26,8 @@ RUN apk add --no-cache curl
 COPY --from=build /app/runtime/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
+# Pasta das mídias (modo local). No Coolify, monte um volume persistente neste caminho.
+RUN mkdir -p /app/storage && chown node:node /app/storage
 EXPOSE 3000
 USER node
 CMD ["sh", "-c", "node dist/migrate.mjs && node dist/index.js"]

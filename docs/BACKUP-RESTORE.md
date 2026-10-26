@@ -17,4 +17,5 @@ gunzip -c backup-AAAA-MM-DD.sql.gz | mysql -h HOST_DE_TESTE -u USUARIO -p BANCO_
 Suba um ambiente de teste apontando para esse banco e confira `/healthz` (`database: true`). Backup que nunca foi restaurado não é garantia.
 
 ## Mídia
-Os arquivos enviados ficam no armazenamento configurado (`STORAGE_*`). Ative versionamento ou cópia periódica do bucket.
+- Modo local: os arquivos ficam no volume montado em `/app/storage`. Faça backup do volume (Coolify → Storages, ou copie a pasta do host periodicamente).
+- Modo S3/R2/Spaces: ative versionamento ou cópia periódica do bucket.

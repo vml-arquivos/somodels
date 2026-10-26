@@ -87,8 +87,9 @@ export default function LoginPage() {
             </button>
           </form>
           <p className="studio-muted">
-            Esqueceu a senha? Solicite à administração um link temporário de
-            recuperação. Não compartilhe sua senha.
+            Esqueceu a senha? Peça um link temporário de recuperação em{" "}
+            <a href="/contato">Fale conosco</a>, escolhendo "Recuperar senha".
+            Não compartilhe sua senha.
           </p>
         </section>
       </main>
