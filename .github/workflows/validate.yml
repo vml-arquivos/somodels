@@ -7,6 +7,7 @@ on:
       - main
       - "work/**"
       - "feat/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,3 +29,25 @@ jobs:
       - run: pnpm check
       - run: pnpm test
       - run: pnpm build
+
+  smoke-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Smoke automático pós-deploy
+        run: |
+          for attempt in $(seq 1 18); do
+            echo "Tentativa ${attempt}/18: aguardando o rollout do Coolify"
+            if node scripts/smoke-prod.mjs https://eromodels.com.br; then
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "Smoke de produção não estabilizou após 18 tentativas" >&2
+          exit 1

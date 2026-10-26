@@ -29,6 +29,12 @@ O painel administrativo agora usa um sidebar fixo no desktop e um drawer acessí
 
 Badges são calculados no servidor pela nova consulta `management.navigationCounts` e filtrados pelo escopo efetivo antes de chegar ao browser. O fallback `/admin/:section` retorna para `/admin` quando o slug não existe ou a função não tem permissão; a exigência de MFA continua travando o menu na área Segurança. O estado de recolhimento é local ao navegador, o drawer tem foco inicial, trap de Tab, Escape e retorno de foco, e os estilos têm prefixo `ad-` para não contaminar a vitrine pública.
 
+## Etapa 5 — validação automática pós-deploy
+
+**Status:** concluída no checkout local; o smoke passou em produção com 38/38 verificações. O CI agora executa o smoke automaticamente em todo push na `main`, aguardando o rollout do Coolify por até 18 tentativas.
+
+O smoke não precisa de senha, login manual ou alteração de dados: verifica healthcheck e banco nos três hosts, rotas públicas e administrativas, redirecionamentos `conta.*`/`admin.*`, assets PWA, robots, sitemaps, flags de produção e o envelope tRPC de uma tentativa fictícia de login. A automação reduz trabalho operacional, mas mantém RBAC, MFA, aprovação de anúncios/mídias e todas as autorizações do backend.
+
 ## Objetivo
 
 Transformar a home em uma landing page editorial de marketplace adulto: hero visual forte, busca acionável, prova de segurança, descoberta por categorias/localidades, cadastro contextual de titulares e rodapé institucional. A referência enviada orienta ritmo, composição e hierarquia, mas não serão copiados marca, textos, imagens, métricas ou componentes de terceiros.

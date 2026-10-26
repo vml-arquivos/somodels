@@ -1,10 +1,13 @@
-feat(admin): add responsive role-aware sidebar navigation
+feat(admin): split dashboards and automate validation
 
-- adiciona sidebar fixo no desktop e drawer acessível no mobile/PWA;
-- agrupa áreas administrativas por função, com URLs diretas e fallback seguro;
-- filtra badges de pendências no servidor por escopo efetivo;
-- preserva o conteúdo das abas, queries, RBAC, MFA, tRPC, banco e migrations;
-- documenta os acessos em docs/ACCESS-MAP-2026-10-26.md;
-- validação: pnpm check, pnpm test (153 testes), pnpm build e git diff --check.
+- separa o painel administrativo em sidebar fixo no desktop e drawer acessível no mobile/PWA;
+- adiciona URLs diretas por área e fallback seguro para slugs inválidos;
+- filtra badges de pendências no servidor pelo escopo efetivo;
+- preserva RBAC, MFA, tRPC, queries, banco, migrations e aprovações de anúncios/mídias;
+- adiciona `pnpm smoke:prod` com 38 verificações de produção sem credenciais reais;
+- executa o smoke automaticamente no GitHub Actions após cada push na `main`, aguardando o rollout do Coolify;
+- documenta os acessos em `docs/ACCESS-MAP-2026-10-26.md`.
 
-Commit local de origem: 4217aa05e86236ccfdd6f4a962df5df8ea43bda3
+Validação local: `pnpm check`, `pnpm test` (153 testes), `pnpm build`, `pnpm smoke:prod` (38/38) e `git diff --check`.
+
+Commit final: 53ee690f480a315af4a6e5fc9b33dc3700f120b0

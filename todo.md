@@ -12,6 +12,7 @@
 - [x] Tornar configuráveis no painel admin todos os textos editoriais visíveis da home: navegação contextual, hero, busca, links rápidos, segurança, CTA de titular, catálogo, estados vazios, busca guiada, categorias, sobre e rodapé
 - [x] Preservar links funcionais, age gate, SEO, filtros, RBAC, tRPC e dados reais enquanto a copy é editada pelo admin sem HTML arbitrário ou hosts externos
 - [x] Reorganizar o painel admin em menu lateral responsivo com URLs diretas, badges filtrados por escopo, fallback seguro e drawer acessível
+- [x] Automatizar validação pós-deploy de hosts, dashboards, PWA, flags e envelope tRPC no CI, sem credenciais reais e sem remover RBAC/MFA
 - [x] Implementar busca textual e filtros por cidade, categoria e atributos
 - [x] Implementar localização e URLs públicas por cidade
 - [x] Criar página individual pública de perfil com estados de privacidade e indisponibilidade

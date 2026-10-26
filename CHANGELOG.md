@@ -7,6 +7,7 @@
 - badges de pendências entregues por `management.navigationCounts`, filtrados no servidor pelo escopo efetivo para não revelar contadores de áreas não autorizadas; MFA pendente mantém o menu travado em Segurança;
 - preservados o conteúdo das abas, tRPC, RBAC, age gate, rotas públicas, banco, flags e migrations; validação local: `pnpm check`, 153 testes, `pnpm build` e `git diff --check` aprovados.
 - mapa de dashboards e entrada DEV documentado em `docs/ACCESS-MAP-2026-10-26.md`, sem salvar senha ou token no código, no ZIP ou no chat.
+- `pnpm smoke:prod` ampliado para 38 verificações automáticas de produção e incluído no CI após push na `main`, com retries para aguardar o rollout do Coolify; o smoke confirma healthcheck, rotas, PWA, flags e envelope tRPC sem credenciais reais.
 
 ## 2026-10-26 — funções da equipe (moderador, suporte, financeiro, auditoria)
 
