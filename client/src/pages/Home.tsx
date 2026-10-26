@@ -129,6 +129,32 @@ export function DiscoveryPage({
     },
     { enabled: open }
   );
+  const countQuery = trpc.profiles.count.useQuery(
+    {
+      search: filters.search || undefined,
+      city: activeCity || undefined,
+      region: filters.region || undefined,
+      category: activeCategory || undefined,
+      attribute: filters.attribute || undefined,
+      ageMin: filters.ageMin ? Number(filters.ageMin) : undefined,
+      ageMax: filters.ageMax ? Number(filters.ageMax) : undefined,
+      availableNow: filters.availableNow || undefined,
+      priceMaxCents: filters.priceMax ? Number(filters.priceMax) : undefined,
+      service: (filters.service || undefined) as
+        | (typeof serviceOptions)[number]
+        | undefined,
+      place: (filters.place || undefined) as
+        | (typeof attendancePlaceOptions)[number]
+        | undefined,
+      verifiedOnly: filters.verifiedOnly || undefined,
+    },
+    { enabled: open }
+  );
+  const total = countQuery.data?.total;
+  const totalPages =
+    typeof total === "number"
+      ? Math.max(1, Math.ceil(total / DISCOVERY_PAGE_SIZE))
+      : null;
   const items = list.data?.slice(0, DISCOVERY_PAGE_SIZE) ?? [];
   const hasNext = (list.data?.length ?? 0) > DISCOVERY_PAGE_SIZE;
   const hasNonCanonicalFilter = Boolean(
@@ -715,11 +741,20 @@ export function DiscoveryPage({
                   </div>
                 </details>
 
+                {(fixedCity || fixedCategory) && (
+                  <p className="studio-page-intro">
+                    {fixedCity
+                      ? `Veja anúncios de acompanhantes adultos em ${fixedCity}. Use os filtros de idade, serviços, local de atendimento e valor para encontrar o perfil ideal. Todos os anúncios passam por revisão antes de serem publicados.`
+                      : `Explore anúncios adultos na categoria ${fixedCategory}. Use os filtros para refinar a busca por cidade, idade, serviços e valor. Todos os anúncios passam por revisão antes de serem publicados.`}
+                  </p>
+                )}
                 <div className="studio-result-meta" aria-live="polite">
                   <span>
                     {list.isFetching
                       ? "Atualizando resultados…"
-                      : `${items.length}${hasNext ? "+" : ""} anúncio${items.length === 1 ? "" : "s"}`}
+                      : typeof total === "number"
+        ? `${total} anúncio${total === 1 ? "" : "s"}`
+        : `${items.length}${hasNext ? "+" : ""} anúncio${items.length === 1 ? "" : "s"}`}
                   </span>
                   <span>
                     {locations.data?.length
@@ -755,7 +790,10 @@ export function DiscoveryPage({
                     >
                       Anterior
                     </button>
-                    <span>Página {filters.page + 1}</span>
+                    <span>
+                      Página {filters.page + 1}
+                      {totalPages ? ` de ${totalPages}` : ""}
+                    </span>
                     <button
                       disabled={!hasNext || list.isFetching}
                       onClick={() =>

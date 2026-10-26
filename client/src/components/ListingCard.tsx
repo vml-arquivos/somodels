@@ -30,7 +30,11 @@ export default function ListingCard({ profile }: { profile: any }) {
         <div className="studio-listing-card-body">
           <div className="studio-listing-meta">
             <small>{categories.join(" · ") || "Acompanhante"}</small>
-            {profile.isFeatured && <span>Destaque</span>}
+            {profile.isSponsored ? (
+              <span>Patrocinado</span>
+            ) : (
+              profile.isFeatured && <span>Destaque</span>
+            )}
           </div>
           <h3>{profile.stageName}</h3>
           <p className="studio-listing-location">

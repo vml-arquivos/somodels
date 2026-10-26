@@ -7,6 +7,7 @@ import PortfolioEditor from "@/components/PortfolioEditor";
 import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
 import { portfolioPublicationLabel } from "@shared/portfolio";
+import { evaluateListingQuality } from "@shared/listing-quality";
 const identityLabels: Record<string, string> = {
   pending: "Em análise pela equipe",
   approved: "Identidade verificada",
@@ -55,6 +56,104 @@ function IdentityPanel() {
   );
 }
 
+const deltaLabel = (current: number, previous: number) => {
+  if (previous === 0) return current > 0 ? "novo período com atividade" : "sem atividade";
+  const pct = Math.round(((current - previous) / previous) * 100);
+  return `${pct >= 0 ? "+" : ""}${pct}% vs. período anterior`;
+};
+
+function AvailabilityPanel({ profile, onChanged }: { profile: any; onChanged: () => void }) {
+  const set = trpc.profiles.setAvailability.useMutation({
+    onSuccess: (result) => {
+      toast.success(result.isAvailableNow ? "Você aparece como disponível agora" : "Disponibilidade desligada");
+      onChanged();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const active =
+    Boolean(profile.isAvailableNow) &&
+    (!profile.availableUntil || new Date(profile.availableUntil) > new Date());
+  return (
+    <section className="studio-panel" aria-label="Disponível agora">
+      <p className="studio-kicker">Disponível agora</p>
+      <h2>{active ? "Você está aparecendo como disponível" : "Você não está marcada como disponível"}</h2>
+      {active && profile.availableUntil && (
+        <p className="studio-muted">Até {new Date(profile.availableUntil).toLocaleString("pt-BR")}.</p>
+      )}
+      <div className="studio-actions">
+        {[2, 4, 8, 12].map(hours => (
+          <button key={hours} disabled={set.isPending} onClick={() => set.mutate({ id: profile.id, available: true, hours })}>
+            Por {hours}h
+          </button>
+        ))}
+        {active && (
+          <button className="danger" disabled={set.isPending} onClick={() => set.mutate({ id: profile.id, available: false })}>
+            Desligar
+          </button>
+        )}
+      </div>
+      <small className="studio-muted">Esta troca é imediata e não exige nova revisão.</small>
+    </section>
+  );
+}
+
+function QualityPanel({ profile, media, identityVerified }: { profile: any; media: any[]; identityVerified: boolean }) {
+  const approved = media.filter(item => item.status === "approved");
+  const result = evaluateListingQuality({
+    description: profile.description,
+    avatarUrl: profile.avatarUrl,
+    priceFromCents: profile.priceFromCents,
+    services: profile.services,
+    attendancePlaces: profile.attendancePlaces,
+    languages: profile.languages,
+    availabilityLabel: profile.availabilityLabel,
+    locationNote: profile.locationNote,
+    photoCount: approved.filter(item => item.kind === "photo").length,
+    videoCount: approved.filter(item => item.kind === "video").length,
+    identityVerified,
+  });
+  return (
+    <section className="studio-panel" aria-label="Qualidade do anúncio">
+      <p className="studio-kicker">Qualidade do anúncio</p>
+      <h2>{result.score}/100</h2>
+      {result.tips.length === 0 ? (
+        <p>Seu anúncio está completo.</p>
+      ) : (
+        <ul>
+          {result.tips.map(tip => (
+            <li key={tip}>{tip}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function SubscriptionPanel() {
+  const mine = trpc.plans.mine.useQuery();
+  const labels: Record<string, string> = { pending: "Pedido em análise", active: "Ativo", cancelled: "Encerrado", expired: "Expirado" };
+  return (
+    <section className="studio-panel" aria-label="Meu plano">
+      <p className="studio-kicker">Meu plano</p>
+      {mine.data?.length ? (
+        <ul>
+          {mine.data.slice(0, 5).map(sub => (
+            <li key={sub.id}>
+              {sub.planName} — {labels[sub.status] ?? sub.status}
+              {sub.status === "active" && sub.currentPeriodEndsAt
+                ? ` até ${new Date(sub.currentPeriodEndsAt).toLocaleDateString("pt-BR")}`
+                : ""}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>Você ainda não tem plano de destaque.</p>
+      )}
+      <Link className="studio-cta" href="/planos">Ver planos</Link>
+    </section>
+  );
+}
+
 function StatsPanel({ profileId }: { profileId: number }) {
   const [days, setDays] = useState<7 | 30>(30);
   const stats = trpc.profiles.stats.useQuery({ id: profileId, days });
@@ -85,6 +184,10 @@ function StatsPanel({ profileId }: { profileId: number }) {
             <strong>{stats.data.totals.views}</strong> visualizações ·{" "}
             <strong>{stats.data.totals.contactClicks}</strong> cliques para contato
           </p>
+          <small className="studio-muted">
+            Visualizações: {deltaLabel(stats.data.totals.views, stats.data.previousTotals.views)} · Contatos:{" "}
+            {deltaLabel(stats.data.totals.contactClicks, stats.data.previousTotals.contactClicks)}
+          </small>
           <div
             role="img"
             aria-label={`Visualizações por dia nos últimos ${stats.data.days} dias`}
@@ -129,6 +232,9 @@ export default function OwnerDashboard() {
     { id: id || 0 },
     { enabled: Boolean(id) && !user?.mustChangePassword }
   );
+  const identity = trpc.profiles.identity.useQuery(undefined, {
+    enabled: !!user && !user.mustChangePassword,
+  });
   const archive = trpc.profiles.archiveMine.useMutation({
     onSuccess: async () => {
       toast.success("Anúncio arquivado");
@@ -182,6 +288,7 @@ export default function OwnerDashboard() {
               <Link href="/alterar-senha?returnTo=/titular">Alterar senha</Link>
             </div>
             <IdentityPanel />
+            <SubscriptionPanel />
             <div className="studio-split">
               <aside className="studio-panel">
                 <h2>Meus anúncios</h2>
@@ -240,7 +347,18 @@ export default function OwnerDashboard() {
                             {archive.isPending ? "Arquivando…" : "Arquivar anúncio"}
                           </button>
                         )}
+                        {detail.data.profile.isPublished && (
+                          <AvailabilityPanel
+                            profile={detail.data.profile}
+                            onChanged={() => void detail.refetch()}
+                          />
+                        )}
                         {detail.data.profile.isPublished && <StatsPanel profileId={id} />}
+                        <QualityPanel
+                          profile={detail.data.profile}
+                          media={detail.data.media ?? []}
+                          identityVerified={identity.data?.status === "approved"}
+                        />
                         {readiness.isLoading ? (
                           <p>Calculando checklist…</p>
                         ) : readiness.data ? (

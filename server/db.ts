@@ -16,14 +16,19 @@ import {
   InsertProfileMedia,
   moderationCases,
   passwordResetTokens,
+  financeEntries,
+  plans,
   premiumEntitlements,
   profileMedia,
   profiles,
   siteSettings,
+  subscriptions,
+  userMfa,
   users,
 } from "../drizzle/schema";
 import { ENV, isAgeVerificationConfigured } from "./_core/env";
 import { assertIdentityReviewAllowed, identityValidityDays } from "./identity-review";
+import { decryptSecret, encryptSecret, generateTotpSecret, verifyTotp } from "./totp";
 import {
   canActOnProfile,
   decodeReportReason,
@@ -645,8 +650,12 @@ export function hydratePublicProfile(row: any) {
     attendancePlaces,
     priceFromCents: row.priceFromCents ?? null,
     identityVerified: Boolean(Number(row.identityVerified ?? 0)),
+    isSponsored: Boolean(Number(row.isSponsored ?? 0)),
     availabilityLabel: row.availabilityLabel ?? null,
-    isAvailableNow: Boolean(row.isAvailableNow),
+    isAvailableNow:
+      Boolean(row.isAvailableNow) &&
+      (!row.availableUntil || new Date(row.availableUntil) > new Date()),
+    availableUntil: row.availableUntil ?? null,
     avatarUrl: row.avatarUrl ?? null,
     isFeatured: Boolean(row.isFeatured),
     updatedAt: row.updatedAt,
@@ -685,6 +694,18 @@ function identityApprovedExists() {
   return sql`EXISTS (SELECT 1 FROM identity_verifications iv WHERE iv.userId = ${profiles.ownerId} AND iv.status = 'approved' AND (iv.expiresAt IS NULL OR iv.expiresAt > ${new Date()}))`;
 }
 
+// Titular com assinatura ativa, vigente e de plano em destaque. Só vale quando a
+// flag de superfícies patrocinadas estiver ligada; sempre exibido como rótulo.
+function sponsoredExists() {
+  if (!ENV.sponsoredListingsEnabled) return sql`0`;
+  return sql`EXISTS (SELECT 1 FROM subscriptions sb INNER JOIN plans pl ON pl.id = sb.planId WHERE sb.userId = ${profiles.ownerId} AND sb.status = 'active' AND sb.currentPeriodEndsAt > ${new Date()} AND pl.isFeatured = 1)`;
+}
+
+// "Disponível agora" só vale dentro da validade escolhida pelo titular.
+function availableNowSql() {
+  return sql`(${profiles.isAvailableNow} = 1 AND (${profiles.availableUntil} IS NULL OR ${profiles.availableUntil} > ${new Date()}))`;
+}
+
 // Colunas do perfil + selo derivado de identidade aprovada e dentro da validade.
 // O selo nunca expõe dados do documento: apenas um booleano público.
 function publicProfileSelection() {
@@ -693,10 +714,11 @@ function publicProfileSelection() {
     identityVerified: sql<number>`${identityApprovedExists()}`.as(
       "identityVerified"
     ),
+    isSponsored: sql<number>`${sponsoredExists()}`.as("isSponsored"),
   };
 }
 
-export async function listPublishedProfiles(input: {
+type PublicListFilters = {
   search?: string;
   city?: string;
   region?: string;
@@ -713,9 +735,9 @@ export async function listPublishedProfiles(input: {
   limit?: number;
   offset?: number;
   publicAllowed?: boolean;
-}) {
-  const db = await getDb();
-  if (!db || input.publicAllowed === false) return [];
+};
+
+function buildPublicConditions(input: PublicListFilters) {
   const conditions: any[] = [
     eq(profiles.status, "approved"),
     eq(profiles.isPublished, true),
@@ -743,7 +765,7 @@ export async function listPublishedProfiles(input: {
     conditions.push(sql`${profiles.age} >= ${input.ageMin}`);
   if (input.ageMax !== undefined)
     conditions.push(sql`${profiles.age} <= ${input.ageMax}`);
-  if (input.availableNow) conditions.push(eq(profiles.isAvailableNow, true));
+  if (input.availableNow) conditions.push(availableNowSql());
   if (input.priceMaxCents !== undefined)
     conditions.push(
       sql`${profiles.priceFromCents} IS NOT NULL AND ${profiles.priceFromCents} <= ${input.priceMaxCents}`
@@ -754,6 +776,17 @@ export async function listPublishedProfiles(input: {
     conditions.push(like(profiles.attendancePlaces, `%${escapeLike(input.place)}%`));
   if (input.verifiedOnly)
     conditions.push(identityApprovedExists());
+  return conditions;
+}
+
+export async function listPublishedProfiles(input: PublicListFilters) {
+
+  const db = await getDb();
+  if (!db || input.publicAllowed === false) return [];
+  const conditions = buildPublicConditions(input);
+  // Patrocinados (rotulados) ficam à frente apenas nas ordenações "relevantes" e
+  // "disponíveis"; ordenar por preço ou recência não é afetado.
+  const sponsoredFirst = ENV.sponsoredListingsEnabled ? [desc(sponsoredExists())] : [];
   const order =
     input.sort === "recent"
       ? [desc(profiles.updatedAt), desc(profiles.id)]
@@ -766,12 +799,18 @@ export async function listPublishedProfiles(input: {
           ]
       : input.sort === "available"
         ? [
-            desc(profiles.isAvailableNow),
+            ...sponsoredFirst,
+            desc(availableNowSql()),
             desc(profiles.isFeatured),
             desc(profiles.updatedAt),
             desc(profiles.id),
           ]
-        : [desc(profiles.isFeatured), desc(profiles.updatedAt), desc(profiles.id)];
+        : [
+            ...sponsoredFirst,
+            desc(profiles.isFeatured),
+            desc(profiles.updatedAt),
+            desc(profiles.id),
+          ];
   const rows = await db
     .select(publicProfileSelection())
     .from(profiles)
@@ -797,6 +836,49 @@ export async function listPublishedProfiles(input: {
           };
     })
   );
+}
+
+export async function countPublishedProfiles(input: Omit<PublicListFilters, "limit" | "offset" | "sort">) {
+  const db = await getDb();
+  if (!db || input.publicAllowed === false) return 0;
+  const [row] = await db
+    .select({ total: sql<number>`COUNT(*)` })
+    .from(profiles)
+    .where(and(...buildPublicConditions(input)));
+  return Number(row?.total ?? 0);
+}
+
+// Todas as URLs públicas para o sitemap (até o limite de 50.000 por arquivo).
+export async function listSitemapEntries() {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [
+    eq(profiles.status, "approved"),
+    eq(profiles.isPublished, true),
+    eq(profiles.portfolioReviewed, true),
+    eq(profiles.isActive, true),
+    sql`${profiles.deletedAt} IS NULL`,
+    activeProfileOwner(),
+  ];
+  if (!ENV.allowFakeData)
+    conditions.push(eq(profiles.isDemo, false), eq(profiles.isTest, false));
+  const rows = await db
+    .select({
+      slug: profiles.slug,
+      city: profiles.city,
+      categories: profiles.categories,
+      updatedAt: profiles.updatedAt,
+    })
+    .from(profiles)
+    .where(and(...conditions))
+    .orderBy(desc(profiles.updatedAt))
+    .limit(50000);
+  return rows.map(row => ({
+    slug: row.slug,
+    city: row.city,
+    categories: parseJson(row.categories) as string[],
+    updatedAt: row.updatedAt,
+  }));
 }
 
 export async function listPublicLocations(publicAllowed = true) {
@@ -966,6 +1048,7 @@ export async function saveProfile(
     contactOptions: serialize(input.contactOptions),
     preferences: serialize(input.preferences),
     languages: serialize(input.languages),
+    ...(input.isAvailableNow ? {} : { availableUntil: null }),
     services: serialize((input as any).services),
     attendancePlaces: serialize((input as any).attendancePlaces),
     priceFromCents: (input as any).priceFromCents ?? null,
@@ -2254,7 +2337,8 @@ export async function getOwnerProfileStats(
   const owned = await getOwnerProfile(ownerId, profileId);
   if (!owned) throw new Error("Perfil não pertence à conta");
   const span = Math.min(Math.max(Math.floor(days), 1), 90);
-  const since = saoPauloDateKey(new Date(Date.now() - (span - 1) * 86400000));
+  // Busca o dobro do período para comparar com o período imediatamente anterior.
+  const since = saoPauloDateKey(new Date(Date.now() - (span * 2 - 1) * 86400000));
   const rows = await db
     .select({
       dateKey: analyticsDaily.dateKey,
@@ -2270,7 +2354,7 @@ export async function getOwnerProfileStats(
     )
     .orderBy(asc(analyticsDaily.dateKey));
   const byDay = new Map<string, { date: string; views: number; contactClicks: number }>();
-  for (let i = span - 1; i >= 0; i--) {
+  for (let i = span * 2 - 1; i >= 0; i--) {
     const key = saoPauloDateKey(new Date(Date.now() - i * 86400000));
     byDay.set(key, { date: key, views: 0, contactClicks: 0 });
   }
@@ -2280,13 +2364,357 @@ export async function getOwnerProfileStats(
     if (row.eventName === "profile_view") entry.views += row.total;
     if (row.eventName === "contact_click") entry.contactClicks += row.total;
   }
-  const daily = Array.from(byDay.values());
+  const all = Array.from(byDay.values());
+  const previous = all.slice(0, span);
+  const daily = all.slice(span);
+  const sum = (list: typeof daily, key: "views" | "contactClicks") =>
+    list.reduce((total, d) => total + d[key], 0);
   return {
     days: span,
-    totals: {
-      views: daily.reduce((sum, d) => sum + d.views, 0),
-      contactClicks: daily.reduce((sum, d) => sum + d.contactClicks, 0),
-    },
+    totals: { views: sum(daily, "views"), contactClicks: sum(daily, "contactClicks") },
+    previousTotals: { views: sum(previous, "views"), contactClicks: sum(previous, "contactClicks") },
     daily,
+  };
+}
+
+
+// ---------------------------------------------------------------------------
+// MFA (TOTP) — segredo cifrado em repouso, código usado uma única vez
+// ---------------------------------------------------------------------------
+
+export async function getUserMfa(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [row] = await db
+    .select()
+    .from(userMfa)
+    .where(eq(userMfa.userId, userId))
+    .limit(1);
+  return row;
+}
+
+export async function startMfaEnrollment(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const current = await getUserMfa(userId);
+  if (current?.enabledAt) throw new Error("A verificação em duas etapas já está ativa");
+  const secret = generateTotpSecret();
+  const secretEnc = encryptSecret(secret, ENV.cookieSecret);
+  if (current) {
+    await db.update(userMfa).set({ secretEnc, lastStep: 0 }).where(eq(userMfa.userId, userId));
+  } else {
+    await db.insert(userMfa).values({ userId, secretEnc });
+  }
+  return secret;
+}
+
+async function consumeMfaCode(userId: number, code: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const row = await getUserMfa(userId);
+  if (!row) return null;
+  const secret = decryptSecret(row.secretEnc, ENV.cookieSecret);
+  const step = verifyTotp(secret, code, { lastStep: row.lastStep });
+  if (step === null) return null;
+  // Atualização condicional: dois logins simultâneos não reutilizam o mesmo código.
+  const result = await db
+    .update(userMfa)
+    .set({ lastStep: step })
+    .where(and(eq(userMfa.userId, userId), sql`${userMfa.lastStep} < ${step}`));
+  const affected = Number((result as any)[0]?.affectedRows ?? 0);
+  return affected > 0 ? { step, row } : null;
+}
+
+export async function confirmMfaEnrollment(userId: number, code: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const consumed = await consumeMfaCode(userId, code);
+  if (!consumed) throw new Error("Código inválido. Confira o horário do celular e tente de novo");
+  await db.update(userMfa).set({ enabledAt: new Date() }).where(eq(userMfa.userId, userId));
+  await writeAuditLog({ actorUserId: userId, action: "mfa.enabled", entityType: "user", entityId: userId });
+}
+
+export async function verifyLoginMfa(userId: number, code: string) {
+  const row = await getUserMfa(userId);
+  if (!row?.enabledAt) return true; // sem MFA ativa, nada a verificar
+  return Boolean(await consumeMfaCode(userId, code));
+}
+
+export async function disableMfa(userId: number, actorUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.delete(userMfa).where(eq(userMfa.userId, userId));
+  await writeAuditLog({ actorUserId, action: "mfa.disabled", entityType: "user", entityId: userId });
+}
+
+
+// ---------------------------------------------------------------------------
+// Planos e assinaturas (ativação manual — cobrança automática continua desligada)
+// ---------------------------------------------------------------------------
+
+export type PlanInput = {
+  id?: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  priceCents: number;
+  billingPeriod: "none" | "month" | "year";
+  durationDays: number;
+  isFeatured: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  benefits: string[];
+};
+
+function hydratePlan(row: any) {
+  return { ...row, benefits: parseJson(row.benefits) as string[] };
+}
+
+export async function listPlans(onlyActive: boolean) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(plans)
+    .where(onlyActive ? eq(plans.isActive, true) : undefined)
+    .orderBy(asc(plans.sortOrder), asc(plans.priceCents), asc(plans.id));
+  return rows.map(hydratePlan);
+}
+
+export async function savePlan(input: PlanInput, actorUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const values = {
+    code: input.code,
+    name: input.name,
+    description: input.description ?? null,
+    priceCents: input.priceCents,
+    billingPeriod: input.billingPeriod,
+    durationDays: input.durationDays,
+    isFeatured: input.isFeatured,
+    isActive: input.isActive,
+    sortOrder: input.sortOrder,
+    benefits: JSON.stringify(input.benefits ?? []),
+  };
+  if (input.id) {
+    await db.update(plans).set(values).where(eq(plans.id, input.id));
+    await writeAuditLog({ actorUserId, action: "plan.updated", entityType: "plan", entityId: input.id });
+    return input.id;
+  }
+  const [existing] = await db.select({ id: plans.id }).from(plans).where(eq(plans.code, input.code)).limit(1);
+  if (existing) throw new Error("Já existe um plano com este código");
+  const inserted = await db.insert(plans).values(values);
+  const id = Number(inserted[0].insertId);
+  await writeAuditLog({ actorUserId, action: "plan.created", entityType: "plan", entityId: id });
+  return id;
+}
+
+// Pedido do titular: fica "pending" até a equipe confirmar o Pix e ativar.
+export async function requestSubscription(userId: number, planId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [plan] = await db.select().from(plans).where(and(eq(plans.id, planId), eq(plans.isActive, true))).limit(1);
+  if (!plan) throw new Error("Plano indisponível");
+  const [pending] = await db
+    .select({ id: subscriptions.id })
+    .from(subscriptions)
+    .where(and(eq(subscriptions.userId, userId), eq(subscriptions.planId, planId), eq(subscriptions.status, "pending")))
+    .limit(1);
+  if (pending) return { id: pending.id, duplicate: true as const };
+  const inserted = await db.insert(subscriptions).values({
+    userId,
+    planId,
+    provider: "manual",
+    status: "pending",
+    source: "owner_request",
+  });
+  const id = Number(inserted[0].insertId);
+  await writeAuditLog({ actorUserId: userId, action: "subscription.requested", entityType: "subscription", entityId: id, metadata: { planId } });
+  return { id, duplicate: false as const };
+}
+
+export async function activateSubscription(input: {
+  subscriptionId?: number;
+  userId?: number;
+  planId?: number;
+  actorUserId: number;
+  paidCents?: number;
+  note?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  let sub: any;
+  if (input.subscriptionId) {
+    [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, input.subscriptionId)).limit(1);
+    if (!sub) throw new Error("Assinatura não encontrada");
+    if (sub.status !== "pending") throw new Error("Só pedidos pendentes podem ser ativados");
+  } else {
+    if (!input.userId || !input.planId) throw new Error("Informe o titular e o plano");
+    const [owner] = await db.select({ id: users.id }).from(users).where(eq(users.id, input.userId)).limit(1);
+    if (!owner) throw new Error("Titular não encontrado");
+    sub = { id: null, userId: input.userId, planId: input.planId };
+  }
+  const [plan] = await db.select().from(plans).where(eq(plans.id, sub.planId)).limit(1);
+  if (!plan) throw new Error("Plano não encontrado");
+  // Renovação soma ao período vigente, em vez de perder dias já pagos.
+  const [current] = await db
+    .select({ endsAt: sql<Date>`MAX(${subscriptions.currentPeriodEndsAt})` })
+    .from(subscriptions)
+    .where(and(eq(subscriptions.userId, sub.userId), eq(subscriptions.planId, sub.planId), eq(subscriptions.status, "active")));
+  const now = new Date();
+  const base = current?.endsAt && new Date(current.endsAt) > now ? new Date(current.endsAt) : now;
+  const endsAt = new Date(base.getTime() + plan.durationDays * 86400000);
+  let id = sub.id as number | null;
+  const values = {
+    status: "active" as const,
+    currentPeriodEndsAt: endsAt,
+    source: "manual_pix",
+    note: input.note?.slice(0, 300) ?? null,
+    activatedBy: input.actorUserId,
+    provider: "manual",
+  };
+  if (id) {
+    await db.update(subscriptions).set(values).where(eq(subscriptions.id, id));
+  } else {
+    const inserted = await db.insert(subscriptions).values({ userId: sub.userId, planId: sub.planId, ...values });
+    id = Number(inserted[0].insertId);
+  }
+  const paid = Math.max(0, Math.floor(input.paidCents ?? 0));
+  if (paid > 0) {
+    await db.insert(financeEntries).values({
+      requestId: `subscription-${id}`,
+      kind: "income",
+      description: `Plano ${plan.name} — titular #${sub.userId}`.slice(0, 250),
+      amountCents: paid,
+      occurredOn: now.toISOString().slice(0, 10),
+      createdBy: input.actorUserId,
+    });
+  }
+  await writeAuditLog({
+    actorUserId: input.actorUserId,
+    action: "subscription.activated",
+    entityType: "subscription",
+    entityId: id,
+    metadata: { planId: plan.id, userId: sub.userId, endsAt: endsAt.toISOString(), paidCents: paid },
+  });
+  return { id, endsAt };
+}
+
+export async function cancelSubscription(subscriptionId: number, actorUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, subscriptionId)).limit(1);
+  if (!sub) throw new Error("Assinatura não encontrada");
+  if (!["pending", "active"].includes(sub.status)) throw new Error("Esta assinatura já foi encerrada");
+  await db
+    .update(subscriptions)
+    .set({ status: "cancelled", currentPeriodEndsAt: sub.status === "active" ? new Date() : sub.currentPeriodEndsAt })
+    .where(eq(subscriptions.id, subscriptionId));
+  await writeAuditLog({ actorUserId, action: "subscription.cancelled", entityType: "subscription", entityId: subscriptionId });
+}
+
+export async function listSubscriptionsAdmin(status?: "pending" | "active" | "cancelled" | "expired") {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: subscriptions.id,
+      userId: subscriptions.userId,
+      userName: users.name,
+      userEmail: users.email,
+      planId: subscriptions.planId,
+      planName: plans.name,
+      planPriceCents: plans.priceCents,
+      status: subscriptions.status,
+      currentPeriodEndsAt: subscriptions.currentPeriodEndsAt,
+      source: subscriptions.source,
+      note: subscriptions.note,
+      createdAt: subscriptions.createdAt,
+    })
+    .from(subscriptions)
+    .innerJoin(users, eq(users.id, subscriptions.userId))
+    .innerJoin(plans, eq(plans.id, subscriptions.planId))
+    .where(status ? eq(subscriptions.status, status) : undefined)
+    .orderBy(desc(subscriptions.createdAt))
+    .limit(200);
+}
+
+export async function listMySubscriptions(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: subscriptions.id,
+      planName: plans.name,
+      isFeatured: plans.isFeatured,
+      status: subscriptions.status,
+      currentPeriodEndsAt: subscriptions.currentPeriodEndsAt,
+      createdAt: subscriptions.createdAt,
+    })
+    .from(subscriptions)
+    .innerJoin(plans, eq(plans.id, subscriptions.planId))
+    .where(eq(subscriptions.userId, userId))
+    .orderBy(desc(subscriptions.createdAt))
+    .limit(20);
+}
+
+
+// Atualização leve de "disponível agora": não despublica nem reenvia para revisão,
+// porque altera só a disponibilidade e não o conteúdo moderado do anúncio.
+export async function setOwnerAvailability(
+  ownerId: number,
+  profileId: number,
+  available: boolean,
+  hours?: number
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [owned] = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(
+      and(
+        eq(profiles.id, profileId),
+        eq(profiles.ownerId, ownerId),
+        sql`${profiles.deletedAt} IS NULL`
+      )
+    )
+    .limit(1);
+  if (!owned) throw new Error("Perfil não pertence à conta");
+  const until =
+    available && hours
+      ? new Date(Date.now() + Math.min(Math.max(hours, 1), 24) * 3600000)
+      : null;
+  await db
+    .update(profiles)
+    .set({ isAvailableNow: available, availableUntil: until })
+    .where(and(eq(profiles.id, profileId), eq(profiles.ownerId, ownerId)));
+  await writeAuditLog({
+    actorUserId: ownerId,
+    action: available ? "profile.available_on" : "profile.available_off",
+    entityType: "profile",
+    entityId: profileId,
+    metadata: { until: until?.toISOString() ?? null },
+  });
+  return { isAvailableNow: available, availableUntil: until };
+}
+
+
+// Contagens operacionais para o painel de prontidão do admin.
+export async function getOperationalCounts() {
+  const db = await getDb();
+  if (!db) return null;
+  const one = async (query: any) => Number((await db.execute(query) as any)[0]?.[0]?.total ?? 0);
+  return {
+    publishedProfiles: await one(
+      sql`SELECT COUNT(*) AS total FROM profiles WHERE status='approved' AND isPublished=1 AND portfolioReviewed=1 AND isActive=1 AND deletedAt IS NULL AND isDemo=0 AND isTest=0`
+    ),
+    pendingProfiles: await one(sql`SELECT COUNT(*) AS total FROM profiles WHERE status='pending' AND deletedAt IS NULL`),
+    pendingMedia: await one(sql`SELECT COUNT(*) AS total FROM profile_media WHERE status='pending'`),
+    pendingIdentity: await one(sql`SELECT COUNT(*) AS total FROM identity_verifications WHERE status='pending'`),
+    openReports: await one(sql`SELECT COUNT(*) AS total FROM moderation_cases WHERE status IN ('open','in_review')`),
+    pendingSubscriptions: await one(sql`SELECT COUNT(*) AS total FROM subscriptions WHERE status='pending'`),
+    activePlans: await one(sql`SELECT COUNT(*) AS total FROM plans WHERE isActive=1`),
+    owners: await one(sql`SELECT COUNT(DISTINCT ownerId) AS total FROM profiles WHERE deletedAt IS NULL`),
   };
 }

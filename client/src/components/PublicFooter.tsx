@@ -49,6 +49,10 @@ export default function PublicFooter() {
           <Link href="/como-anunciar">Como anunciar</Link>
           {" · "}
           <Link href="/calculadora-de-ganhos">Calculadora de ganhos</Link>
+          {" · "}
+          <Link href="/planos">Planos</Link>
+          {" · "}
+          <a href="tel:100">Denunciar exploração sexual: Disque 100</a>
         </span>
         <span>{footer.signature}</span>
         <span>{footer.closing}</span>

@@ -6,7 +6,8 @@ import Seo from "@/components/Seo";
 export default function LoginPage() {
   const [, navigate] = useLocation();
   const [email, setEmail] = useState(""),
-    [password, setPassword] = useState("");
+    [password, setPassword] = useState(""),
+    [totpCode, setTotpCode] = useState("");
   const requested = new URLSearchParams(window.location.search).get("returnTo");
   const safeReturn =
     requested && /^\/(admin|titular|conta|cliente)(\?|$)/.test(requested)
@@ -27,6 +28,8 @@ export default function LoginPage() {
       window.location.reload();
     },
   });
+  const needsCode =
+    Boolean(login.error?.message.includes("duas etapas")) || totpCode.length > 0;
   return (
     <div className="studio">
       <Seo title="Entrar — Ero Models" description="Acesso privado à conta Ero Models." noindex />
@@ -38,7 +41,7 @@ export default function LoginPage() {
           <form
             onSubmit={e => {
               e.preventDefault();
-              login.mutate({ email, password });
+              login.mutate({ email, password, totpCode: totpCode || undefined });
             }}
           >
             <label>
@@ -62,6 +65,18 @@ export default function LoginPage() {
                 onChange={e => setPassword(e.target.value)}
               />
             </label>
+            {needsCode && (
+              <label>
+                Código do aplicativo autenticador
+                <input
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={totpCode}
+                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, ""))}
+                />
+              </label>
+            )}
             {login.error && (
               <p role="alert" className="studio-error">
                 {login.error.message}

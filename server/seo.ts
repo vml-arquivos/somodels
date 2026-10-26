@@ -121,6 +121,10 @@ function staticSeo(pathname: string) {
       title: `Contato — ${ENV.siteName}`,
       description: "Orientações para contato com a plataforma.",
     },
+    "/planos": {
+      title: `Planos para anunciantes — ${ENV.siteName}`,
+      description: "Compare os planos de destaque e escolha como aparecer na vitrine.",
+    },
     "/como-anunciar": {
       title: `Como anunciar — ${ENV.siteName}`,
       description: "Passo a passo para criar, verificar e publicar seu anúncio com segurança.",

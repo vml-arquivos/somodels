@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-26 — pronto para receber cadastros: planos, segurança do admin e vitrine completa
+
+- migration `0008_plans_mfa_availability`: tabela `user_mfa`, campos novos em `plans` (destaque, duração, ordem, benefícios), em `subscriptions` (origem, observação, quem ativou) e `availableUntil` em `profiles`;
+- página pública `/planos` e painel do admin para criar planos, registrar pedidos e ativar a assinatura manualmente (Pix fora da plataforma), com lançamento financeiro e auditoria;
+- anúncios de planos em destaque aparecem primeiro e sempre com o rótulo "Patrocinado", somente com `SPONSORED_LISTINGS_ENABLED=true`;
+- verificação em duas etapas (TOTP) para contas de admin, com segredo criptografado e proteção contra reuso do código; `ADMIN_MFA_REQUIRED=true` passa a exigir o cadastro antes do acesso ao admin;
+- "Disponível agora" com validade escolhida pelo titular, sem precisar reenviar o anúncio para revisão;
+- painel do titular com nota de qualidade do anúncio, comparação com o período anterior e situação do plano;
+- aba "Prontidão" no admin: lista o que ainda impede abrir a vitrine e receber cadastros;
+- vitrine mostra o total de anúncios e "Página X de Y"; páginas de cidade e categoria têm texto próprio;
+- sitemap com todos os anúncios, cidades e categorias (antes limitado a 60);
+- Disque 100 no rodapé e na página de denúncia;
+- `/healthz` e `/api/release` passam a mostrar o commit real do deploy (o Dockerfile grava `SOURCE_COMMIT`), que tem prioridade sobre `APP_RELEASE`;
+- validação local: `pnpm check`, suíte completa (126 testes), `pnpm build` e conferência do SQL gerado; sem teste contra MySQL real.
+
 ## 2026-10-25 — competitividade: busca por preço e serviço, verificação manual e métricas
 
 - migration `0007_profile_discovery` adiciona `priceFromCents`, `services` e `attendancePlaces` (opcionais) e o índice `profiles_price_idx`; o healthcheck passa a validar essas colunas;

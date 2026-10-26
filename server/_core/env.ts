@@ -16,6 +16,18 @@ const isTestMode = appMode === "test";
 const adminEmails = (process.env.ADMIN_EMAILS ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
 const ageVerificationMode = process.env.AGE_VERIFICATION_MODE === "self_attestation" ? "self_attestation" : "provider";
 
+// O commit gravado na imagem no build (Coolify envia SOURCE_COMMIT) vence variáveis
+// antigas como APP_RELEASE, que ficavam presas num valor velho depois dos deploys.
+function resolveRelease() {
+  const built = (process.env.BUILD_COMMIT ?? "").trim();
+  if (built && built.toUpperCase() !== "HEAD") return built;
+  return (
+    process.env.APP_RELEASE?.trim() ||
+    process.env.GIT_SHA?.trim() ||
+    "development"
+  );
+}
+
 export const ENV = {
   appId: process.env.VITE_APP_ID ?? "",
   cookieSecret: process.env.JWT_SECRET ?? "",
@@ -29,7 +41,7 @@ export const ENV = {
   trustProxy: readBoolean(process.env.TRUST_PROXY, true),
   siteName: process.env.SITE_NAME ?? "Ero Models",
   canonicalOrigin,
-  release: process.env.APP_RELEASE ?? process.env.GIT_SHA ?? "development",
+  release: resolveRelease(),
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   sessionDurationHours: readInteger(process.env.SESSION_DURATION_HOURS, 12),
@@ -56,6 +68,7 @@ export const ENV = {
   blockingEnabled: readBoolean(process.env.BLOCKING_ENABLED, false),
   reportsEnabled: readBoolean(process.env.REPORTS_ENABLED, false),
   adminEmails,
+  adminMfaRequired: readBoolean(process.env.ADMIN_MFA_REQUIRED, false),
   ageVerificationMode,
   ageVerificationProvider: process.env.AGE_VERIFICATION_PROVIDER ?? "",
   ageVerificationApiKey: process.env.AGE_VERIFICATION_API_KEY ?? "",

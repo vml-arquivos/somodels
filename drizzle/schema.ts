@@ -39,6 +39,22 @@ export const users = mysqlTable(
   }),
 );
 
+export const userMfa = mysqlTable(
+  "user_mfa",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull(),
+    secretEnc: text("secretEnc").notNull(),
+    enabledAt: timestamp("enabledAt"),
+    lastStep: int("lastStep").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    userIdx: uniqueIndex("user_mfa_user_unique").on(table.userId),
+  }),
+);
+
 export const authSessions = mysqlTable(
   "auth_sessions",
   {
@@ -177,6 +193,7 @@ export const profiles = mysqlTable(
     attendancePlaces: text("attendancePlaces"),
     availabilityLabel: varchar("availabilityLabel", { length: 160 }),
     isAvailableNow: boolean("isAvailableNow").default(false).notNull(),
+    availableUntil: timestamp("availableUntil"),
     phone: varchar("phone", { length: 40 }),
     whatsapp: varchar("whatsapp", { length: 40 }),
     telegram: varchar("telegram", { length: 80 }),
@@ -334,6 +351,10 @@ export const plans = mysqlTable(
       .default("none")
       .notNull(),
     isActive: boolean("isActive").default(false).notNull(),
+    isFeatured: boolean("isFeatured").default(false).notNull(),
+    durationDays: int("durationDays").default(30).notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    benefits: text("benefits"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -354,11 +375,18 @@ export const subscriptions = mysqlTable(
       .default("pending")
       .notNull(),
     currentPeriodEndsAt: timestamp("currentPeriodEndsAt"),
+    source: varchar("source", { length: 40 }),
+    note: varchar("note", { length: 300 }),
+    activatedBy: int("activatedBy"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     userIdx: index("subscriptions_user_idx").on(table.userId),
+    activeWindowIdx: index("subscriptions_active_window_idx").on(
+      table.status,
+      table.currentPeriodEndsAt
+    ),
     providerIdx: uniqueIndex("subscriptions_provider_unique").on(table.provider, table.providerReference),
   }),
 );

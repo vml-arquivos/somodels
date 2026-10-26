@@ -13,6 +13,7 @@ import PortfolioEditor from "@/components/PortfolioEditor";
 import HomeCopyEditor from "@/components/HomeCopyEditor";
 import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
+import MfaPanel from "@/components/MfaPanel";
 const tabs = {
   overview: "Visão geral",
   users: "Usuários",
@@ -20,6 +21,9 @@ const tabs = {
   moderation: "Moderação",
   reports: "Denúncias",
   identity: "Verificações",
+  plans: "Planos",
+  readiness: "Prontidão",
+  security: "Segurança",
   finance: "Financeiro",
   settings: "Página inicial",
   audit: "Auditoria",
@@ -53,6 +57,23 @@ export default function AdminDashboard() {
     [auditPage, setAuditPage] = useState(0);
   const [reportDecision, setReportDecision] = useState("");
   const [identityReason, setIdentityReason] = useState("");
+  const emptyPlan = {
+    id: undefined as number | undefined,
+    code: "",
+    name: "",
+    description: "",
+    price: "",
+    billingPeriod: "month" as "none" | "month" | "year",
+    durationDays: "30",
+    isFeatured: false,
+    isActive: true,
+    sortOrder: "0",
+    benefits: "",
+  };
+  const [planForm, setPlanForm] = useState(emptyPlan);
+  const [paidInput, setPaidInput] = useState("");
+  const [subNote, setSubNote] = useState("");
+  const [manualSub, setManualSub] = useState({ userId: "", planId: "" });
   const [uid, setUid] = useState<number | null>(null),
     [pid, setPid] = useState<number | null>(null),
     [editingProfile, setEditingProfile] = useState(false),
@@ -61,6 +82,12 @@ export default function AdminDashboard() {
     [reason, setReason] = useState(""),
     [confirmed, setConfirmed] = useState(false);
   const allowed = !!user && user.isAdmin && !user.mustChangePassword;
+  const mfaStatus = trpc.auth.mfaStatus.useQuery(undefined, { enabled: allowed });
+  const mfaPending = Boolean(mfaStatus.data?.required && !mfaStatus.data.enabled);
+  useEffect(() => {
+    // Administrador sem MFA só consegue usar a aba de segurança até ativar.
+    if (mfaPending) setTab("security");
+  }, [mfaPending]);
   const overview = trpc.management.overview.useQuery(undefined, {
     enabled: allowed && tab === "overview",
   });
@@ -103,6 +130,40 @@ export default function AdminDashboard() {
       setIdentityReason("");
       await identityQueue.refetch();
     },
+  });
+  const plansQuery = trpc.admin.plans.useQuery(undefined, {
+    enabled: allowed && tab === "plans",
+  });
+  const subsQuery = trpc.admin.subscriptions.useQuery(undefined, {
+    enabled: allowed && tab === "plans",
+  });
+  const readinessQuery = trpc.admin.readiness.useQuery(undefined, {
+    enabled: allowed && tab === "readiness",
+  });
+  const savePlanMutation = trpc.admin.savePlan.useMutation({
+    onSuccess: async () => {
+      toast.success("Plano salvo");
+      setPlanForm(emptyPlan);
+      await plansQuery.refetch();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const activateSub = trpc.admin.activateSubscription.useMutation({
+    onSuccess: async () => {
+      toast.success("Plano ativado");
+      setPaidInput("");
+      setSubNote("");
+      setManualSub({ userId: "", planId: "" });
+      await subsQuery.refetch();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const cancelSub = trpc.admin.cancelSubscription.useMutation({
+    onSuccess: async () => {
+      toast.success("Assinatura encerrada");
+      await subsQuery.refetch();
+    },
+    onError: error => toast.error(error.message),
   });
   const finance = trpc.management.finance.useQuery(undefined, {
     enabled: allowed && tab === "finance",
@@ -1175,6 +1236,206 @@ export default function AdminDashboard() {
                 )}
               </section>
             )}
+            {tab === "readiness" && (
+              <section className="studio-panel">
+                <div className="studio-title">
+                  <div>
+                    <p className="studio-kicker">Operação</p>
+                    <h2>Prontidão para receber cadastros</h2>
+                    <p className="studio-muted">
+                      Confere configuração, segurança e filas. “Bloqueio” impede
+                      o lançamento; “atenção” é recomendação antes de divulgar.
+                    </p>
+                  </div>
+                </div>
+                <Failure error={readinessQuery.error} />
+                {readinessQuery.isLoading ? (
+                  <p>Verificando…</p>
+                ) : (
+                  <ul className="studio-list">
+                    {readinessQuery.data?.map(item => (
+                      <li key={item.id}>
+                        <strong>
+                          {item.level === "ok" ? "✓" : item.level === "warn" ? "!" : "✕"}{" "}
+                          {item.title}
+                        </strong>
+                        <small>{item.detail}</small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+            {tab === "plans" && (
+              <section className="studio-panel">
+                <div className="studio-title">
+                  <div>
+                    <p className="studio-kicker">Receita</p>
+                    <h2>Planos e assinaturas</h2>
+                    <p className="studio-muted">
+                      O anunciante pede o plano, paga por Pix combinado com a
+                      equipe e você ativa aqui. Planos “em destaque” sobem na
+                      vitrine com o rótulo “Patrocinado” quando
+                      SPONSORED_LISTINGS_ENABLED estiver ligado.
+                    </p>
+                  </div>
+                </div>
+                <Failure
+                  error={plansQuery.error || subsQuery.error || savePlanMutation.error || activateSub.error}
+                />
+                <h3>{planForm.id ? "Editar plano" : "Novo plano"}</h3>
+                <form
+                  className="studio-fields"
+                  onSubmit={e => {
+                    e.preventDefault();
+                    const cents = Math.round(Number(planForm.price.replace(",", ".") || 0) * 100);
+                    savePlanMutation.mutate({
+                      id: planForm.id,
+                      code: planForm.code,
+                      name: planForm.name,
+                      description: planForm.description || null,
+                      priceCents: cents,
+                      billingPeriod: planForm.billingPeriod,
+                      durationDays: Number(planForm.durationDays),
+                      isFeatured: planForm.isFeatured,
+                      isActive: planForm.isActive,
+                      sortOrder: Number(planForm.sortOrder) || 0,
+                      benefits: planForm.benefits.split("\n").map(v => v.trim()).filter(Boolean),
+                    });
+                  }}
+                >
+                  <label>Código (a-z, 0-9, hífen)<input required value={planForm.code} onChange={e => setPlanForm({ ...planForm, code: e.target.value })} /></label>
+                  <label>Nome<input required value={planForm.name} onChange={e => setPlanForm({ ...planForm, name: e.target.value })} /></label>
+                  <label>Preço (R$)<input required inputMode="decimal" value={planForm.price} onChange={e => setPlanForm({ ...planForm, price: e.target.value })} /></label>
+                  <label>Duração (dias)<input required inputMode="numeric" value={planForm.durationDays} onChange={e => setPlanForm({ ...planForm, durationDays: e.target.value })} /></label>
+                  <label>Ordem na página<input inputMode="numeric" value={planForm.sortOrder} onChange={e => setPlanForm({ ...planForm, sortOrder: e.target.value })} /></label>
+                  <label>Descrição curta<input value={planForm.description} onChange={e => setPlanForm({ ...planForm, description: e.target.value })} /></label>
+                  <label>Benefícios (um por linha)<textarea rows={4} value={planForm.benefits} onChange={e => setPlanForm({ ...planForm, benefits: e.target.value })} /></label>
+                  <label className="studio-check"><input type="checkbox" checked={planForm.isFeatured} onChange={e => setPlanForm({ ...planForm, isFeatured: e.target.checked })} />Plano em destaque (patrocinado)</label>
+                  <label className="studio-check"><input type="checkbox" checked={planForm.isActive} onChange={e => setPlanForm({ ...planForm, isActive: e.target.checked })} />Visível na página de planos</label>
+                  <div className="studio-actions">
+                    <button className="primary" disabled={savePlanMutation.isPending}>Salvar plano</button>
+                    {planForm.id && <button type="button" onClick={() => setPlanForm(emptyPlan)}>Cancelar edição</button>}
+                  </div>
+                </form>
+                <h3>Planos cadastrados</h3>
+                {!plansQuery.data?.length ? (
+                  <p>Nenhum plano cadastrado.</p>
+                ) : (
+                  <div className="studio-table-wrap">
+                    <table>
+                      <thead><tr><th>Plano</th><th>Preço</th><th>Duração</th><th>Destaque</th><th>Status</th><th></th></tr></thead>
+                      <tbody>
+                        {plansQuery.data.map((plan: any) => (
+                          <tr key={plan.id}>
+                            <td><strong>{plan.name}</strong><small>{plan.code}</small></td>
+                            <td>{money(plan.priceCents)}</td>
+                            <td>{plan.durationDays} dias</td>
+                            <td>{plan.isFeatured ? "Sim" : "Não"}</td>
+                            <td>{plan.isActive ? "Ativo" : "Oculto"}</td>
+                            <td>
+                              <button
+                                onClick={() =>
+                                  setPlanForm({
+                                    id: plan.id,
+                                    code: plan.code,
+                                    name: plan.name,
+                                    description: plan.description || "",
+                                    price: String(plan.priceCents / 100),
+                                    billingPeriod: plan.billingPeriod,
+                                    durationDays: String(plan.durationDays),
+                                    isFeatured: plan.isFeatured,
+                                    isActive: plan.isActive,
+                                    sortOrder: String(plan.sortOrder),
+                                    benefits: (plan.benefits || []).join("\n"),
+                                  })
+                                }
+                              >
+                                Editar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <h3>Pedidos e assinaturas</h3>
+                <div className="studio-fields">
+                  <label>Valor recebido por Pix (R$) — lança no financeiro<input inputMode="decimal" value={paidInput} onChange={e => setPaidInput(e.target.value)} /></label>
+                  <label>Observação (comprovante, data)<input maxLength={300} value={subNote} onChange={e => setSubNote(e.target.value)} /></label>
+                </div>
+                {!subsQuery.data?.length ? (
+                  <p>Nenhum pedido ainda.</p>
+                ) : (
+                  <div className="studio-table-wrap">
+                    <table>
+                      <thead><tr><th>Titular</th><th>Plano</th><th>Status</th><th>Vigência</th><th>Ações</th></tr></thead>
+                      <tbody>
+                        {subsQuery.data.map((sub: any) => (
+                          <tr key={sub.id}>
+                            <td>#{sub.userId} {sub.userName || sub.userEmail}</td>
+                            <td>{sub.planName} · {money(sub.planPriceCents)}</td>
+                            <td>{sub.status}</td>
+                            <td>{sub.status === "active" ? date(sub.currentPeriodEndsAt) : "—"}</td>
+                            <td>
+                              <div className="studio-actions">
+                                {sub.status === "pending" && (
+                                  <button
+                                    className="primary"
+                                    disabled={activateSub.isPending}
+                                    onClick={() =>
+                                      activateSub.mutate({
+                                        subscriptionId: sub.id,
+                                        paidCents: Math.round(Number(paidInput.replace(",", ".") || 0) * 100),
+                                        note: subNote || undefined,
+                                      })
+                                    }
+                                  >
+                                    Ativar
+                                  </button>
+                                )}
+                                {["pending", "active"].includes(sub.status) && (
+                                  <button className="danger" disabled={cancelSub.isPending} onClick={() => cancelSub.mutate({ id: sub.id })}>
+                                    Encerrar
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <h3>Ativar plano direto para um titular</h3>
+                <div className="studio-fields">
+                  <label>ID do titular (aba Usuários)<input inputMode="numeric" value={manualSub.userId} onChange={e => setManualSub({ ...manualSub, userId: e.target.value })} /></label>
+                  <label>
+                    Plano
+                    <select value={manualSub.planId} onChange={e => setManualSub({ ...manualSub, planId: e.target.value })}>
+                      <option value="">Selecione</option>
+                      {plansQuery.data?.map((plan: any) => (<option key={plan.id} value={plan.id}>{plan.name}</option>))}
+                    </select>
+                  </label>
+                </div>
+                <button
+                  className="primary"
+                  disabled={activateSub.isPending || !manualSub.userId || !manualSub.planId}
+                  onClick={() =>
+                    activateSub.mutate({
+                      userId: Number(manualSub.userId),
+                      planId: Number(manualSub.planId),
+                      paidCents: Math.round(Number(paidInput.replace(",", ".") || 0) * 100),
+                      note: subNote || undefined,
+                    })
+                  }
+                >
+                  Ativar plano
+                </button>
+              </section>
+            )}
+            {tab === "security" && <MfaPanel />}
             {tab === "identity" && (
               <section className="studio-panel">
                 <div className="studio-title">

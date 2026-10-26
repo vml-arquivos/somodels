@@ -19,7 +19,10 @@ import {
   publicProcedure,
   router,
 } from "./_core/trpc";
-import { ENV, isAgeVerificationConfigured } from "./_core/env";
+import { ENV, isAgeVerificationConfigured, runtimeConfigStatus } from "./_core/env";
+import { buildReadiness } from "./readiness";
+import { otpauthUrl } from "./totp";
+import { verifyPassword } from "./auth-crypto";
 import {
   LOCAL_SESSION_COOKIE,
   assertPasswordPolicy,
@@ -32,6 +35,21 @@ import {
   revokeLocalSession,
 } from "./auth";
 import {
+  countPublishedProfiles,
+  getOperationalCounts,
+  activateSubscription,
+  cancelSubscription,
+  listMySubscriptions,
+  listPlans,
+  listSubscriptionsAdmin,
+  requestSubscription,
+  savePlan,
+  setOwnerAvailability,
+  confirmMfaEnrollment,
+  disableMfa,
+  getUserMfa,
+  startMfaEnrollment,
+  verifyLoginMfa,
   acceptProfileTerms,
   getOwnerProfileStats,
   listIdentityQueue,
@@ -103,6 +121,11 @@ const viewRateLimiter = createInMemoryRateLimiter({
   maxKeys: 50_000,
 });
 const identityRequestLimiter = createInMemoryRateLimiter({
+  max: 5,
+  windowMs: 24 * 60 * 60 * 1000,
+  maxKeys: 20_000,
+});
+const planRequestLimiter = createInMemoryRateLimiter({
   max: 5,
   windowMs: 24 * 60 * 60 * 1000,
   maxKeys: 20_000,
@@ -304,12 +327,20 @@ export const appRouter = router({
         z.object({
           email: z.string().email().max(320),
           password: z.string().min(1).max(200),
+          totpCode: z.string().max(12).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         assertLoginRateLimit(ctx.req);
         const user = await authenticateLocalUser(input.email, input.password);
         if (!user) throw new Error("E-mail ou senha inválidos");
+        const mfa = await getUserMfa(user.id);
+        if (mfa?.enabledAt) {
+          if (!input.totpCode)
+            throw new Error("Informe o código de verificação em duas etapas");
+          if (!(await verifyLoginMfa(user.id, input.totpCode)))
+            throw new Error("Código de verificação inválido ou já utilizado");
+        }
         const session = await createLocalSession(user);
         ctx.res.cookie(LOCAL_SESSION_COOKIE, session.token, {
           ...getLocalSessionCookieOptions(ctx.req),
@@ -325,6 +356,43 @@ export const appRouter = router({
           user: publicUser(user),
           mustChangePassword: user.mustChangePassword,
         };
+      }),
+    mfaStatus: authenticatedProcedure.query(async ({ ctx }) => {
+      const mfa = await getUserMfa(ctx.user.id);
+      const isAdmin = publicUser(ctx.user).isAdmin;
+      return {
+        enabled: Boolean(mfa?.enabledAt),
+        required: ENV.adminMfaRequired && isAdmin,
+        isAdmin,
+      };
+    }),
+    mfaBegin: authenticatedProcedure.mutation(async ({ ctx }) => {
+      const secret = await startMfaEnrollment(ctx.user.id);
+      return {
+        secret,
+        otpauthUrl: otpauthUrl(secret, ctx.user.email ?? `user-${ctx.user.id}`, ENV.siteName),
+      };
+    }),
+    mfaConfirm: authenticatedProcedure
+      .input(z.object({ code: z.string().min(6).max(12) }))
+      .mutation(async ({ ctx, input }) => {
+        const decision = loginAttempts.consume(`mfa:${ctx.user.id}`);
+        if (!decision.allowed) throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+        await confirmMfaEnrollment(ctx.user.id, input.code);
+        return { enabled: true };
+      }),
+    mfaDisable: authenticatedProcedure
+      .input(z.object({ password: z.string().min(1).max(200), code: z.string().min(6).max(12) }))
+      .mutation(async ({ ctx, input }) => {
+        if (ENV.adminMfaRequired && publicUser(ctx.user).isAdmin)
+          throw new Error("A verificação em duas etapas é obrigatória para administradores");
+        const account = await getUserById(ctx.user.id);
+        if (!account?.passwordHash || !(await verifyPassword(input.password, account.passwordHash)))
+          throw new Error("Senha inválida");
+        if (!(await verifyLoginMfa(ctx.user.id, input.code)))
+          throw new Error("Código de verificação inválido ou já utilizado");
+        await disableMfa(ctx.user.id, ctx.user.id);
+        return { enabled: false };
       }),
     changePassword: authenticatedProcedure
       .input(
@@ -487,6 +555,31 @@ export const appRouter = router({
           demoContactDisabled: true,
         }));
       }),
+    count: publicProcedure
+      .input(
+        z
+          .object({
+            search: z.string().max(120).optional(),
+            city: z.string().max(120).optional(),
+            region: z.string().max(80).optional(),
+            category: z.string().max(60).optional(),
+            attribute: z.string().max(60).optional(),
+            ageMin: z.number().int().min(18).max(99).optional(),
+            ageMax: z.number().int().min(18).max(99).optional(),
+            availableNow: z.boolean().optional(),
+            priceMaxCents: z.number().int().min(0).max(10_000_000).optional(),
+            service: z.enum(serviceOptions).optional(),
+            place: z.enum(attendancePlaceOptions).optional(),
+            verifiedOnly: z.boolean().optional(),
+          })
+          .optional()
+      )
+      .query(async ({ ctx, input }) => ({
+        total: await countPublishedProfiles({
+          ...(input ?? {}),
+          publicAllowed: await hasValidAgeSession(ctx.req),
+        }),
+      })),
     locations: publicProcedure.query(async ({ ctx }) =>
       listPublicLocations(await hasValidAgeSession(ctx.req))
     ),
@@ -524,6 +617,17 @@ export const appRouter = router({
     identity: protectedProcedure.query(({ ctx }) =>
       getIdentityVerification(ctx.user.id)
     ),
+    setAvailability: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          available: z.boolean(),
+          hours: z.number().int().min(1).max(24).optional(),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        setOwnerAvailability(ctx.user.id, input.id, input.available, input.hours)
+      ),
     requestIdentity: protectedProcedure.mutation(({ ctx }) => {
       const decision = identityRequestLimiter.consume(`user:${ctx.user.id}`);
       if (!decision.allowed)
@@ -664,6 +768,29 @@ export const appRouter = router({
         updateAdminReport({ ...input, actorUserId: ctx.user.id })
       ),
   }),
+  plans: router({
+    list: publicProcedure.query(async () =>
+      (await listPlans(true)).map(plan => ({
+        id: plan.id,
+        code: plan.code,
+        name: plan.name,
+        description: plan.description,
+        priceCents: plan.priceCents,
+        billingPeriod: plan.billingPeriod,
+        durationDays: plan.durationDays,
+        isFeatured: plan.isFeatured,
+        benefits: plan.benefits as string[],
+      }))
+    ),
+    mine: protectedProcedure.query(({ ctx }) => listMySubscriptions(ctx.user.id)),
+    request: protectedProcedure
+      .input(z.object({ planId: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => {
+        const decision = planRequestLimiter.consume(`user:${ctx.user.id}`);
+        if (!decision.allowed) throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+        return requestSubscription(ctx.user.id, input.planId);
+      }),
+  }),
   premium: router({
     createIntent: protectedProcedure
       .input(z.object({ mediaId: z.number().int().positive() }))
@@ -696,6 +823,72 @@ export const appRouter = router({
       .mutation(({ ctx, input }) =>
         reviewIdentityVerification({ ...input, actorUserId: ctx.user.id })
       ),
+    readiness: adminProcedure.query(async () => {
+      const status = runtimeConfigStatus();
+      return buildReadiness({
+        publicAccessEnabled: ENV.publicAccessEnabled,
+        publicLaunchEnabled: ENV.publicLaunchEnabled,
+        robotsNoIndex: ENV.robotsNoIndex,
+        testMode: ENV.testMode,
+        allowFakeData: ENV.allowFakeData,
+        ageVerificationConfigured: status.ageVerification,
+        requireIdentityVerification: ENV.requireIdentityVerification,
+        storageConfigured: status.storage,
+        canonicalOriginSet: Boolean(ENV.canonicalOrigin),
+        releaseKnown: ENV.release !== "development",
+        adminMfaRequired: ENV.adminMfaRequired,
+        flags: {
+          reportsEnabled: ENV.reportsEnabled,
+          favoritesEnabled: ENV.favoritesEnabled,
+          blockingEnabled: ENV.blockingEnabled,
+          secureContactEnabled: ENV.secureContactEnabled,
+          sponsoredListingsEnabled: ENV.sponsoredListingsEnabled,
+          paymentsEnabled: ENV.paymentsEnabled,
+        },
+        counts: await getOperationalCounts(),
+      });
+    }),
+    plans: adminProcedure.query(() => listPlans(false)),
+    savePlan: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive().optional(),
+          code: z.string().trim().regex(/^[a-z0-9-]{2,40}$/),
+          name: z.string().trim().min(2).max(80),
+          description: z.string().trim().max(500).nullish(),
+          priceCents: z.number().int().min(0).max(10_000_000),
+          billingPeriod: z.enum(["none", "month", "year"]),
+          durationDays: z.number().int().min(1).max(366),
+          isFeatured: z.boolean(),
+          isActive: z.boolean(),
+          sortOrder: z.number().int().min(0).max(1000).default(0),
+          benefits: z.array(z.string().trim().min(2).max(120)).max(8).default([]),
+        })
+      )
+      .mutation(({ ctx, input }) => savePlan(input, ctx.user.id)),
+    subscriptions: adminProcedure
+      .input(
+        z
+          .object({ status: z.enum(["pending", "active", "cancelled", "expired"]).optional() })
+          .optional()
+      )
+      .query(({ input }) => listSubscriptionsAdmin(input?.status)),
+    activateSubscription: adminProcedure
+      .input(
+        z.object({
+          subscriptionId: z.number().int().positive().optional(),
+          userId: z.number().int().positive().optional(),
+          planId: z.number().int().positive().optional(),
+          paidCents: z.number().int().min(0).max(10_000_000).optional(),
+          note: z.string().trim().max(300).optional(),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        activateSubscription({ ...input, actorUserId: ctx.user.id })
+      ),
+    cancelSubscription: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => cancelSubscription(input.id, ctx.user.id)),
     pendingProfiles: adminProcedure.query(() => listPendingProfiles()),
     pendingMedia: adminProcedure.query(() => listPendingMedia()),
     users: adminProcedure.query(({ ctx }) => listAdminUsers(ctx.user.role)),

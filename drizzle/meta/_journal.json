@@ -57,6 +57,13 @@
       "when": 1790380000000,
       "tag": "0007_profile_discovery",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1790390000000,
+      "tag": "0008_plans_mfa_availability",
+      "breakpoints": true
     }
   ]
 }

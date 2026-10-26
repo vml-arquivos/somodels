@@ -2646,3 +2646,20 @@
     font-size: 0.8rem;
   }
 }
+
+.studio-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.studio-plan-grid .studio-panel ul {
+  padding-left: 1.1rem;
+}
+
+.studio-page-intro {
+  margin: 0 0 12px;
+  max-width: 70ch;
+  color: var(--studio-muted, #9a9aa6);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}

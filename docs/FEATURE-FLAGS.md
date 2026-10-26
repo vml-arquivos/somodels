@@ -15,10 +15,13 @@ Todas as flags abaixo têm default seguro `false` e não devem ser inferidas a p
 | `FAVORITES_ENABLED` | `favoritesEnabled` | false | Favoritos. |
 | `BLOCKING_ENABLED` | `blockingEnabled` | false | Bloqueios de perfil/contato. |
 | `REPORTS_ENABLED` | `reportsEnabled` | false | Denúncias e fila administrativa. |
+| `ADMIN_MFA_REQUIRED` | — (só servidor) | false | Exige verificação em duas etapas para acessar o admin. |
 
 ## Dependências de ativação
 
 - `secureContactEnabled`: exige política de contato, `showContact`, sessão de maioridade válida e monitoramento de abuso.
+- `sponsoredListingsEnabled`: só tem efeito com ao menos um plano marcado como destaque e uma assinatura ativa; o anúncio sobe na lista e sempre exibe "Patrocinado".
+- `ADMIN_MFA_REQUIRED`: antes de ligar, cada admin precisa entrar em Admin → Segurança e ativar o autenticador, senão fica sem acesso ao painel.
 - `paymentsEnabled`: exige provider compatível, webhook/idempotência, cancelamento/reembolso e aprovação jurídica/comercial.
 - `adultMarketplaceEnabled`/`escortListingsEnabled`: exigem aprovação do ADR, jurisdição e operação de Trust & Safety.
 - `creatorContent18Enabled`: permanece desligada até existir domínio próprio de consentimento, media processing, copyright/NCII e payments compatíveis.

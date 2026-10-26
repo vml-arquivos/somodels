@@ -3,6 +3,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
 import { ENV } from "./env";
+import { getUserMfa } from "../db";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -44,6 +45,16 @@ export const adminProcedure = protectedProcedure.use(
       throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
     }
 
+    if (ENV.adminMfaRequired) {
+      const mfa = await getUserMfa(ctx.user.id);
+      if (!mfa?.enabledAt) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: MFA_ENROLLMENT_REQUIRED,
+        });
+      }
+    }
+
     return next({
       ctx: {
         ...ctx,
@@ -52,3 +63,6 @@ export const adminProcedure = protectedProcedure.use(
     });
   }),
 );
+
+export const MFA_ENROLLMENT_REQUIRED =
+  "Ative a verificação em duas etapas para acessar a administração";

@@ -12,7 +12,8 @@ A aplicação usa o recurso correto de aplicação no Coolify com build Docker a
 | `PORT` | Obrigatória | Porta HTTP do container | `3000` | Usa `3000` |
 | `CANONICAL_ORIGIN` | Obrigatória em produção | Origem canônica, links e sitemap | `https://eromodels.com.br` | Startup de produção falha |
 | `SITE_NAME` | Recomendada | Nome exibido no produto | `Ero Models` | Usa valor padrão |
-| `APP_RELEASE` | Recomendada | SHA ou release exibido no healthcheck | SHA do merge | Usa `development` |
+| `APP_RELEASE` | Opcional | Só vale se o build não gravar o commit. O Dockerfile já grava `SOURCE_COMMIT`, que tem prioridade; pode apagar esta variável. | SHA do merge | Usa `development` |
+| `ADMIN_MFA_REQUIRED` | Opcional | Exige verificação em duas etapas no admin | `true` após cadastrar os admins | `false` |
 | `TRUST_PROXY` | Recomendada | Reconhece TLS atrás do proxy | `true` | Usa `true` |
 | `ALLOWED_ORIGIN` | Recomendada | Origem permitida nas mutações | `https://eromodels.com.br` | Usa origem canônica |
 | `DATABASE_URL` | Obrigatória | Conexão MySQL/TiDB privado | `mysql://...` | Healthcheck fica não saudável |

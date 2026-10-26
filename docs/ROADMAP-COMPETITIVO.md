@@ -14,9 +14,9 @@ O que ela ainda não tem é o que gera volume e receita: busca por preço e serv
 |---|---|---|
 | 1 | Nada criava a verificação de identidade. Com `KYC_REQUIRED=true` (padrão), nenhuma anunciante conseguia enviar perfil para revisão. | Corrigido na Fase 1 (fluxo manual). |
 | 2 | Nenhum registro de visualização ou clique de contato (tabelas de analytics sem uso). | Corrigido na Fase 1. |
-| 3 | Sitemap de perfis limitado aos 60 primeiros anúncios. | Pendente (Fase 2). |
-| 4 | Listagem faz uma consulta extra de termos por perfil (até 60 por página) e busca com `LIKE '%...%'`. | Pendente (Fase 2). |
-| 5 | Sem total de resultados nem paginação numerada; sem página de cidade com texto próprio para SEO. | Pendente (Fase 2). |
+| 3 | Sitemap de perfis limitado aos 60 primeiros anúncios. | Corrigido na Fase 2. |
+| 4 | Listagem faz uma consulta extra de termos por perfil (até 60 por página) e busca com `LIKE '%...%'`. | Corrigido na Fase 2. |
+| 5 | Sem total de resultados nem paginação numerada; sem página de cidade com texto próprio para SEO. | Corrigido na Fase 2. |
 
 ## Comparativo de funções
 
@@ -49,7 +49,9 @@ O que ela ainda não tem é o que gera volume e receita: busca por preço e serv
 - Páginas `/como-anunciar` e `/calculadora-de-ganhos`, no sitemap e no rodapé.
 - Healthcheck passa a exigir as colunas da migration 0007.
 
-## Fase 2 — receita e escala (próxima)
+## Fase 2 — receita e escala (entregue em grande parte)
+
+Feito: planos e destaque com ativação manual por Pix (item 1, sem provider automático), SEO em escala (item 3), Disque 100 (item 6), MFA do admin e checklist de prontidão. Fica para depois: verificação com documento (2), FULLTEXT e vídeo dedicado (4 e 5), catálogo editável (7).
 
 1. **Planos e destaque**: telas de planos (tabela `plans` já existe), assinatura, ranking por plano com rótulo "Patrocinado", e provider de pagamento com Pix. Depende de decisão de preço, entidade jurídica e provider; manter `PAYMENTS_ENABLED=false` até lá.
 2. **Verificação com documento**: envio de documento e selfie para bucket privado, retenção definida, revisão no admin. Depende da política de retenção (LGPD).

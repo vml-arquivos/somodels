@@ -66,6 +66,7 @@ const pages = {
     paragraphs: [
       "A denúncia contextual está condicionada à ativação operacional da fila de moderação. Quando habilitada, exige conta autenticada, registra um protocolo e encaminha o caso para triagem humana.",
       "Possível menor de idade, tráfico, exploração, coerção, violência, ameaça ou extorsão devem receber prioridade urgente. Não inclua documentos, senhas ou evidências sensíveis no campo de texto público.",
+      "Casos de exploração sexual de crianças e adolescentes também podem ser denunciados diretamente ao Disque 100, serviço gratuito e sigiloso do governo federal, disponível todos os dias.",
       "A plataforma pode ocultar ou suspender material durante a apuração. Prazos, retenção de evidências, recurso e escalonamento precisam seguir a política jurídica e operacional aprovada.",
     ],
     bullets: [

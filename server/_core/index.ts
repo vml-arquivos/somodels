@@ -14,7 +14,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic } from "./serve-static";
 import { storagePut } from "../storage";
-import { getAdminProfile, getIdentityVerification, getUserById, isDatabaseReady, listPublishedProfiles } from "../db";
+import { getAdminProfile, getIdentityVerification, getUserById, isDatabaseReady, listSitemapEntries } from "../db";
 import { assertProductionConfig, ENV, isAgeVerificationConfigured } from "./env";
 import { bootstrapLocalAccounts } from "../auth";
 import { isPublicIndexingEnabled } from "../public-indexing";
@@ -175,11 +175,11 @@ async function startServer() {
       res.type("application/xml").send(emptySitemap());
       return;
     }
-    const published = await listPublishedProfiles({ publicAllowed: true, limit: 60 });
-    const cities = Array.from(new Set(published.map(profile => profile.city).filter(Boolean)));
-    const categories = Array.from(new Set(published.flatMap(profile => profile.categories).filter(Boolean)));
+    const entries = await listSitemapEntries();
+    const cities = Array.from(new Set(entries.map(entry => entry.city).filter(Boolean)));
+    const categories = Array.from(new Set(entries.flatMap(entry => entry.categories).filter(Boolean)));
     const origin = ENV.canonicalOrigin || "https://eromodels.com.br";
-    const pages = ["/", "/termos", "/privacidade", "/seguranca", "/denuncia", "/ajuda", "/contato", "/como-anunciar", "/calculadora-de-ganhos"];
+    const pages = ["/", "/termos", "/privacidade", "/seguranca", "/denuncia", "/ajuda", "/contato", "/como-anunciar", "/calculadora-de-ganhos", "/planos"];
     const urls = [
       ...pages,
       ...cities.map(city => `/cidade/${encodeURIComponent(city)}`),
@@ -194,10 +194,10 @@ async function startServer() {
       res.type("application/xml").send(emptySitemap());
       return;
     }
-    const published = await listPublishedProfiles({ publicAllowed: true, limit: 60 });
+    const entries = await listSitemapEntries();
     const origin = ENV.canonicalOrigin || "https://eromodels.com.br";
-    const urls = published
-      .map(profile => sitemapUrl(`${origin}/perfil/${encodeURIComponent(profile.slug)}`, new Date(profile.updatedAt)))
+    const urls = entries
+      .map(entry => sitemapUrl(`${origin}/perfil/${encodeURIComponent(entry.slug)}`, new Date(entry.updatedAt)))
       .join("");
     res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`);
   });
