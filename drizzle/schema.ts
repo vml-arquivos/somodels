@@ -25,6 +25,8 @@ export const users = mysqlTable(
     role: mysqlEnum("role", ["user", "admin", "super_admin", "dev"])
       .default("user")
       .notNull(),
+    // Função da equipe quando role = admin (vazio = acesso total).
+    adminFunction: varchar("adminFunction", { length: 24 }),
     accountStatus: mysqlEnum("accountStatus", ["active", "suspended"])
       .default("active")
       .notNull(),

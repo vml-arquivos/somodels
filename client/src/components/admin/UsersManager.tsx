@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import {
+  adminFunctionKeys,
+  adminFunctions,
+  isAdminFunction,
+  type AdminFunction,
+} from "@shared/admin-access";
 
 type Group = "clients" | "owners" | "admins";
 type Role = "user" | "admin" | "super_admin" | "dev";
@@ -33,7 +39,7 @@ const accessLevels: Record<string, { label: string; text: string }> = {
   },
   admin: {
     label: "Administrador",
-    text: "Modera anúncios e mídias, atende denúncias e mensagens, gerencia clientes e titulares e ativa planos.",
+    text: "Equipe do painel. O que a pessoa vê e pode fazer depende da função escolhida abaixo.",
   },
   super_admin: {
     label: "Super administrador",
@@ -44,6 +50,13 @@ const accessLevels: Record<string, { label: string; text: string }> = {
     text: "Acesso técnico total. Este nível não pode ser alterado pelo painel.",
   },
 };
+
+// Nome do nível mostrado nas listas e no detalhe (inclui a função da equipe).
+function accessLabel(role: string, fn?: string | null) {
+  if (role === "admin" && isAdminFunction(fn)) return adminFunctions[fn].label;
+  if (role === "admin") return "Acesso completo";
+  return accessLevels[role]?.label ?? role;
+}
 
 const dateTime = (value: unknown) =>
   value ? new Date(value as string).toLocaleString("pt-BR") : "—";
@@ -99,12 +112,16 @@ const strongPasswordHint = "16 caracteres, com maiúscula, minúscula e número.
 export default function UsersManager({
   actor,
   onOpenProfile,
+  canWrite = true,
+  canDelete = true,
 }: {
   actor: { id: number; role: string };
   onOpenProfile: (profileId: number) => void;
+  canWrite?: boolean;
+  canDelete?: boolean;
 }) {
   const utils = trpc.useUtils();
-  const canManageAdmins = ["dev", "super_admin"].includes(actor.role);
+  const canManageAdmins = canWrite && ["dev", "super_admin"].includes(actor.role);
   const [group, setGroup] = useState<Group>("owners");
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -119,6 +136,7 @@ export default function UsersManager({
     email: "",
     password: "",
     role: "user" as Role,
+    adminFunction: "" as "" | AdminFunction,
     accountStatus: "active" as "active" | "suspended",
   });
 
@@ -150,6 +168,7 @@ export default function UsersManager({
         email: user.email || "",
         password: "",
         role: user.role as Role,
+        adminFunction: isAdminFunction(user.adminFunction) ? user.adminFunction : "",
         accountStatus: user.accountStatus,
       });
       setConfirmText("");
@@ -203,7 +222,7 @@ export default function UsersManager({
   const pages = Math.max(1, Math.ceil(total / 25));
   const currentGroup = groups.find(item => item.key === group)!;
   const user = detail.data?.user;
-  const editable = Boolean(detail.data?.editable);
+  const editable = canWrite && Boolean(detail.data?.editable);
   const showDetail = creating || Boolean(selected);
 
   const counts: Record<Group, number | undefined> = {
@@ -235,6 +254,7 @@ export default function UsersManager({
       email: "",
       password: "",
       role: group === "admins" ? "admin" : "user",
+      adminFunction: "",
       accountStatus: "active",
     });
   }
@@ -246,6 +266,7 @@ export default function UsersManager({
         email: form.email,
         password: form.password,
         role: form.role as "user" | "admin" | "super_admin",
+        adminFunction: form.role === "admin" && form.adminFunction ? form.adminFunction : null,
       });
     } else if (selected) {
       update.mutate({
@@ -253,6 +274,7 @@ export default function UsersManager({
         name: form.name,
         email: form.email,
         role: form.role as "user" | "admin" | "super_admin",
+        adminFunction: form.role === "admin" && form.adminFunction ? form.adminFunction : null,
         accountStatus: form.accountStatus,
       });
     }
@@ -265,6 +287,8 @@ export default function UsersManager({
       name: user.name || form.name,
       email: user.email || form.email,
       role: user.role as "user" | "admin" | "super_admin",
+      // undefined = o servidor mantém a função atual
+      adminFunction: undefined,
       accountStatus: user.accountStatus === "active" ? "suspended" : "active",
     });
   }
@@ -337,7 +361,7 @@ export default function UsersManager({
               <option value="suspended">Suspensas</option>
             </select>
           </div>
-          {(group !== "admins" || canManageAdmins) && (
+          {canWrite && (group !== "admins" || canManageAdmins) && (
             <button type="button" className="primary um-new" onClick={startCreate}>
               + {currentGroup.newLabel}
             </button>
@@ -407,7 +431,7 @@ export default function UsersManager({
                       )}
                       {group === "admins" && (
                         <span className="um-badge um-badge-accent">
-                          {accessLevels[item.role]?.label ?? item.role}
+                          {accessLabel(item.role, item.adminFunction)}
                         </span>
                       )}
                       <small>{relative(item.lastSignedIn)}</small>
@@ -479,7 +503,7 @@ export default function UsersManager({
                       <p>{user.email || "Sem e-mail"}</p>
                       <div className="um-badges">
                         <span className="um-badge um-badge-accent">
-                          {accessLevels[user.role]?.label ?? user.role}
+                          {accessLabel(user.role, user.adminFunction)}
                         </span>
                         <span
                           className={`um-badge ${user.accountStatus === "active" ? "um-badge-ok" : "um-badge-warn"}`}
@@ -631,6 +655,39 @@ export default function UsersManager({
                     </fieldset>
                   )}
 
+                  {form.role === "admin" &&
+                    (group === "admins" || (user && user.role !== "user")) && (
+                      <fieldset
+                        className="um-levels"
+                        disabled={!creating && !(editable && canManageAdmins)}
+                      >
+                        <legend>Função na equipe</legend>
+                        {(["", ...adminFunctionKeys] as const).map(key => (
+                          <label
+                            key={key || "full"}
+                            className={`um-level ${form.adminFunction === key ? "is-on" : ""}`}
+                          >
+                            <input
+                              type="radio"
+                              name="adminFunction"
+                              checked={form.adminFunction === key}
+                              onChange={() => setForm(f => ({ ...f, adminFunction: key }))}
+                            />
+                            <span>
+                              <strong>
+                                {key ? adminFunctions[key].label : "Acesso completo"}
+                              </strong>
+                              <small>
+                                {key
+                                  ? adminFunctions[key].text
+                                  : "Todas as áreas do painel, exceto criar administradores."}
+                              </small>
+                            </span>
+                          </label>
+                        ))}
+                      </fieldset>
+                    )}
+
                   <div className="um-actions">
                     <button
                       type="submit"
@@ -665,7 +722,7 @@ export default function UsersManager({
                 </div>
               )}
 
-              {!creating && user && editable && user.role === "user" && (
+              {!creating && user && editable && canDelete && user.role === "user" && (
                 <details className="um-danger">
                   <summary>Zona de risco</summary>
                   <p>

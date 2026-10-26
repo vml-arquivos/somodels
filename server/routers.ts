@@ -14,10 +14,12 @@ import {
 import { systemRouter } from "./_core/systemRouter";
 import {
   adminProcedure,
+  scopedProcedure,
   authenticatedProcedure,
   protectedProcedure,
   publicProcedure,
   router,
+  adminScopesFor,
 } from "./_core/trpc";
 import { ENV, isAgeVerificationConfigured, resolveStorageDriver, runtimeConfigStatus } from "./_core/env";
 import { isLocalStoragePersistent } from "./storage";
@@ -171,6 +173,8 @@ function publicUser(user: User) {
     role: user.role,
     isAdmin: Boolean(adminRole),
     adminRole,
+    adminFunction: adminRole === "admin" ? (user.adminFunction ?? null) : null,
+    adminScopes: adminRole ? [...adminScopesFor(user)] : ([] as string[]),
     loginMethod: user.loginMethod,
     emailVerifiedAt: user.emailVerifiedAt,
     mustChangePassword: user.mustChangePassword,
@@ -762,11 +766,11 @@ export const appRouter = router({
         }
         return getSafeExternalContact(ctx.user.id, input.profileId, input.method);
       }),
-    adminReports: adminProcedure.query(() => listAdminReports()),
-    adminReportHistory: adminProcedure
+    adminReports: scopedProcedure("reports").query(() => listAdminReports()),
+    adminReportHistory: scopedProcedure("reports")
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => getReportAuditHistory(input.id)),
-    updateReport: adminProcedure
+    updateReport: scopedProcedure("reports")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -847,7 +851,7 @@ export const appRouter = router({
       .query(({ ctx, input }) => hasPremiumAccess(ctx.user.id, input.mediaId)),
   }),
   admin: router({
-    identityQueue: adminProcedure
+    identityQueue: scopedProcedure("identity")
       .input(
         z
           .object({
@@ -856,7 +860,7 @@ export const appRouter = router({
           .optional()
       )
       .query(({ input }) => listIdentityQueue(input?.status ?? "pending")),
-    reviewIdentity: adminProcedure
+    reviewIdentity: scopedProcedure("identity")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -868,15 +872,15 @@ export const appRouter = router({
       .mutation(({ ctx, input }) =>
         reviewIdentityVerification({ ...input, actorUserId: ctx.user.id })
       ),
-    contactMessages: adminProcedure
+    contactMessages: scopedProcedure("messages")
       .input(z.object({ status: z.enum(["new", "handled", "all"]).optional() }).optional())
       .query(({ input }) => listContactMessages(input?.status ?? "new")),
-    handleContactMessage: adminProcedure
+    handleContactMessage: scopedProcedure("messages")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ ctx, input }) =>
         markContactMessageHandled(input.id, ctx.user.id)
       ),
-    readiness: adminProcedure.query(async () => {
+    readiness: scopedProcedure("readiness").query(async () => {
       const status = runtimeConfigStatus();
       return buildReadiness({
         publicAccessEnabled: ENV.publicAccessEnabled,
@@ -908,8 +912,8 @@ export const appRouter = router({
         counts: await getOperationalCounts(),
       });
     }),
-    plans: adminProcedure.query(() => listPlans(false)),
-    savePlan: adminProcedure
+    plans: scopedProcedure("plans").query(() => listPlans(false)),
+    savePlan: scopedProcedure("plans")
       .input(
         z.object({
           id: z.number().int().positive().optional(),
@@ -926,14 +930,14 @@ export const appRouter = router({
         })
       )
       .mutation(({ ctx, input }) => savePlan(input, ctx.user.id)),
-    subscriptions: adminProcedure
+    subscriptions: scopedProcedure("plans")
       .input(
         z
           .object({ status: z.enum(["pending", "active", "cancelled", "expired"]).optional() })
           .optional()
       )
       .query(({ input }) => listSubscriptionsAdmin(input?.status)),
-    activateSubscription: adminProcedure
+    activateSubscription: scopedProcedure("plans")
       .input(
         z.object({
           subscriptionId: z.number().int().positive().optional(),
@@ -946,13 +950,13 @@ export const appRouter = router({
       .mutation(({ ctx, input }) =>
         activateSubscription({ ...input, actorUserId: ctx.user.id })
       ),
-    cancelSubscription: adminProcedure
+    cancelSubscription: scopedProcedure("plans")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ ctx, input }) => cancelSubscription(input.id, ctx.user.id)),
-    pendingProfiles: adminProcedure.query(() => listPendingProfiles()),
-    pendingMedia: adminProcedure.query(() => listPendingMedia()),
-    users: adminProcedure.query(({ ctx }) => listAdminUsers(ctx.user.role)),
-    profiles: adminProcedure
+    pendingProfiles: scopedProcedure("moderation").query(() => listPendingProfiles()),
+    pendingMedia: scopedProcedure("moderation").query(() => listPendingMedia()),
+    users: scopedProcedure("users:read", "plans", "profiles:write").query(({ ctx }) => listAdminUsers(ctx.user.role)),
+    profiles: scopedProcedure("profiles:read", "moderation")
       .input(
         z
           .object({
@@ -962,13 +966,13 @@ export const appRouter = router({
           .optional()
       )
       .query(({ input }) => listAdminProfiles(input)),
-    profileDetail: adminProcedure
+    profileDetail: scopedProcedure("profiles:read", "moderation")
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => getAdminProfile(input.id)),
-    profileReadiness: adminProcedure
+    profileReadiness: scopedProcedure("profiles:read", "moderation")
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => getProfilePublicationReadiness(input.id)),
-    activateProfile: adminProcedure
+    activateProfile: scopedProcedure("profiles:write")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -976,7 +980,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ ctx, input }) => setProfileActive(input.id, true, ctx.user.id, input.reason)),
-    deactivateProfile: adminProcedure
+    deactivateProfile: scopedProcedure("profiles:write")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -984,14 +988,14 @@ export const appRouter = router({
         })
       )
       .mutation(({ ctx, input }) => setProfileActive(input.id, false, ctx.user.id, input.reason)),
-    deleteProfile: adminProcedure
+    deleteProfile: scopedProcedure("profiles:write")
       .input(
         z.object({
           id: z.number().int().positive(),
         })
       )
       .mutation(({ ctx, input }) => softDeleteProfile(input.id, ctx.user.id)),
-    restoreProfile: adminProcedure
+    restoreProfile: scopedProcedure("profiles:write")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -999,7 +1003,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ ctx, input }) => restoreProfile(input.id, ctx.user.id, input.reason)),
-    moderateProfile: adminProcedure
+    moderateProfile: scopedProcedure("moderation")
       .input(
         z
           .object({
@@ -1025,7 +1029,7 @@ export const appRouter = router({
           input.portfolioConfirmed
         )
       ),
-    moderateMedia: adminProcedure
+    moderateMedia: scopedProcedure("moderation")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -1035,7 +1039,7 @@ export const appRouter = router({
       .mutation(({ ctx, input }) =>
         moderateMedia(input.id, input.status, ctx.user.id)
       ),
-    addMedia: adminProcedure
+    addMedia: scopedProcedure("profiles:write")
       .input(
         z.object({
           ownerId: z.number().int().positive(),

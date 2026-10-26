@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-26 — funções da equipe (moderador, suporte, financeiro, auditoria)
+
+- cada administrador pode ter uma função: Moderador (anúncios, moderação, denúncias, verificações), Suporte (contas e mensagens do Fale conosco), Financeiro (planos, assinaturas e caixa) ou Auditoria (somente leitura); sem função definida continua com acesso total, então nada muda para quem já é administrador;
+- o bloqueio é feito no servidor em cada rota do painel (não só escondendo abas); função desconhecida não recebe nenhum acesso; só Acesso completo altera a página inicial e anonimiza contas; o envio de mídia por outro titular exige a permissão de editar anúncios;
+- o painel mostra só as abas permitidas à função e esconde botões de ação sem permissão; em Usuários → Administradores há a escolha da função (só Super administrador e Desenvolvedor podem definir) e a lista mostra a função de cada pessoa; trocas ficam no registro de auditoria;
+- migration `0010_admin_function` (uma coluna nova em `users`); o `/healthz` confere a coluna.
+
 ## 2026-10-26 — mídia funcionando e novo painel de contas
 
 - armazenamento de fotos e vídeos: o sistema só sabia usar um serviço interno da plataforma antiga, ausente no Coolify, e por isso o envio falhava ("Não foi possível armazenar a mídia"); agora há três modos (`STORAGE_DRIVER`): `local` (volume em `/app/storage`, padrão), `s3` (S3, R2, Spaces, MinIO) e `forge` (legado). O modo local entrega vídeos com suporte a Range e protege contra caminhos fora da pasta; a aba Prontidão bloqueia se a pasta não estiver em volume persistente;

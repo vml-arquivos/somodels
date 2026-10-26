@@ -50,6 +50,10 @@ Opção B — S3, Cloudflare R2 ou DigitalOcean Spaces (recomendado para crescer
 3. Confirmado o pagamento, ative em Admin → Planos → Assinaturas. O sistema lança a receita e registra quem ativou.
 4. O destaque vale até o fim do período; não há cobrança automática.
 
+## Funções da equipe
+
+Em Admin → Usuários → Administradores, o Super administrador ou o desenvolvedor escolhe a função de cada pessoa: Acesso completo, Moderador, Suporte, Financeiro ou Auditoria. Quem já era administrador continua com acesso completo até alguém mudar. Para a operação inicial, sugestão: você com acesso completo, e uma pessoa de Moderador e outra de Suporte quando houver equipe.
+
 ## Moderação
 - Fila de denúncias: casos de menor de idade, exploração ou coerção são urgentes, atender no mesmo dia.
 - Demais denúncias: responder em até 72 horas.

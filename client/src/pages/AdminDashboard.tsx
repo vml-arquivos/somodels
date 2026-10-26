@@ -15,6 +15,12 @@ import StudioHeader from "@/components/StudioHeader";
 import Seo from "@/components/Seo";
 import MfaPanel from "@/components/MfaPanel";
 import UsersManager from "@/components/admin/UsersManager";
+import {
+  adminFunctions,
+  allowedAdminTabs,
+  type AdminScope,
+  type AdminFunction,
+} from "@shared/admin-access";
 const tabs = {
   overview: "Visão geral",
   users: "Usuários",
@@ -75,12 +81,24 @@ export default function AdminDashboard() {
     [reason, setReason] = useState(""),
     [confirmed, setConfirmed] = useState(false);
   const allowed = !!user && user.isAdmin && !user.mustChangePassword;
+  // Áreas liberadas à função do usuário (o servidor também bloqueia cada rota).
+  const scopes = ((user as any)?.adminScopes ?? []) as AdminScope[];
+  const can = (scope: AdminScope) => scopes.includes(scope);
+  const visibleTabs = allowedAdminTabs(scopes);
+  const functionLabel =
+    user?.role === "admin" && (user as any)?.adminFunction
+      ? adminFunctions[(user as any).adminFunction as AdminFunction]?.label
+      : null;
   const mfaStatus = trpc.auth.mfaStatus.useQuery(undefined, { enabled: allowed });
   const mfaPending = Boolean(mfaStatus.data?.required && !mfaStatus.data.enabled);
   useEffect(() => {
     // Administrador sem MFA só consegue usar a aba de segurança até ativar.
     if (mfaPending) setTab("security");
   }, [mfaPending]);
+  useEffect(() => {
+    // Se a função não enxerga a aba atual, volta para a visão geral.
+    if (allowed && !visibleTabs.includes(tab)) setTab("overview");
+  }, [allowed, tab, visibleTabs.join("|")]);
   const overview = trpc.management.overview.useQuery(undefined, {
     enabled: allowed && tab === "overview",
   });
@@ -281,7 +299,7 @@ export default function AdminDashboard() {
         <div className="studio-title">
           <div>
             <p className="studio-kicker">
-              Administração · {user?.role || "acesso restrito"}
+              Administração · {functionLabel || user?.role || "acesso restrito"}
             </p>
             <h1>Visão completa. Controle claro.</h1>
             <p className="studio-muted">
@@ -289,9 +307,11 @@ export default function AdminDashboard() {
             </p>
           </div>
           <div className="studio-actions">
-            <Link className="studio-cta" href="/admin/portfolio/novo">
-              Criar anúncio para um titular
-            </Link>
+            {(!user || can("profiles:write") || !allowed) && (
+              <Link className="studio-cta" href="/admin/portfolio/novo">
+                Criar anúncio para um titular
+              </Link>
+            )}
             <Link href="/alterar-senha?returnTo=/admin">
               Alterar minha senha
             </Link>
@@ -319,7 +339,9 @@ export default function AdminDashboard() {
         ) : (
           <>
             <nav className="studio-tabs">
-              {Object.entries(tabs).map(([key, label]) => (
+              {Object.entries(tabs)
+                .filter(([key]) => visibleTabs.includes(key))
+                .map(([key, label]) => (
                 <button
                   aria-current={tab === key ? "page" : undefined}
                   className={tab === key ? "primary" : ""}
@@ -404,6 +426,8 @@ export default function AdminDashboard() {
             {tab === "users" && user && (
               <UsersManager
                 actor={{ id: user.id, role: user.role }}
+                canWrite={can("users:write")}
+                canDelete={can("users:delete")}
                 onOpenProfile={profileId => {
                   chooseProfile(profileId);
                   setTab("profiles");
@@ -563,7 +587,10 @@ export default function AdminDashboard() {
                                 )}
                               </div>
                             )}
-                            <div className="studio-actions">
+                            <div
+                              className="studio-actions"
+                              style={can("profiles:write") ? undefined : { display: "none" }}
+                            >
                               <button
                                 disabled={!!profile.data.profile.deletedAt}
                                 onClick={() => setEditingProfile(true)}
@@ -1329,6 +1356,7 @@ export default function AdminDashboard() {
                 </div>
                 <form
                   className="studio-panel"
+                  style={can("finance:write") ? undefined : { display: "none" }}
                   onSubmit={e => {
                     e.preventDefault();
                     const n = Number(entry.amount.replace(",", "."));
@@ -1411,6 +1439,7 @@ export default function AdminDashboard() {
                       <span>{money(e.amountCents)}</span>
                       <button
                         disabled={!!e.voidedAt || voidFinance.isPending}
+                        style={can("finance:write") ? undefined : { display: "none" }}
                         onClick={() => {
                           if (
                             confirm(

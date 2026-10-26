@@ -3,7 +3,7 @@ import { readSiteSettings } from "./site-config";
 import { z } from "zod";
 import { and, eq, desc, sql, like, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { adminProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, router, scopedProcedure } from "./_core/trpc";
 import {
   getDb,
   getAdminProfile,
@@ -23,6 +23,7 @@ import {
 import { createOpaqueToken, hashToken, hashPassword } from "./auth-crypto";
 import { assertPasswordPolicy } from "./auth";
 import { ENV } from "./_core/env";
+import { adminFunctionKeys } from "../shared/admin-access";
 import { profileInputSchema } from "../shared/profile-schema";
 import { defaultSiteSettings, siteSettingsSchema } from "../shared/portfolio";
 import type { User } from "../drizzle/schema";
@@ -56,6 +57,7 @@ const userFields = {
   name: users.name,
   email: users.email,
   role: users.role,
+  adminFunction: users.adminFunction,
   accountStatus: users.accountStatus,
   emailVerifiedAt: users.emailVerifiedAt,
   mustChangePassword: users.mustChangePassword,
@@ -130,7 +132,7 @@ async function audit(
 }
 export const managementRouter = router({
   settings: publicProcedure.query(readSiteSettings),
-  saveSettings: adminProcedure
+  saveSettings: scopedProcedure("settings")
     .input(siteSettingsSchema)
     .mutation(async ({ ctx, input }) => {
       const db = await database();
@@ -143,7 +145,7 @@ export const managementRouter = router({
       });
       return { success: true };
     }),
-  users: adminProcedure.input(paging).query(async ({ ctx, input }) => {
+  users: scopedProcedure("users:read").input(paging).query(async ({ ctx, input }) => {
     const db = await database();
     const where = and(
       adminVisibility(ctx.user),
@@ -175,7 +177,7 @@ export const managementRouter = router({
       total: Number(total.count),
     };
   }),
-  userSummary: adminProcedure.query(async ({ ctx }) => {
+  userSummary: scopedProcedure("users:read").query(async ({ ctx }) => {
     const db = await database();
     const visible = adminVisibility(ctx.user);
     const count = async (extra?: any) => {
@@ -192,7 +194,7 @@ export const managementRouter = router({
       suspended: await count(eq(users.accountStatus, "suspended")),
     };
   }),
-  userDetail: adminProcedure.input(idSchema).query(async ({ ctx, input }) => {
+  userDetail: scopedProcedure("users:read").input(idSchema).query(async ({ ctx, input }) => {
     const db = await database();
     const [user] = await db
       .select(userFields)
@@ -205,12 +207,14 @@ export const managementRouter = router({
       .where(eq(profiles.ownerId, user.id));
     return { user, profiles: owned, editable: canManage(ctx.user, user) };
   }),
-  updateUser: adminProcedure
+  updateUser: scopedProcedure("users:write")
     .input(
       idSchema.extend({
         name: z.string().trim().min(2).max(120),
         email: z.string().email().max(320),
         role: z.enum(["user", "admin", "super_admin"]),
+        // Função da equipe (só vale para role admin). null = acesso total.
+        adminFunction: z.enum(adminFunctionKeys).nullable().optional(),
         accountStatus: z.enum(["active", "suspended"]),
       })
     )
@@ -235,12 +239,23 @@ export const managementRouter = router({
         )
           throw new TRPCError({ code: "FORBIDDEN" });
         const email = input.email.trim().toLowerCase();
+        // Só dev/super_admin definem a função; quem não envia mantém a atual.
+        const canAssignFunction = ["dev", "super_admin"].includes(
+          effectiveAdminRole(ctx.user) || ""
+        );
+        const nextFunction =
+          input.role !== "admin"
+            ? null
+            : canAssignFunction && input.adminFunction !== undefined
+              ? input.adminFunction
+              : target.adminFunction;
         await tx
           .update(users)
           .set({
             name: input.name,
             email,
             role: input.role,
+            adminFunction: nextFunction,
             accountStatus: input.accountStatus,
             emailVerifiedAt:
               email === target.email ? target.emailVerifiedAt : null,
@@ -257,18 +272,21 @@ export const managementRouter = router({
         await audit(tx, ctx.user.id, "user.updated", "user", input.id, {
           previousRole: target.role,
           role: input.role,
+          previousFunction: target.adminFunction ?? null,
+          adminFunction: nextFunction,
           status: input.accountStatus,
         });
       });
       return { success: true };
     }),
-  createUser: adminProcedure
+  createUser: scopedProcedure("users:write")
     .input(
       z.object({
         name: z.string().trim().min(2).max(120),
         email: z.string().email().max(320),
         password: z.string().min(16).max(200),
         role: z.enum(["user", "admin", "super_admin"]),
+        adminFunction: z.enum(adminFunctionKeys).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -293,6 +311,7 @@ export const managementRouter = router({
             email,
             passwordHash,
             role: input.role,
+            adminFunction: input.role === "admin" ? (input.adminFunction ?? null) : null,
             openId: `local:${createHash("sha256").update(email).digest("hex").slice(0, 48)}`,
             accountStatus: "active",
             loginMethod: "password",
@@ -302,6 +321,7 @@ export const managementRouter = router({
           const id = Number(result.insertId);
           await audit(tx, ctx.user.id, "user.created", "user", id, {
             role: input.role,
+            adminFunction: input.role === "admin" ? (input.adminFunction ?? null) : null,
           });
           return { id };
         });
@@ -320,7 +340,7 @@ export const managementRouter = router({
         });
       }
     }),
-  anonymizeUser: adminProcedure
+  anonymizeUser: scopedProcedure("users:delete")
     .input(idSchema.extend({ confirmation: z.literal("EXCLUIR") }))
     .mutation(async ({ ctx, input }) => {
       const db = await database();
@@ -365,7 +385,7 @@ export const managementRouter = router({
       });
       return { success: true };
     }),
-  resetLink: adminProcedure.input(idSchema).mutation(async ({ ctx, input }) => {
+  resetLink: scopedProcedure("users:write").input(idSchema).mutation(async ({ ctx, input }) => {
     const db = await database();
     const token = createOpaqueToken();
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
@@ -466,7 +486,7 @@ export const managementRouter = router({
       });
       return { success: true };
     }),
-  saveProfile: adminProcedure
+  saveProfile: scopedProcedure("profiles:write")
     .input(
       profileInputSchema.extend({
         id: z.number().int().positive().optional(),
@@ -555,7 +575,7 @@ export const managementRouter = router({
       .sort((a, b) => b.total - a.total);
     return { accounts, portfolio, cities, states, types };
   }),
-  audit: adminProcedure
+  audit: scopedProcedure("audit")
     .input(
       z
         .object({ page: z.number().int().min(0).default(0) })
@@ -583,7 +603,7 @@ export const managementRouter = router({
         .limit(50)
         .offset(input.page * 50);
     }),
-  finance: adminProcedure.query(async () => {
+  finance: scopedProcedure("finance:read").query(async () => {
     const db = await database();
     const [totals] = await db
       .select({
@@ -599,7 +619,7 @@ export const managementRouter = router({
       .limit(100);
     return { totals, items };
   }),
-  addFinance: adminProcedure
+  addFinance: scopedProcedure("finance:write")
     .input(
       z.object({
         requestId: z.string().uuid(),
@@ -629,7 +649,7 @@ export const managementRouter = router({
       });
       return { success: true };
     }),
-  voidFinance: adminProcedure
+  voidFinance: scopedProcedure("finance:write")
     .input(idSchema)
     .mutation(async ({ ctx, input }) => {
       const db = await database();

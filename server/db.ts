@@ -76,6 +76,7 @@ export async function isDatabaseReady() {
     await db.execute(sql`SELECT \`source\`, \`note\`, \`activatedBy\` FROM \`subscriptions\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\`, \`secretEnc\`, \`lastStep\` FROM \`user_mfa\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\`, \`topic\`, \`status\` FROM \`contact_messages\` LIMIT 0`);
+    await db.execute(sql`SELECT \`adminFunction\` FROM \`users\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\` FROM \`site_settings\` LIMIT 0`);
     await db.execute(sql`SELECT \`id\` FROM \`finance_entries\` LIMIT 0`);
     return true;

@@ -20,6 +20,8 @@ import { bootstrapLocalAccounts } from "../auth";
 import { isPublicIndexingEnabled } from "../public-indexing";
 import { getServerSeo, renderSeoHead } from "../seo";
 import { createInMemoryRateLimiter, rateLimitMessage, sensitiveRateLimits } from "../rate-limit";
+import { adminScopesFor } from "./trpc";
+import { hasAnyScope } from "../../shared/admin-access";
 import { getPrivateHostLanding, isAllowedApplicationOrigin, isPrivateHost } from "./host-routing";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -232,7 +234,10 @@ async function startServer() {
       if (!profileId || !kind || !filename || !contentType || typeof data !== "string") return res.status(400).json({ error: "Dados de upload incompletos" });
       if (!["photo", "video"].includes(kind)) return res.status(400).json({ error: "Tipo de mídia inválido" });
       const managedProfile = await getAdminProfile(Number(profileId));
-      const isAdmin = hasAdminAuthority(ctx.user);
+      // Equipe só envia mídia por outro titular com a permissão de editar anúncios.
+      const isAdmin =
+        hasAdminAuthority(ctx.user) &&
+        hasAnyScope(adminScopesFor(ctx.user), ["profiles:write"]);
       if (!managedProfile) return res.status(404).json({ error: "Perfil não encontrado" });
       const ownerId = managedProfile.profile.ownerId;
       const owner = await getUserById(ownerId);
