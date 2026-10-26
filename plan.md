@@ -56,6 +56,17 @@ O formulário usa selects controlados para estado, idiomas, categorias, caracter
 - `server/*test.ts`: regressões para rascunho parcial, retomada, ownership, revisão e upload.
 - `drizzle/0011_talented_ares.sql`: coluna opcional `paymentMethods`, sem reset de dados históricos.
 
+## Etapa 7 — cadastro direto, galeria simples e cliente enxuto
+
+**Status:** implementada no checkout local; revisão independente fechou bloqueios de publicação, consentimento, rota legada de mídia, acessibilidade e preservação dos controles de segurança. A publicação em produção permanece condicionada aos gates e ao fluxo de deploy aprovado.
+
+- `PortfolioEditor` agora separa `Salvar rascunho` de `Publicar anúncio`; publicar chama o servidor somente depois de salvar o estado atual e respeita termo, completude, identidade configurada, mídia aprovada, suspensão e ownership;
+- idiomas, categorias, características, preferências, contatos, pagamentos, locais e serviços usam um seletor por chips com checkboxes nativos, rótulo associado, Escape, clique fora e funcionamento por teclado;
+- `/api/upload/media` exige consentimento explícito, valida bytes/limite/ownership e retorna o estado de aprovação; `OWNER_MEDIA_AUTO_APPROVE` controla a publicação automática apenas para upload do próprio titular, enquanto administração continua pendente;
+- a mutation legada que aceitava URL de storage foi removida do router público; mídia ocultada ou com metadados alterados retira o anúncio da vitrine até nova publicação;
+- a área do cliente mantém edição de nome/e-mail somente leitura, continuidade do anúncio e os recursos de favoritos, bloqueios e denúncias em uma seção recolhida, sem cards de conteúdo pago ou painéis redundantes;
+- a validação final deve repetir `pnpm check`, `pnpm test`, `pnpm build`, `git diff --check` e smoke visual/responsivo antes do commit/deploy.
+
 ## Objetivo
 
 Transformar a home em uma landing page editorial de marketplace adulto: hero visual forte, busca acionável, prova de segurança, descoberta por categorias/localidades, cadastro contextual de titulares e rodapé institucional. A referência enviada orienta ritmo, composição e hierarquia, mas não serão copiados marca, textos, imagens, métricas ou componentes de terceiros.

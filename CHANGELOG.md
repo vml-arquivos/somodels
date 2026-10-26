@@ -1,14 +1,15 @@
 # Changelog
 
-## 2026-10-26 — fluxo completo do titular e galeria
+## 2026-10-26 — fluxo simplificado do titular e galeria
 
 - dados pessoais editáveis no painel do titular e na área do cliente, com e-mail de acesso somente leitura e retorno seguro após troca de senha;
 - rascunhos agora aceitam o primeiro salvamento parcial, geram slug interno único, preservam ownership e podem ser retomados por `/titular?profileId=...` sem iniciar outro anúncio;
-- envio para revisão continua estrito: dados obrigatórios, consentimento, termo vigente e identidade permanecem gates separados;
-- categorias, estado, idiomas, características, preferências, contatos, formas de pagamento, locais e serviços usam selects controlados; a descrição continua livre para contexto pessoal;
-- `POST /api/upload/media` passou a criar o registro da mídia no mesmo fluxo, retornar `mediaId` e limpar o objeto armazenado quando a gravação falha; fotos e vídeos continuam privados até revisão;
+- publicação direta do titular disponível quando o anúncio está completo, ativo, com termo vigente e mídia aprovada; suspensão, pendência e rejeição administrativa continuam bloqueios server-side;
+- categorias, estado, idiomas, características, preferências, contatos, formas de pagamento, locais e serviços usam seleção por chips com checkboxes acessíveis; a descrição continua livre para contexto pessoal;
+- `POST /api/upload/media` exige consentimento explícito, cria o registro da mídia no mesmo fluxo, retorna `mediaId` e limpa o objeto armazenado quando a gravação falha; mídia do próprio titular pode ser autoaprovada por `OWNER_MEDIA_AUTO_APPROVE`, enquanto uploads administrativos permanecem pendentes;
+- a mutation legada que aceitava `storageKey`/URL arbitrária foi removida do router público; ocultar ou alterar metadados de mídia despublica o anúncio para nova confirmação;
 - página pública do perfil exibe galeria responsiva com selo discreto de vídeo e formas de pagamento quando publicadas; migration `0011_talented_ares` adiciona somente `profiles.paymentMethods`;
-- validação: `pnpm check`, 157 testes, `pnpm build` e `git diff --check` aprovados. Ajuda por IA para descrição permanece desativada até haver provider/modelo configurado e auditável.
+- validação local anterior: `pnpm check`, 157 testes, `pnpm build` e `git diff --check` aprovados; os gates serão repetidos após esta simplificação. Ajuda por IA para descrição permanece desativada até haver provider/modelo configurado e auditável.
 
 ## 2026-10-26 — navegação lateral administrativa
 

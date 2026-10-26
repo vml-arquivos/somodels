@@ -99,9 +99,9 @@ function IdentityPanel() {
         {status ? identityLabels[status] : "Verificação ainda não solicitada"}
       </h2>
       <p className="studio-muted">
-        A verificação é exigida para enviar o anúncio para revisão e libera o
-        selo “Identidade verificada”. Nossa equipe confirma seus dados em uma
-        videochamada reservada; nenhum documento é publicado.
+        A verificação só será solicitada quando a configuração de segurança ou
+        um caso específico exigir. Você pode preencher, salvar e editar o
+        anúncio enquanto aguarda; nenhum documento é publicado.
       </p>
       {row?.status === "rejected" && row.reviewReason && (
         <p role="alert">Motivo informado: {row.reviewReason}</p>
@@ -225,38 +225,6 @@ function QualityPanel({
           ))}
         </ul>
       )}
-    </section>
-  );
-}
-
-function SubscriptionPanel() {
-  const mine = trpc.plans.mine.useQuery();
-  const labels: Record<string, string> = {
-    pending: "Pedido em análise",
-    active: "Ativo",
-    cancelled: "Encerrado",
-    expired: "Expirado",
-  };
-  return (
-    <section className="studio-panel" aria-label="Meu plano">
-      <p className="studio-kicker">Meu plano</p>
-      {mine.data?.length ? (
-        <ul>
-          {mine.data.slice(0, 5).map(sub => (
-            <li key={sub.id}>
-              {sub.planName} — {labels[sub.status] ?? sub.status}
-              {sub.status === "active" && sub.currentPeriodEndsAt
-                ? ` até ${new Date(sub.currentPeriodEndsAt).toLocaleDateString("pt-BR")}`
-                : ""}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>Você ainda não tem plano de destaque.</p>
-      )}
-      <Link className="studio-cta" href="/planos">
-        Ver planos
-      </Link>
     </section>
   );
 }
@@ -404,8 +372,9 @@ export default function OwnerDashboard() {
         <p className="studio-kicker">Área do titular</p>
         <h1>Seu anúncio, sob seu controle.</h1>
         <p className="studio-muted">
-          Prepare seu anúncio adulto. Você controla as informações, fotos e
-          vídeos; a publicação passa por revisão.
+          Preencha o essencial, salve quando quiser e publique quando os
+          requisitos estiverem completos. Revisão manual só entra em casos
+          específicos.
         </p>
         {loading ? (
           <p>Carregando…</p>
@@ -431,7 +400,6 @@ export default function OwnerDashboard() {
             </div>
             <AccountPanel user={user} />
             <IdentityPanel />
-            <SubscriptionPanel />
             <div className="studio-split">
               <aside className="studio-panel">
                 <h2>Meus anúncios</h2>

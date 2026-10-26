@@ -1165,6 +1165,59 @@ export async function saveProfile(
   return profileId;
 }
 
+export async function publishOwnerProfile(ownerId: number, profileId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const [profile] = await tx
+      .select()
+      .from(profiles)
+      .where(
+        and(
+          eq(profiles.id, profileId),
+          eq(profiles.ownerId, ownerId),
+          sql`${profiles.deletedAt} IS NULL`
+        )
+      )
+      .for("update");
+    if (!profile) throw new Error("Perfil não pertence à conta ou está arquivado");
+    if (!profile.isActive) throw new Error("Ative o anúncio antes de publicar");
+    if (profile.status === "suspended")
+      throw new Error("Este anúncio está suspenso e precisa de uma decisão administrativa");
+    if (profile.status === "pending")
+      throw new Error("Este anúncio está aguardando uma decisão administrativa");
+    if (profile.status === "rejected")
+      throw new Error("Salve os ajustes do anúncio antes de tentar publicar novamente");
+    if (profile.status !== "draft" && profile.status !== "approved")
+      throw new Error("O anúncio ainda não está pronto para publicação");
+
+    const readiness = await getProfilePublicationReadiness(profileId, tx);
+    if (!readiness.ready) {
+      throw new Error(
+        `Complete antes de publicar: ${readiness.blockers.join("; ")}`
+      );
+    }
+
+    await tx
+      .update(profiles)
+      .set({
+        status: "approved",
+        portfolioReviewed: true,
+        isPublished: true,
+        rejectionReason: null,
+      })
+      .where(and(eq(profiles.id, profileId), eq(profiles.ownerId, ownerId)));
+    await tx.insert(auditLogs).values({
+      actorUserId: ownerId,
+      action: "profile.published_by_owner",
+      entityType: "profile",
+      entityId: profileId,
+      metadata: JSON.stringify({ ownerMediaAutoApprove: ENV.ownerMediaAutoApprove }),
+    });
+    return { success: true as const, isPublished: true as const };
+  });
+}
+
 export async function createMedia(
   ownerId: number,
   input: Omit<InsertProfileMedia, "storageHash"> & { storageHash?: string },
@@ -1182,7 +1235,12 @@ export async function createMedia(
     }
   }
   const owned = await db
-    .select({ id: profiles.id, isActive: profiles.isActive, deletedAt: profiles.deletedAt })
+    .select({
+      id: profiles.id,
+      isActive: profiles.isActive,
+      isPublished: profiles.isPublished,
+      deletedAt: profiles.deletedAt,
+    })
     .from(profiles)
     .where(and(eq(profiles.id, input.profileId), eq(profiles.ownerId, ownerId)))
     .limit(1);
@@ -1201,10 +1259,21 @@ export async function createMedia(
   const storageHash =
     input.storageHash ??
     createHash("sha256").update(input.storageKey).digest("hex");
+  const autoApproved = ENV.ownerMediaAutoApprove && actorUserId === ownerId;
   const inserted = await db
     .insert(profileMedia)
-    .values({ ...input, storageHash, status: "pending" });
+    .values({ ...input, storageHash, status: autoApproved ? "approved" : "pending" });
   const mediaId = Number(inserted[0].insertId);
+  if (owned[0].isPublished) {
+    await db
+      .update(profiles)
+      .set({
+        isPublished: false,
+        portfolioReviewed: false,
+        rejectionReason: "Novo conteúdo adicionado; confirme o termo e publique novamente",
+      })
+      .where(eq(profiles.id, input.profileId));
+  }
   await writeAuditLog({
     actorUserId,
     action: actorUserId === ownerId ? "media.created" : "media.created_by_admin",
@@ -2101,6 +2170,16 @@ export async function updateOwnedMedia(
         .update(profileMedia)
         .set({ status: "private" })
         .where(eq(profileMedia.id, media.id));
+      if (profile.isPublished) {
+        await tx
+          .update(profiles)
+          .set({
+            isPublished: false,
+            portfolioReviewed: false,
+            rejectionReason: "A galeria foi alterada; publique novamente após revisar o conteúdo",
+          })
+          .where(eq(profiles.id, profile.id));
+      }
       if (profile.avatarUrl === media.url)
         await tx
           .update(profiles)
@@ -2135,7 +2214,7 @@ export async function updateOwnedMediaMetadata(
       .for("update");
     if (!media) throw new Error("Arquivo indisponível");
     const [profile] = await tx
-      .select({ id: profiles.id })
+      .select({ id: profiles.id, isPublished: profiles.isPublished })
       .from(profiles)
       .where(and(eq(profiles.id, media.profileId), eq(profiles.ownerId, ownerId)))
       .for("update");
@@ -2152,6 +2231,16 @@ export async function updateOwnedMediaMetadata(
           : {}),
       })
       .where(eq(profileMedia.id, mediaId));
+    if (metadataChanged && media.status === "approved" && profile.isPublished) {
+      await tx
+        .update(profiles)
+        .set({
+          isPublished: false,
+          portfolioReviewed: false,
+          rejectionReason: "A galeria foi alterada; publique novamente após revisar o conteúdo",
+        })
+        .where(eq(profiles.id, profile.id));
+    }
     await tx.insert(auditLogs).values({
       actorUserId: ownerId,
       action: "media.metadata_updated",

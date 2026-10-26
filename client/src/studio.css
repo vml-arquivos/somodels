@@ -4347,3 +4347,207 @@
   font-weight: 760;
   letter-spacing: 0.02em;
 }
+
+
+/* Owner publishing flow: click-to-select controls and concise action hierarchy. */
+.studio-multi-field {
+  position: relative;
+  min-width: 0;
+}
+
+.studio-form-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--s-text);
+  font-size: 0.84rem;
+  font-weight: 720;
+}
+
+.studio-field-help {
+  display: block;
+  margin-top: 7px;
+  color: var(--s-muted);
+  font-size: 0.78rem;
+}
+
+.studio-multi-trigger {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--s-line);
+  border-radius: 10px;
+  background: var(--s-panel);
+  color: var(--s-text);
+  font: inherit;
+  text-align: left;
+}
+
+.studio-multi-trigger:hover,
+.studio-multi-trigger.is-open,
+.studio-multi-trigger:focus-visible {
+  border-color: var(--s-accent);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(183, 61, 85, 0.12);
+}
+
+.studio-multi-trigger .is-placeholder {
+  color: var(--s-muted);
+}
+
+.studio-multi-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.studio-multi-chip {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid rgba(183, 61, 85, 0.22);
+  border-radius: 999px;
+  background: rgba(183, 61, 85, 0.08);
+  color: var(--s-accent);
+  font-size: 0.78rem;
+}
+
+.studio-multi-chip:hover,
+.studio-multi-chip:focus-visible {
+  border-color: var(--s-accent);
+  outline: none;
+}
+
+.studio-multi-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: 280px;
+  overflow: auto;
+  padding: 7px;
+  border: 1px solid var(--s-line);
+  border-radius: 12px;
+  background: var(--s-panel);
+  box-shadow: 0 18px 40px rgba(38, 27, 35, 0.16);
+}
+
+.studio-multi-option {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 9px;
+  border-radius: 8px;
+  color: var(--s-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.studio-multi-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.studio-multi-option input:focus-visible + .studio-multi-check {
+  outline: 3px solid rgba(183, 61, 85, 0.26);
+  outline-offset: 2px;
+}
+
+.studio-multi-option:hover,
+.studio-multi-option:focus-visible,
+.studio-multi-option.is-selected {
+  background: rgba(183, 61, 85, 0.09);
+  outline: none;
+}
+
+.studio-multi-check {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid var(--s-line);
+  border-radius: 5px;
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.studio-multi-option.is-selected .studio-multi-check {
+  border-color: var(--s-accent);
+  background: var(--s-accent);
+}
+
+.studio-multi-clear {
+  margin-top: 5px;
+  padding: 9px;
+  border-top: 1px solid var(--s-line);
+  color: var(--s-accent);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.studio-multi-clear:hover,
+.studio-multi-clear:focus-visible {
+  text-decoration: underline;
+  outline: none;
+}
+
+.studio-owner-publish-note {
+  padding: 12px 14px;
+  border-left: 3px solid var(--s-accent);
+  background: rgba(183, 61, 85, 0.06);
+  color: var(--s-muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  .studio-multi-menu {
+    position: fixed;
+    top: auto;
+    right: 14px;
+    bottom: 14px;
+    left: 14px;
+    max-height: min(54vh, 420px);
+  }
+}
+
+
+.studio-account-details > summary {
+  cursor: pointer;
+  color: var(--s-text);
+  font-weight: 720;
+}
+
+.studio-account-details > summary::marker {
+  color: var(--s-accent);
+}
+
+.studio-account-tools {
+  display: grid;
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.studio-account-tools > section + section {
+  padding-top: 20px;
+  border-top: 1px solid var(--s-line);
+}
+
+.studio-account-tools h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}

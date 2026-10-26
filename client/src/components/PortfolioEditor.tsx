@@ -23,6 +23,7 @@ import {
   type ServiceOption,
 } from "@shared/discovery-options";
 import { toast } from "sonner";
+import MultiSelectField from "@/components/MultiSelectField";
 
 type Props = {
   initial?: any;
@@ -31,13 +32,6 @@ type Props = {
   admin?: boolean;
   onSaved: (id: number) => void;
 };
-
-function selectedValues(event: { currentTarget: HTMLSelectElement }) {
-  return Array.from(
-    event.currentTarget.selectedOptions,
-    option => option.value
-  );
-}
 
 function withLegacyValues(options: readonly string[], current: string[]) {
   return Array.from(new Set([...options, ...current]));
@@ -100,8 +94,8 @@ export default function PortfolioEditor({
   const [mediaEdits, setMediaEdits] = useState<
     Record<number, { title: string; description: string }>
   >({});
-  const utils = trpc.useUtils();
   const save = trpc.profiles.save.useMutation();
+  const publishMine = trpc.profiles.publishMine.useMutation();
   const adminSave = trpc.management.saveProfile.useMutation();
   const cover = trpc.profiles.cover.useMutation();
   const hide = trpc.profiles.hideMedia.useMutation();
@@ -162,76 +156,79 @@ export default function PortfolioEditor({
       setBusy(false);
     }
   }
-  async function submit(review: boolean) {
-    if (review && !consent) {
+  function buildPayload(id = initial?.id) {
+    const { priceFrom, ...formFields } = form;
+    const priceFromCents = reaisToCents(priceFrom);
+    if (priceFrom.trim() && priceFromCents === null) {
+      throw new Error("Informe um valor válido em reais (ex.: 250 ou 250,00)");
+    }
+    return {
+      ...formFields,
+      priceFromCents,
+      id,
+      slug:
+        form.slug ||
+        form.stageName
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, ""),
+      categories: form.categories,
+      age: form.age ? Number(form.age) : undefined,
+      attributes: form.attributes,
+      languages: form.languages,
+      preferences: form.preferences,
+      contactOptions: form.contactOptions,
+      paymentMethods: form.paymentMethods,
+      isAvailableNow: form.isAvailableNow,
+    };
+  }
+
+  async function persistDraft() {
+    const payload = buildPayload();
+    if (admin) {
+      return Number(
+        await adminSave.mutateAsync({
+          ...payload,
+          ownerId: ownerId!,
+        })
+      );
+    }
+    return Number(
+      await save.mutateAsync({ ...payload, submitForReview: false })
+    );
+  }
+
+  async function saveDraft() {
+    setBusy(true);
+    try {
+      const id = await persistDraft();
+      toast.success(
+        "Rascunho salvo. Você pode continuar depois sem recomeçar."
+      );
+      onSaved(id);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function publish() {
+    if (admin) return;
+    if (!consent) {
       toast.error(
-        admin
-          ? "Confirme que os dados foram fornecidos ou autorizados pelo titular"
-          : "Confirme a maioridade, a responsabilidade pelo anúncio e a autorização do conteúdo"
+        "Confirme a responsabilidade e a autorização do conteúdo antes de publicar"
       );
       return;
     }
     setBusy(true);
     try {
-      const { priceFrom, ...formFields } = form;
-      const priceFromCents = reaisToCents(priceFrom);
-      if (priceFrom.trim() && priceFromCents === null) {
-        toast.error("Informe um valor válido em reais (ex.: 250 ou 250,00)");
-        setBusy(false);
-        return;
-      }
-      const payload = {
-        ...formFields,
-        priceFromCents,
-        id: initial?.id,
-        slug:
-          form.slug ||
-          form.stageName
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/^-|-$/g, ""),
-        categories: form.categories,
-        age: form.age ? Number(form.age) : undefined,
-        attributes: form.attributes,
-        languages: form.languages,
-        preferences: form.preferences,
-        contactOptions: form.contactOptions,
-        paymentMethods: form.paymentMethods,
-        isAvailableNow: form.isAvailableNow,
-      };
-      if (admin) {
-        const id = await adminSave.mutateAsync({
-          ...payload,
-          ownerId: ownerId!,
-        });
-        toast.success("Anúncio salvo para revisão do titular e da moderação");
-        onSaved(Number(id));
-        return;
-      }
-      const id = await save.mutateAsync({ ...payload, submitForReview: false });
-      if (review) {
-        const terms = await utils.profiles.termsStatus.fetch({
-          id: Number(id),
-        });
-        if (!terms.current) {
-          toast.error(
-            "Rascunho salvo. Confira os dados, aceite o termo vigente e envie novamente para revisão."
-          );
-          onSaved(Number(id));
-          return;
-        }
-        await save.mutateAsync({
-          ...payload,
-          id: Number(id),
-          submitForReview: true,
-        });
-        toast.success("Enviado para revisão");
-      } else {
-        toast.success("Rascunho salvo. A publicação exige revisão.");
-      }
-      onSaved(Number(id));
+      const id = await persistDraft();
+      await publishMine.mutateAsync({ id });
+      toast.success("Anúncio publicado na vitrine");
+      onSaved(id);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -271,12 +268,17 @@ export default function PortfolioEditor({
           kind,
           filename: file.name,
           contentType: file.type,
+          consent: true,
           data,
         }),
       });
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result.error || "Falha no envio");
-      toast.success("Arquivo recebido para revisão");
+      toast.success(
+        result.autoApproved
+          ? "Arquivo adicionado à galeria"
+          : "Arquivo recebido e aguardando revisão específica"
+      );
       onSaved(initial.id);
     } catch (e) {
       toast.error((e as Error).message);
@@ -361,23 +363,13 @@ export default function PortfolioEditor({
             onChange={e => update("age", e.target.value)}
           />
         </label>
-        <label>
-          Idiomas
-          <select
-            className="studio-select-multiple"
-            multiple
-            size={4}
-            value={form.languages}
-            onChange={e => update("languages", selectedValues(e))}
-          >
-            {withLegacyValues(languageOptions, form.languages).map(option => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-          <small>Use Ctrl/Cmd para escolher mais de um.</small>
-        </label>
+        <MultiSelectField
+          label="Idiomas"
+          options={withLegacyValues(languageOptions, form.languages)}
+          value={form.languages}
+          onChange={value => update("languages", value)}
+          help="Clique para escolher vários idiomas."
+        />
         <label>
           Telefone para ligação — DDI e DDD
           <input
@@ -405,78 +397,30 @@ export default function PortfolioEditor({
             onChange={e => update("availabilityLabel", e.target.value)}
           />
         </label>
-        <label>
-          Características do anúncio
-          <select
-            className="studio-select-multiple"
-            multiple
-            size={4}
-            value={form.attributes}
-            onChange={e => update("attributes", selectedValues(e))}
-          >
-            {withLegacyValues(profileAttributeOptions, form.attributes).map(
-              option => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              )
-            )}
-          </select>
-        </label>
-        <label>
-          Preferências / modalidades
-          <select
-            className="studio-select-multiple"
-            multiple
-            size={4}
-            value={form.preferences}
-            onChange={e => update("preferences", selectedValues(e))}
-          >
-            {withLegacyValues(profilePreferenceOptions, form.preferences).map(
-              option => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              )
-            )}
-          </select>
-        </label>
-        <label>
-          Formas de contato autorizadas
-          <select
-            className="studio-select-multiple"
-            multiple
-            size={3}
-            value={form.contactOptions}
-            onChange={e => update("contactOptions", selectedValues(e))}
-          >
-            {withLegacyValues(contactMethodOptions, form.contactOptions).map(
-              option => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              )
-            )}
-          </select>
-        </label>
-        <label>
-          Formas de pagamento aceitas
-          <select
-            className="studio-select-multiple"
-            multiple
-            size={4}
-            value={form.paymentMethods}
-            onChange={e => update("paymentMethods", selectedValues(e))}
-          >
-            {withLegacyValues(paymentMethodOptions, form.paymentMethods).map(
-              option => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              )
-            )}
-          </select>
-        </label>
+        <MultiSelectField
+          label="Características do anúncio"
+          options={withLegacyValues(profileAttributeOptions, form.attributes)}
+          value={form.attributes}
+          onChange={value => update("attributes", value)}
+        />
+        <MultiSelectField
+          label="Preferências / modalidades"
+          options={withLegacyValues(profilePreferenceOptions, form.preferences)}
+          value={form.preferences}
+          onChange={value => update("preferences", value)}
+        />
+        <MultiSelectField
+          label="Formas de contato autorizadas"
+          options={withLegacyValues(contactMethodOptions, form.contactOptions)}
+          value={form.contactOptions}
+          onChange={value => update("contactOptions", value)}
+        />
+        <MultiSelectField
+          label="Formas de pagamento aceitas"
+          options={withLegacyValues(paymentMethodOptions, form.paymentMethods)}
+          value={form.paymentMethods}
+          onChange={value => update("paymentMethods", value)}
+        />
       </div>
       <label>
         Descrição do anúncio
@@ -488,22 +432,13 @@ export default function PortfolioEditor({
           onChange={e => update("description", e.target.value)}
         />
       </label>
-      <fieldset>
-        <legend>Tipo e categoria do anúncio</legend>
-        <select
-          className="studio-select-multiple"
-          multiple
-          size={5}
-          value={form.categories}
-          onChange={e => update("categories", selectedValues(e))}
-        >
-          {portfolioCategories.map(category => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-      </fieldset>
+      <MultiSelectField
+        label="Tipo e categoria do anúncio"
+        options={portfolioCategories}
+        value={form.categories}
+        onChange={value => update("categories", value)}
+        help="Escolha todas as categorias que descrevem o anúncio."
+      />
       <label>
         Valor a partir de (R$ por hora)
         <input
@@ -514,42 +449,18 @@ export default function PortfolioEditor({
           onChange={e => update("priceFrom", e.target.value)}
         />
       </label>
-      <fieldset>
-        <legend>Local de atendimento</legend>
-        <select
-          className="studio-select-multiple"
-          multiple
-          size={5}
-          value={form.attendancePlaces}
-          onChange={e => update("attendancePlaces", selectedValues(e))}
-        >
-          {attendancePlaceOptions.map(place => (
-            <option key={place} value={place}>
-              {place}
-            </option>
-          ))}
-        </select>
-      </fieldset>
-      <fieldset>
-        <legend>Serviços oferecidos</legend>
-        <select
-          className="studio-select-multiple"
-          multiple
-          size={5}
-          value={form.services}
-          onChange={e => update("services", selectedValues(e))}
-        >
-          {serviceOptions.map(service => (
-            <option key={service} value={service}>
-              {service}
-            </option>
-          ))}
-        </select>
-      </fieldset>
-      <p className="studio-muted">
-        Seletores com múltipla escolha permitem combinar opções sem digitar
-        texto livre.
-      </p>
+      <MultiSelectField
+        label="Local de atendimento"
+        options={attendancePlaceOptions}
+        value={form.attendancePlaces}
+        onChange={value => update("attendancePlaces", value)}
+      />
+      <MultiSelectField
+        label="Serviços oferecidos"
+        options={serviceOptions}
+        value={form.services}
+        onChange={value => update("services", value)}
+      />
       <p className="studio-muted">
         Os contatos ficam protegidos durante o cadastro e só podem gerar ligação
         ou WhatsApp pelo fluxo autorizado após aprovação e publicação.{" "}
@@ -600,20 +511,21 @@ export default function PortfolioEditor({
         {portfolioPolicy}
       </label>
       <p className="studio-muted">
-        O aceite acima é necessário para enviar à revisão e adicionar mídia. Ele
-        não é necessário para salvar um rascunho parcial.
+        O aceite é necessário para enviar fotos, vídeos e publicar. Você pode
+        salvar o rascunho a qualquer momento. A revisão manual só é acionada em
+        casos específicos ou quando o ambiente estiver configurado para isso.
       </p>
       <div className="studio-actions">
-        <button disabled={busy} onClick={() => submit(false)}>
+        <button disabled={busy} onClick={() => void saveDraft()}>
           Salvar rascunho
         </button>
         {!admin && (
           <button
             className="primary"
             disabled={busy}
-            onClick={() => submit(true)}
+            onClick={() => void publish()}
           >
-            Enviar para revisão
+            Publicar anúncio
           </button>
         )}
       </div>
@@ -743,11 +655,11 @@ export default function PortfolioEditor({
             </label>
             <p className="studio-muted">
               {consent
-                ? "Imagens até 12 MB e vídeos até 100 MB. Arquivos novos ficam privados até a revisão."
+                ? "Imagens até 12 MB e vídeos até 100 MB. A galeria só fica pública quando o anúncio for publicado."
                 : "Marque a autorização do conteúdo acima para liberar o envio de fotos e vídeos."}{" "}
               {admin
                 ? "O titular ainda precisa revisar o material e aceitar o termo."
-                : ""}
+                : "Casos específicos podem passar por revisão manual."}
             </p>
             <div className="studio-media">
               {media.map((m, index) => {
