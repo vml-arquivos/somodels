@@ -26,7 +26,7 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (switchable) {
-      try { const stored = localStorage.getItem("theme"); return stored === "light" || stored === "dark" ? stored : defaultTheme; } catch { return defaultTheme; }
+      try { const stored = localStorage.getItem("ero-theme"); return stored === "light" || stored === "dark" ? stored : defaultTheme; } catch { return defaultTheme; }
     }
     return defaultTheme;
   });
@@ -42,7 +42,7 @@ export function ThemeProvider({
     }
 
     if (switchable) {
-      try { localStorage.setItem("theme", theme); } catch { /* Theme still works without storage. */ }
+      try { localStorage.setItem("ero-theme", theme); } catch { /* Theme still works without storage. */ }
     }
   }, [theme, switchable, forceLight]);
 
@@ -69,11 +69,10 @@ export function useTheme() {
   return context;
 }
 
-/** Use nas páginas públicas: força o visual claro enquanto a página está aberta. */
+/**
+ * Páginas públicas seguem a escolha do visitante (claro por padrão, escuro pelo botão do topo).
+ * Mantida como gancho para que cada página continue declarando que é pública.
+ */
 export function usePublicLight() {
-  const { setForceLight } = useTheme();
-  useEffect(() => {
-    setForceLight(true);
-    return () => setForceLight(false);
-  }, [setForceLight]);
+  useTheme();
 }

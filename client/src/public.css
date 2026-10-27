@@ -73,7 +73,7 @@
   max-width: 1240px;
   margin: 0 auto;
   padding: 0 20px;
-  min-height: 68px;
+  min-height: 84px;
 }
 .studio .ep-brand {
   display: inline-flex;
@@ -84,7 +84,7 @@
   text-decoration: none;
 }
 .studio .ep-brand-logo {
-  height: 38px;
+  height: 58px;
   width: auto;
   display: block;
 }
@@ -472,7 +472,7 @@
   border-radius: 50%;
   border: 0;
   background: rgba(255, 255, 255, 0.92);
-  color: var(--ep-ink);
+  color: #1b1f2a;
   font-size: 1.6rem;
   line-height: 1;
   display: grid;
@@ -838,6 +838,12 @@
   font-size: 0.82rem;
   font-weight: 800;
 }
+.studio .ep-trust-grid li {
+  background: var(--ep-surface);
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-radius);
+  padding: 18px;
+}
 .studio .ep-trust-grid h3 {
   margin: 0 0 4px;
   font-size: 1rem;
@@ -928,7 +934,7 @@
   padding: 40px 20px 32px;
 }
 .studio .ep-footer-brand img {
-  height: 40px;
+  height: 68px;
   width: auto;
   display: block;
 }
@@ -1725,11 +1731,11 @@
     padding-right: 16px;
   }
   .studio .ep-header-inner {
-    gap: 12px;
-    min-height: 60px;
+    gap: 10px;
+    min-height: 72px;
   }
   .studio .ep-brand-logo {
-    height: 32px;
+    height: 46px;
   }
   .studio .ep-header-cta {
     padding: 9px 14px;
@@ -1761,4 +1767,405 @@
   .studio .ep-card-skeleton .ep-card-photo {
     animation: none;
   }
+}
+
+
+/* ---------- Ícone de tema ---------- */
+.studio .ep-icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--ep-line);
+  border-radius: 12px;
+  background: var(--ep-surface);
+  color: var(--ep-ink);
+  cursor: pointer;
+}
+.studio .ep-icon-button:hover {
+  background: var(--ep-soft);
+}
+
+/* ---------- Home: ações, números e destaque ---------- */
+.studio .ep-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.studio .ep-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  margin: 24px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--ep-line);
+}
+.studio .ep-stats div {
+  min-width: 0;
+}
+.studio .ep-stats dt {
+  order: 2;
+  font-size: 0.8rem;
+  color: var(--ep-muted);
+  font-weight: 600;
+}
+.studio .ep-stats dd {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ep-ink);
+  line-height: 1.1;
+}
+.studio .ep-stats div {
+  display: flex;
+  flex-direction: column;
+}
+.studio .ep-hero-visual {
+  position: relative;
+}
+.studio .ep-hero-badge {
+  position: absolute;
+  z-index: 4;
+  top: 14px;
+  left: 14px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--ep-accent);
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+/* ---------- Links populares ---------- */
+.studio .ep-shortcuts {
+  background: var(--ep-bg);
+  padding-bottom: 8px;
+}
+.studio .ep-shortcut-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.studio .ep-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  padding: 14px;
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-radius);
+  background: var(--ep-surface);
+  color: var(--ep-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.studio .ep-shortcut:hover {
+  border-color: var(--ep-accent);
+  text-decoration: none;
+}
+.studio .ep-shortcut-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--ep-accent-soft);
+  color: var(--ep-accent-dark);
+}
+:root.dark .ep-shortcut-icon,
+:root.dark .ep-trust-mark,
+:root.dark .ep-category-icon {
+  color: var(--ep-accent);
+}
+.studio .ep-shortcut-text {
+  flex: 1;
+  min-width: 0;
+}
+.studio .ep-shortcut-text strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.studio .ep-shortcut-text small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--ep-muted);
+}
+.studio .ep-chevron {
+  flex: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--ep-muted);
+}
+
+/* ---------- Categorias em cartões ---------- */
+.studio .ep-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.studio .ep-category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  height: 100%;
+  padding: 20px;
+  border: 1px solid var(--ep-line);
+  border-radius: var(--ep-radius);
+  background: var(--ep-surface);
+  color: var(--ep-ink);
+  box-shadow: var(--ep-shadow);
+}
+.studio .ep-category-card:hover {
+  border-color: var(--ep-accent);
+  text-decoration: none;
+}
+.studio .ep-category-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: var(--ep-accent-soft);
+  color: var(--ep-accent-dark);
+}
+.studio .ep-category-card strong {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.studio .ep-category-card p {
+  margin: 6px 0 14px;
+  color: var(--ep-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.studio .ep-category-link {
+  margin-top: auto;
+  color: var(--ep-accent-dark);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+:root.dark .ep-category-link {
+  color: var(--ep-accent);
+}
+
+/* ---------- Cidades ---------- */
+.studio .ep-cities {
+  background: var(--ep-bg);
+}
+.studio .ep-city-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.studio .ep-city-grid a {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 13px 16px;
+  border: 1px solid var(--ep-line);
+  border-radius: 12px;
+  background: var(--ep-surface);
+  color: var(--ep-ink);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+.studio .ep-city-grid a:hover {
+  border-color: var(--ep-accent);
+  text-decoration: none;
+}
+.studio .ep-city-grid small {
+  color: var(--ep-muted);
+  font-weight: 600;
+  font-size: 0.76rem;
+}
+.studio .ep-cities .ep-subhead {
+  margin: 28px 0 12px;
+}
+
+/* ---------- Chamada para anunciar (versão completa) ---------- */
+.studio .ep-holder-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+}
+.studio .ep-holder-head p {
+  margin: 8px 0 0;
+}
+.studio .ep-hsteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.studio .ep-hsteps li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.studio .ep-step-number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  color: #a82a42;
+  font-weight: 800;
+}
+.studio .ep-hsteps strong {
+  display: block;
+  font-size: 1rem;
+}
+.studio .ep-hsteps p {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+.studio .ep-holder-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.studio .ep-holder-cards li {
+  padding: 18px;
+  border-radius: var(--ep-radius);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+.studio .ep-holder-cards svg {
+  display: block;
+  margin-bottom: 8px;
+}
+.studio .ep-holder-cards strong {
+  display: block;
+  font-size: 1rem;
+}
+.studio .ep-holder-cards p {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* ---------- Perguntas frequentes ---------- */
+.studio .ep-faq {
+  background: var(--ep-surface);
+  border-top: 1px solid var(--ep-line);
+}
+.studio .ep-faq-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+  gap: 40px;
+  align-items: start;
+}
+.studio .ep-faq-list details {
+  border-bottom: 1px solid var(--ep-line);
+}
+.studio .ep-faq-list summary {
+  position: relative;
+  padding: 16px 32px 16px 0;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.studio .ep-faq-list summary::-webkit-details-marker {
+  display: none;
+}
+.studio .ep-faq-list summary::after {
+  content: "+";
+  position: absolute;
+  right: 4px;
+  top: 12px;
+  font-size: 1.4rem;
+  color: var(--ep-accent);
+}
+.studio .ep-faq-list details[open] summary::after {
+  content: "–";
+}
+.studio .ep-faq-list p {
+  margin: 0 0 16px;
+  color: var(--ep-muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 1100px) {
+  .studio .ep-shortcut-list,
+.studio .ep-city-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .studio .ep-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 880px) {
+  .studio .ep-faq-inner,
+.studio .ep-hsteps,
+.studio .ep-holder-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .studio .ep-faq-inner {
+    gap: 12px;
+  }
+  .studio .ep-holder-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+}
+@media (max-width: 520px) {
+  .studio .ep-shortcut-list,
+.studio .ep-category-grid,
+.studio .ep-city-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .studio .ep-shortcut-list {
+    gap: 8px;
+  }
+  .studio .ep-city-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .studio .ep-hero-actions .ep-btn {
+    flex: 1;
+  }
+  .studio .ep-stats {
+    gap: 12px 24px;
+  }
+  .studio .ep-stats dd {
+    font-size: 1.45rem;
+  }
+}
+
+:root.dark .ep-about a,
+:root.dark .ep-footer-age {
+  color: var(--ep-accent);
 }

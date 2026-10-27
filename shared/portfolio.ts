@@ -302,8 +302,12 @@ export const siteSettingsSchema = z.object({
   showGallery: z.boolean(),
   showAbout: z.boolean(),
   showContact: z.boolean(),
+  /** Versão dos textos padrão. Textos salvos em versões antigas são trocados pelos novos. */
+  copyRevision: z.number().int().min(0).optional(),
   home: homeCopySchema,
 });
+
+export const SITE_COPY_REVISION = 3;
 
 export const defaultSiteSettings = {
   eyebrow: "Ero Models",
@@ -595,10 +599,27 @@ function normalizeLegacyBrand(value: unknown): unknown {
 
 export function normalizeSiteSettings(value: unknown): SiteSettings {
   const normalizedValue = normalizeLegacyBrand(value);
-  const persisted =
+  const rawPersisted =
     normalizedValue && typeof normalizedValue === "object"
       ? (normalizedValue as Record<string, unknown>)
       : {};
+  // Textos salvos antes da revisão atual são descartados: só as chaves liga/desliga ficam.
+  const current =
+    typeof rawPersisted.copyRevision === "number" &&
+    rawPersisted.copyRevision >= SITE_COPY_REVISION;
+  const persisted: Record<string, unknown> = current
+    ? rawPersisted
+    : {
+        ...(typeof rawPersisted.showGallery === "boolean"
+          ? { showGallery: rawPersisted.showGallery }
+          : {}),
+        ...(typeof rawPersisted.showAbout === "boolean"
+          ? { showAbout: rawPersisted.showAbout }
+          : {}),
+        ...(typeof rawPersisted.showContact === "boolean"
+          ? { showContact: rawPersisted.showContact }
+          : {}),
+      };
   const persistedHome =
     persisted.home && typeof persisted.home === "object"
       ? (persisted.home as Record<string, any>)
@@ -704,6 +725,7 @@ export function normalizeSiteSettings(value: unknown): SiteSettings {
   return siteSettingsSchema.parse({
     ...defaultSiteSettings,
     ...persisted,
+    copyRevision: SITE_COPY_REVISION,
     home,
   });
 }

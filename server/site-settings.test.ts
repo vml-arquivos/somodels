@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   defaultSiteSettings,
   normalizeSiteSettings,
+  SITE_COPY_REVISION,
 } from "../shared/portfolio";
 
 describe("site settings normalization", () => {
   it("preserves legacy custom copy in the corresponding home sections", () => {
     const settings = normalizeSiteSettings({
+      copyRevision: SITE_COPY_REVISION,
       eyebrow: "Uma chamada customizada",
       title: "Uma headline customizada",
       subtitle: "Um subtítulo customizado para a vitrine.",
@@ -48,6 +50,7 @@ describe("site settings normalization", () => {
 
   it("normalizes the former brand in persisted copy", () => {
     const settings = normalizeSiteSettings({
+      copyRevision: SITE_COPY_REVISION,
       home: {
         footer: {
           tagline: "Só Models · Classificados adultos legais",
@@ -81,5 +84,33 @@ describe("site settings normalization", () => {
     expect(settings.home.hero.notes[1]).toBe("Contato direto com quem anuncia");
     expect(settings.home.holder.text).toContain("Sem fila de aprovação");
     expect(settings.home.holder.text).not.toMatch(/revisão/i);
+  });
+
+  it("troca textos salvos em versões antigas pelos textos padrão atuais", () => {
+    const settings = normalizeSiteSettings({
+      showContact: false,
+      title: "Texto antigo salvo no banco",
+      home: {
+        hero: {
+          subtitle:
+            "Pesquise perfis de acompanhantes por cidade, categoria e disponibilidade. Veja informações publicadas pelos próprios titulares.",
+        },
+        footer: { tagline: "Só Models · Classificados adultos legais" },
+      },
+    });
+
+    expect(settings.home).toEqual(defaultSiteSettings.home);
+    expect(settings.title).toBe(defaultSiteSettings.title);
+    expect(settings.showContact).toBe(false);
+    expect(settings.copyRevision).toBe(SITE_COPY_REVISION);
+  });
+
+  it("mantém textos editados depois da revisão atual", () => {
+    const settings = normalizeSiteSettings({
+      copyRevision: SITE_COPY_REVISION,
+      home: { hero: { title: "Título editado pelo administrador" } },
+    });
+
+    expect(settings.home.hero.title).toBe("Título editado pelo administrador");
   });
 });

@@ -1,20 +1,19 @@
-feat: novo visual do site, contato aberto e publicação sem fila
+feat: logo nova, home completa e tema claro/escuro
 
-Visual
-- site público refeito em tema claro e leve, igual em todas as páginas (início, anúncio, planos, login, cadastro, termos, ajuda, contato e erro 404)
-- início com carrossel de anúncios em destaque no topo, busca por cidade e lista com filtros
-- página do anúncio com fotos grandes e botões de WhatsApp e ligar sempre visíveis
-- textos reescritos em português simples; textos antigos salvos no banco são trocados pelos novos
+Logo
+- logo nova, mais elaborada, em versão para fundo claro e escuro
+- logo bem maior no cabeçalho, no rodapé e na tela de idade
+- novos ícones, favicon e imagem de compartilhamento
 
-Menos travas
-- contato e denúncia abertos para quem confirmou 18 anos, sem precisar de conta (com limite por IP e registro)
-- identidade verificada virou opcional: só dá o selo, não trava envio de fotos nem publicação
-- senha com 10 caracteres, letras e números
-- depois do login, vai direto para o painel do titular
-- painel do titular com o perfil primeiro e as fotos antes do botão de publicar; botões de testar ligação e WhatsApp removidos
-- denúncias, bloqueio, favoritos e contato vêm ligados por padrão
+Home
+- destaque com busca, botões "Anunciar grátis" e "Ver anúncios" e números reais do site
+- no celular a foto vem primeiro, com etiqueta "Em destaque"
+- links populares, categorias com descrição, cidades com anúncios e buscas populares
+- bloco de segurança e privacidade, passo a passo para anunciar e perguntas frequentes
+
+Tema
+- tema claro e escuro nas páginas públicas, com botão no cabeçalho
+- textos antigos salvos no banco são trocados pelos novos automaticamente
 
 Outros
-- tela de erro em português, sem mostrar detalhe técnico
-- descrição do site para o Google reescrita
-- documentação e changelog atualizados; testes novos para os padrões do ambiente e a regra de senha
+- documentação e changelog atualizados

@@ -17,7 +17,7 @@ export default function StudioHeader({
   children?: React.ReactNode;
   minimal?: boolean;
 }) {
-  const { theme, toggleTheme, forceLight } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
   const settings = trpc.management.settings.useQuery();
   const nav = (settings.data || defaultSiteSettings).home.nav;
@@ -25,7 +25,7 @@ export default function StudioHeader({
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(
     null
   );
-  const darkChrome = theme === "dark" && !forceLight;
+  const darkChrome = theme === "dark";
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event: Event) => {
@@ -83,7 +83,7 @@ export default function StudioHeader({
             src={darkChrome ? "/brand/logo-light.svg" : "/brand/logo.svg"}
             alt="Ero Models"
             className="ep-brand-logo"
-            width="180"
+            width="151"
             height="56"
           />
         </Link>
@@ -103,14 +103,24 @@ export default function StudioHeader({
               {nav.install}
             </button>
           ) : null}
-          {toggleTheme && !forceLight ? (
+          {toggleTheme ? (
             <button
               type="button"
-              className="ep-header-link"
+              className="ep-icon-button"
               onClick={toggleTheme}
-              aria-label={`Usar tema ${theme === "dark" ? nav.themeLight : nav.themeDark}`}
+              aria-label={`Usar tema ${theme === "dark" ? "claro" : "escuro"}`}
+              title={theme === "dark" ? "Tema claro" : "Tema escuro"}
             >
-              {theme === "dark" ? nav.themeLight : nav.themeDark}
+              {theme === "dark" ? (
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+                </svg>
+              )}
             </button>
           ) : null}
           {!minimal &&

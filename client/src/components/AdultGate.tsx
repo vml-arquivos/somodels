@@ -78,8 +78,8 @@ export default function AdultGate({
           src="/brand/logo-light.svg"
           alt="Ero Models"
           className="studio-adult-gate-logo"
-          width="180"
-          height="56"
+          width="230"
+          height="85"
         />
         <div className="studio-adult-gate-mark" aria-hidden="true">
           +18

@@ -17,7 +17,17 @@ import Seo from "@/components/Seo";
 import AdultGate, { useAdultAccess } from "@/components/AdultGate";
 import ListingCard from "@/components/ListingCard";
 import FeaturedCarousel from "@/components/FeaturedCarousel";
+import Icon from "@/components/Icon";
 import { usePublicLight } from "@/contexts/ThemeContext";
+import {
+  categoryCards,
+  faqItems,
+  holderBenefits,
+  holderSteps,
+  popularSearches,
+  safetyTiles,
+  shortcutLinks,
+} from "@/lib/home-content";
 import {
   buildDiscoverySearch,
   categoryPath,
@@ -100,6 +110,15 @@ export function DiscoveryPage({
       verifiedOnly: filters.verifiedOnly || undefined,
     },
     { enabled: open }
+  );
+  const isHome = !fixedCity && !fixedCategory;
+  const totalAllQuery = trpc.profiles.count.useQuery(
+    {},
+    { enabled: open && isHome }
+  );
+  const availableAllQuery = trpc.profiles.count.useQuery(
+    { availableNow: true },
+    { enabled: open && isHome }
   );
   const total = countQuery.data?.total;
   const totalPages =
@@ -199,6 +218,24 @@ export function DiscoveryPage({
     document.getElementById("anuncios")?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const runShortcut = (
+    action: "availableNow" | "verified" | "virtual" | "local"
+  ) => {
+    setFilters(current => ({
+      ...current,
+      availableNow: action === "availableNow" ? true : current.availableNow,
+      verifiedOnly: action === "verified" ? true : current.verifiedOnly,
+      attribute:
+        action === "virtual"
+          ? "Virtual"
+          : action === "local"
+            ? "Com local"
+            : current.attribute,
+      page: 0,
+    }));
+    window.setTimeout(scrollToListings, 60);
+  };
+
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     scrollToListings();
@@ -238,7 +275,15 @@ export function DiscoveryPage({
             },
           ],
         }
-      : undefined;
+      : {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faqItems.map(item => ({
+            "@type": "Question",
+            name: item.q,
+            acceptedAnswer: { "@type": "Answer", text: item.a },
+          })),
+        };
 
   if (!adultAccess.ready)
     return <AdultGate access={adultAccess}>{null}</AdultGate>;
@@ -257,6 +302,16 @@ export function DiscoveryPage({
         .filter((region): region is string => Boolean(region))
     )
   ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const totalAll = totalAllQuery.data?.total ?? 0;
+  const availableAll = availableAllQuery.data?.total ?? 0;
+  const cityCount = locations.data?.length ?? 0;
+  const stats = [
+    totalAll > 0 ? { label: "Anúncios no ar", value: String(totalAll) } : null,
+    availableAll > 0
+      ? { label: "Disponíveis agora", value: String(availableAll) }
+      : null,
+    cityCount > 0 ? { label: "Cidades", value: String(cityCount) } : null,
+  ].filter((item): item is { label: string; value: string } => item !== null);
   const clearFilters = () =>
     setFilters({
       search: "",
@@ -291,7 +346,10 @@ export function DiscoveryPage({
           <div className="ep-wrap ep-hero-grid">
             <div className="ep-hero-copy">
               {(fixedCity || fixedCategory) && (
-                <nav className="ep-breadcrumb" aria-label="Navegação estrutural">
+                <nav
+                  className="ep-breadcrumb"
+                  aria-label="Navegação estrutural"
+                >
                   <Link href="/">Início</Link>
                   <span aria-hidden="true">/</span>
                   <span>{fixedCity || fixedCategory}</span>
@@ -336,13 +394,36 @@ export function DiscoveryPage({
                   {copy.hero.buttonText}
                 </button>
               </form>
+              {isHome && (
+                <div className="ep-hero-actions">
+                  <Link className="ep-btn ep-btn-primary" href="/cadastro">
+                    Anunciar grátis
+                  </Link>
+                  <a className="ep-btn ep-btn-ghost" href="#anuncios">
+                    Ver anúncios
+                  </a>
+                </div>
+              )}
               <ul className="ep-hero-notes" aria-label="Sobre a plataforma">
                 {copy.hero.notes.map(note => (
                   <li key={note}>{note}</li>
                 ))}
               </ul>
+              {isHome && stats.length > 0 && (
+                <dl className="ep-stats" aria-label="Números do site">
+                  {stats.map(stat => (
+                    <div key={stat.label}>
+                      <dt>{stat.label}</dt>
+                      <dd>{stat.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
             </div>
             <div className="ep-hero-visual">
+              {isHome && featured.length > 0 && (
+                <span className="ep-hero-badge">Em destaque</span>
+              )}
               {featured.length ? (
                 <FeaturedCarousel profiles={featured} />
               ) : (
@@ -363,6 +444,56 @@ export function DiscoveryPage({
             </div>
           </div>
         </section>
+
+        {isHome && (
+          <section
+            className="ep-section ep-shortcuts"
+            aria-labelledby="shortcuts-title"
+          >
+            <div className="ep-wrap">
+              <div className="ep-section-head">
+                <h2 id="shortcuts-title">Links populares</h2>
+              </div>
+              <ul className="ep-shortcut-list">
+                {shortcutLinks.map(item => (
+                  <li key={item.label}>
+                    {item.href ? (
+                      <Link href={item.href} className="ep-shortcut">
+                        <span className="ep-shortcut-icon">
+                          <Icon name={item.icon} />
+                        </span>
+                        <span className="ep-shortcut-text">
+                          <strong>{item.label}</strong>
+                          <small>{item.hint}</small>
+                        </span>
+                        <span className="ep-chevron" aria-hidden="true">
+                          ›
+                        </span>
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ep-shortcut"
+                        onClick={() => item.action && runShortcut(item.action)}
+                      >
+                        <span className="ep-shortcut-icon">
+                          <Icon name={item.icon} />
+                        </span>
+                        <span className="ep-shortcut-text">
+                          <strong>{item.label}</strong>
+                          <small>{item.hint}</small>
+                        </span>
+                        <span className="ep-chevron" aria-hidden="true">
+                          ›
+                        </span>
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
 
         <section
           id="anuncios"
@@ -701,80 +832,236 @@ export function DiscoveryPage({
           </div>
         </section>
 
-        <section
-          id="categorias"
-          className="ep-section ep-browse"
-          aria-labelledby="categories-title"
-        >
-          <div className="ep-wrap">
-            <div className="ep-section-head">
-              <h2 id="categories-title">{copy.categories.title}</h2>
-            </div>
-            <ul className="ep-pill-list">
-              {portfolioCategories.map(category => (
-                <li key={category}>
-                  <Link href={categoryPath(category)}>{category}</Link>
-                </li>
-              ))}
-            </ul>
-            {open && locations.data?.length ? (
-              <>
-                <h3 className="ep-subhead">{copy.categories.locationsKicker}</h3>
-                <ul className="ep-pill-list">
-                  {locations.data.slice(0, 24).map(location => (
-                    <li key={`${location.city}-${location.region || ""}`}>
-                      <Link href={cityPath(location.city)}>
-                        {location.city}
-                        {location.region ? ` · ${location.region}` : ""}
+        {isHome ? (
+          <>
+            <section
+              id="categorias"
+              className="ep-section ep-browse"
+              aria-labelledby="categories-title"
+            >
+              <div className="ep-wrap">
+                <div className="ep-section-head">
+                  <h2 id="categories-title">Escolha uma categoria</h2>
+                </div>
+                <ul className="ep-category-grid">
+                  {categoryCards.map(card => (
+                    <li key={card.name}>
+                      <Link
+                        href={categoryPath(card.name)}
+                        className="ep-category-card"
+                      >
+                        <span className="ep-category-icon">
+                          <Icon name={card.icon} size={24} />
+                        </span>
+                        <strong>{card.name}</strong>
+                        <p>{card.text}</p>
+                        <span className="ep-category-link">Ver anúncios ›</span>
                       </Link>
                     </li>
                   ))}
                 </ul>
-              </>
-            ) : null}
-          </div>
-        </section>
+              </div>
+            </section>
 
-        <section className="ep-section ep-trust" aria-labelledby="trust-title">
-          <div className="ep-wrap">
-            <div className="ep-section-head">
-              <h2 id="trust-title">{copy.trust.title}</h2>
-            </div>
-            <ul className="ep-trust-grid">
-              {copy.trust.points.map(point => (
-                <li key={point.title}>
-                  <span className="ep-trust-mark" aria-hidden="true">
-                    {point.marker}
-                  </span>
-                  <div>
-                    <h3>{point.title}</h3>
-                    <p>{point.text}</p>
+            {open && locations.data?.length ? (
+              <section
+                className="ep-section ep-cities"
+                aria-labelledby="cities-title"
+              >
+                <div className="ep-wrap">
+                  <div className="ep-section-head">
+                    <h2 id="cities-title">Cidades com anúncios</h2>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
+                  <ul className="ep-city-grid">
+                    {locations.data.slice(0, 24).map(location => (
+                      <li key={`${location.city}-${location.region || ""}`}>
+                        <Link href={cityPath(location.city)}>
+                          <span>{location.city}</span>
+                          {location.region ? (
+                            <small>{location.region}</small>
+                          ) : null}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  <h3 className="ep-subhead">Buscas populares</h3>
+                  <div className="ep-chip-row">
+                    {popularSearches.map(service => (
+                      <button
+                        type="button"
+                        className="ep-chip"
+                        key={service}
+                        onClick={() => {
+                          updateFilter("service", service);
+                          window.setTimeout(scrollToListings, 60);
+                        }}
+                      >
+                        {service}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            ) : null}
 
-        <section className="ep-holder" aria-labelledby="holder-title">
-          <div className="ep-wrap ep-holder-inner">
-            <div>
-              <h2 id="holder-title">{copy.holder.title}</h2>
-              <p>{copy.holder.text}</p>
-              <ul className="ep-holder-benefits">
-                {copy.holder.benefits.map(benefit => (
-                  <li key={benefit}>{benefit}</li>
-                ))}
-              </ul>
-            </div>
-            <Link className="ep-btn ep-btn-light" href="/cadastro">
-              {copy.holder.buttonText}
-            </Link>
-          </div>
-        </section>
+            <section
+              className="ep-section ep-trust"
+              aria-labelledby="trust-title"
+            >
+              <div className="ep-wrap">
+                <div className="ep-section-head">
+                  <h2 id="trust-title">Mais segurança e privacidade</h2>
+                </div>
+                <ul className="ep-trust-grid">
+                  {safetyTiles.map(tile => (
+                    <li key={tile.title}>
+                      <span className="ep-trust-mark" aria-hidden="true">
+                        <Icon name={tile.icon} size={24} />
+                      </span>
+                      <div>
+                        <h3>{tile.title}</h3>
+                        <p>{tile.text}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+
+            <section className="ep-holder" aria-labelledby="holder-title">
+              <div className="ep-wrap">
+                <div className="ep-holder-head">
+                  <div>
+                    <h2 id="holder-title">{copy.holder.title}</h2>
+                    <p>{copy.holder.text}</p>
+                  </div>
+                  <Link className="ep-btn ep-btn-light" href="/cadastro">
+                    {copy.holder.buttonText}
+                  </Link>
+                </div>
+                <ol className="ep-hsteps">
+                  {holderSteps.map((step, index) => (
+                    <li key={step.title}>
+                      <span className="ep-step-number">{index + 1}</span>
+                      <div>
+                        <strong>{step.title}</strong>
+                        <p>{step.text}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                <ul className="ep-holder-cards">
+                  {holderBenefits.map(benefit => (
+                    <li key={benefit.title}>
+                      <Icon name={benefit.icon} size={22} />
+                      <strong>{benefit.title}</strong>
+                      <p>{benefit.text}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+
+            <section className="ep-section ep-faq" aria-labelledby="faq-title">
+              <div className="ep-wrap ep-faq-inner">
+                <h2 id="faq-title">Perguntas frequentes</h2>
+                <div className="ep-faq-list">
+                  {faqItems.map(item => (
+                    <details key={item.q}>
+                      <summary>{item.q}</summary>
+                      <p>{item.a}</p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </>
+        ) : (
+          <>
+            <section
+              id="categorias"
+              className="ep-section ep-browse"
+              aria-labelledby="categories-title"
+            >
+              <div className="ep-wrap">
+                <div className="ep-section-head">
+                  <h2 id="categories-title">{copy.categories.title}</h2>
+                </div>
+                <ul className="ep-pill-list">
+                  {portfolioCategories.map(category => (
+                    <li key={category}>
+                      <Link href={categoryPath(category)}>{category}</Link>
+                    </li>
+                  ))}
+                </ul>
+                {open && locations.data?.length ? (
+                  <>
+                    <h3 className="ep-subhead">
+                      {copy.categories.locationsKicker}
+                    </h3>
+                    <ul className="ep-pill-list">
+                      {locations.data.slice(0, 24).map(location => (
+                        <li key={`${location.city}-${location.region || ""}`}>
+                          <Link href={cityPath(location.city)}>
+                            {location.city}
+                            {location.region ? ` · ${location.region}` : ""}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </div>
+            </section>
+
+            <section
+              className="ep-section ep-trust"
+              aria-labelledby="trust-title"
+            >
+              <div className="ep-wrap">
+                <div className="ep-section-head">
+                  <h2 id="trust-title">{copy.trust.title}</h2>
+                </div>
+                <ul className="ep-trust-grid">
+                  {copy.trust.points.map(point => (
+                    <li key={point.title}>
+                      <span className="ep-trust-mark" aria-hidden="true">
+                        {point.marker}
+                      </span>
+                      <div>
+                        <h3>{point.title}</h3>
+                        <p>{point.text}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+
+            <section className="ep-holder" aria-labelledby="holder-title">
+              <div className="ep-wrap ep-holder-inner">
+                <div>
+                  <h2 id="holder-title">{copy.holder.title}</h2>
+                  <p>{copy.holder.text}</p>
+                  <ul className="ep-holder-benefits">
+                    {copy.holder.benefits.map(benefit => (
+                      <li key={benefit}>{benefit}</li>
+                    ))}
+                  </ul>
+                </div>
+                <Link className="ep-btn ep-btn-light" href="/cadastro">
+                  {copy.holder.buttonText}
+                </Link>
+              </div>
+            </section>
+          </>
+        )}
 
         {site.showAbout && !fixedCity && !fixedCategory ? (
-          <section className="ep-section ep-about" aria-labelledby="about-title">
+          <section
+            className="ep-section ep-about"
+            aria-labelledby="about-title"
+          >
             <div className="ep-wrap ep-about-inner">
               <h2 id="about-title">{copy.about.title}</h2>
               <div>

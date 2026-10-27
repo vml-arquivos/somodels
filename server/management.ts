@@ -33,7 +33,11 @@ import { ENV } from "./_core/env";
 import { adminFunctionKeys } from "../shared/admin-access";
 import { adminNavigationBadges } from "../shared/admin-navigation";
 import { profileInputSchema } from "../shared/profile-schema";
-import { defaultSiteSettings, siteSettingsSchema } from "../shared/portfolio";
+import {
+  defaultSiteSettings,
+  SITE_COPY_REVISION,
+  siteSettingsSchema,
+} from "../shared/portfolio";
 import type { User } from "../drizzle/schema";
 
 const paging = z
@@ -144,11 +148,12 @@ export const managementRouter = router({
     .input(siteSettingsSchema)
     .mutation(async ({ ctx, input }) => {
       const db = await database();
+      const value = JSON.stringify({ ...input, copyRevision: SITE_COPY_REVISION });
       await db.transaction(async tx => {
         await tx
           .insert(siteSettings)
-          .values({ id: 1, value: JSON.stringify(input) })
-          .onDuplicateKeyUpdate({ set: { value: JSON.stringify(input) } });
+          .values({ id: 1, value })
+          .onDuplicateKeyUpdate({ set: { value } });
         await audit(tx, ctx.user.id, "settings.updated", "site", 1);
       });
       return { success: true };

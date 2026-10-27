@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-26 — logo nova, home completa e tema claro/escuro
+
+- logo nova (símbolo "E" com brilho + "ERO MODELS"), em versão para fundo claro e para fundo escuro, com ícones do site, favicon, manifesto e imagem de compartilhamento; logo bem maior no cabeçalho, no rodapé e na tela de confirmação de idade;
+- home reorganizada nos moldes de portais de anúncios: destaque com busca e botões de ação, números reais do site (anúncios, disponíveis agora e cidades; só aparecem quando maiores que zero), "Links populares", lista de anúncios com filtros, categorias em cartões com descrição, cidades com anúncios, buscas populares, bloco de segurança e privacidade, passo a passo para anunciar e perguntas frequentes (com marcação para o Google);
+- no celular a foto em destaque vem antes do texto, agora com a etiqueta "Em destaque";
+- tema claro e escuro em todas as páginas públicas, com botão de lua/sol no cabeçalho (começa no claro; a escolha fica salva no navegador);
+- textos salvos em versões antigas do banco são descartados automaticamente na primeira leitura (`copyRevision`); o que for editado no admin depois disso fica salvo;
+- sem números, avaliações ou matérias inventadas: tudo que aparece na home vem do banco ou é texto fixo.
+
 ## 2026-10-26 — site claro e leve, contato aberto e menos travas
 
 - novo visual público claro e limpo (cabeçalho, rodapé, cartões, filtros, planos, login, cadastro, termos, ajuda, 404 e página do anúncio), com o mesmo padrão em todas as páginas; páginas públicas ficam sempre no tema claro, o tema escuro continua só no admin;

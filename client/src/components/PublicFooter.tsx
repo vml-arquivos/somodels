@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useTheme } from "@/contexts/ThemeContext";
 import { defaultSiteSettings } from "@shared/portfolio";
 
 const footerPaths = [
@@ -10,6 +11,7 @@ const footerPaths = [
 ] as const;
 
 export default function PublicFooter() {
+  const { theme } = useTheme();
   const settings = trpc.management.settings.useQuery();
   const footer = (settings.data || defaultSiteSettings).home.footer;
   return (
@@ -17,10 +19,10 @@ export default function PublicFooter() {
       <div className="ep-footer-inner">
         <div className="ep-footer-brand">
           <img
-            src="/brand/logo.svg"
+            src={theme === "dark" ? "/brand/logo-light.svg" : "/brand/logo.svg"}
             alt="Ero Models"
-            width="148"
-            height="46"
+            width="184"
+            height="68"
             loading="lazy"
           />
           <p>{footer.tagline}</p>
