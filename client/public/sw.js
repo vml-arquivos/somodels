@@ -1,8 +1,11 @@
-const CACHE_NAME = "ero-models-shell-v1";
+const CACHE_NAME = "ero-models-shell-v2";
 const APP_SHELL = [
   "/",
   "/offline.html",
   "/brand/favicon.svg",
+  "/brand/logo.svg",
+  "/brand/logo-light.svg",
+  "/brand/symbol.svg",
   "/brand/icon-192.png",
   "/brand/icon-512.png",
 ];

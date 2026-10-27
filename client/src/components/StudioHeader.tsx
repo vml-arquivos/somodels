@@ -4,11 +4,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { defaultSiteSettings } from "@shared/portfolio";
-
-type InstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
+import { useInstall } from "@/lib/install";
+import { jumpTo } from "@/components/MobileTabBar";
 
 export default function StudioHeader({
   children,
@@ -22,24 +19,8 @@ export default function StudioHeader({
   const settings = trpc.management.settings.useQuery();
   const nav = (settings.data || defaultSiteSettings).home.nav;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(
-    null
-  );
+  const { canPrompt, standalone, install } = useInstall();
   const darkChrome = theme === "dark";
-
-  useEffect(() => {
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as InstallPromptEvent);
-    };
-    const onAppInstalled = () => setInstallPrompt(null);
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    window.addEventListener("appinstalled", onAppInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", onAppInstalled);
-    };
-  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -50,20 +31,25 @@ export default function StudioHeader({
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  async function installApp() {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    const choice = await installPrompt.userChoice;
-    if (choice.outcome === "accepted") setInstallPrompt(null);
-  }
-
   const close = () => setMenuOpen(false);
   const links = (
     <>
-      <Link href="/#anuncios" onClick={close}>
+      <Link
+        href="/#anuncios"
+        onClick={event => {
+          close();
+          jumpTo("anuncios", event);
+        }}
+      >
         {nav.explore}
       </Link>
-      <Link href="/#categorias" onClick={close}>
+      <Link
+        href="/#categorias"
+        onClick={event => {
+          close();
+          jumpTo("categorias", event);
+        }}
+      >
         {nav.categories}
       </Link>
       <Link href="/planos" onClick={close}>
@@ -83,7 +69,7 @@ export default function StudioHeader({
             src={darkChrome ? "/brand/logo-light.svg" : "/brand/logo.svg"}
             alt="Ero Models"
             className="ep-brand-logo"
-            width="151"
+            width="153"
             height="56"
           />
         </Link>
@@ -94,11 +80,11 @@ export default function StudioHeader({
         )}
         <div className="ep-header-actions">
           {children ? <div className="ep-header-extra">{children}</div> : null}
-          {installPrompt ? (
+          {canPrompt && !standalone ? (
             <button
               type="button"
               className="ep-header-link"
-              onClick={() => void installApp()}
+              onClick={() => void install()}
             >
               {nav.install}
             </button>
@@ -112,12 +98,31 @@ export default function StudioHeader({
               title={theme === "dark" ? "Tema claro" : "Tema escuro"}
             >
               {theme === "dark" ? (
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  aria-hidden="true"
+                >
                   <circle cx="12" cy="12" r="4" />
                   <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
                 </svg>
               ) : (
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
                   <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
                 </svg>
               )}
@@ -160,11 +165,7 @@ export default function StudioHeader({
         </div>
       </div>
       {!minimal && menuOpen && (
-        <nav
-          id="ep-mobile-menu"
-          className="ep-mobile-menu"
-          aria-label="Menu"
-        >
+        <nav id="ep-mobile-menu" className="ep-mobile-menu" aria-label="Menu">
           {links}
           {user ? (
             <Link href="/conta" onClick={close}>

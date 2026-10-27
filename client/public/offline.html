@@ -2,15 +2,13 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#3B1537" />
-    <title>Ero Models — conexão indisponível</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#4A0F28" />
+    <title>Ero Models — sem conexão</title>
     <style>
       :root {
         color-scheme: dark;
-        font-family: system-ui, sans-serif;
-        background: #231f2b;
-        color: #f7e9e6;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
       }
       body {
         display: grid;
@@ -18,24 +16,35 @@
         place-items: center;
         margin: 0;
         padding: 24px;
+        background: radial-gradient(circle at 80% 10%, #7a1636 0%, #4a0f28 45%, #2a0a1a 100%);
+        color: #f7ecd6;
+        text-align: center;
       }
       main {
-        width: min(100%, 480px);
-        padding: 32px;
-        border: 1px solid #543749;
-        border-radius: 20px;
-        background: #2e2030;
+        width: min(100%, 360px);
+      }
+      img {
+        width: 96px;
+        height: 96px;
+        border-radius: 24px;
+        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        margin: 24px 0 8px;
+        font-size: 1.5rem;
+        letter-spacing: -0.01em;
       }
       p {
-        color: #d2bfc4;
+        margin: 0 0 24px;
+        color: #e5c9a4;
         line-height: 1.6;
       }
       a {
         display: inline-block;
-        padding: 10px 14px;
-        border-radius: 9px;
-        background: #c84b68;
-        color: white;
+        padding: 13px 28px;
+        border-radius: 999px;
+        background: #e0536f;
+        color: #fff;
         text-decoration: none;
         font-weight: 700;
       }
@@ -43,13 +52,10 @@
   </head>
   <body>
     <main>
-      <p>Ero Models</p>
-      <h1>Você está sem conexão.</h1>
-      <p>
-        Reconecte-se à internet para atualizar a vitrine e acessar sua conta com
-        segurança.
-      </p>
-      <a href="/">Tentar novamente</a>
+      <img src="/brand/icon-192.png" alt="Ero Models" width="96" height="96" />
+      <h1>Você está sem conexão</h1>
+      <p>Conecte-se à internet para ver os anúncios e acessar sua conta.</p>
+      <a href="/">Tentar de novo</a>
     </main>
   </body>
 </html>

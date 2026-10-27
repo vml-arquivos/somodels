@@ -41,6 +41,9 @@ export function ThemeProvider({
       root.classList.remove("dark");
     }
 
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", theme === "dark" && !forceLight ? "#2a2432" : "#ffffff");
+
     if (switchable) {
       try { localStorage.setItem("ero-theme", theme); } catch { /* Theme still works without storage. */ }
     }

@@ -73,7 +73,7 @@
   max-width: 1240px;
   margin: 0 auto;
   padding: 0 20px;
-  min-height: 84px;
+  min-height: 82px;
 }
 .studio .ep-brand {
   display: inline-flex;
@@ -84,7 +84,7 @@
   text-decoration: none;
 }
 .studio .ep-brand-logo {
-  height: 58px;
+  height: 56px;
   width: auto;
   display: block;
 }
@@ -236,8 +236,27 @@
 .studio .ep-hero-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 440px);
-  gap: 56px;
-  align-items: center;
+  grid-template-areas:
+    "head visual"
+    "body visual";
+  grid-template-rows: auto auto;
+  column-gap: 56px;
+  row-gap: 0;
+  align-content: center;
+}
+.studio .ep-hero-head {
+  grid-area: head;
+  min-width: 0;
+  align-self: end;
+}
+.studio .ep-hero-body {
+  grid-area: body;
+  min-width: 0;
+  align-self: start;
+}
+.studio .ep-hero-visual {
+  grid-area: visual;
+  align-self: center;
 }
 .studio .ep-hero-copy {
   min-width: 0;
@@ -934,7 +953,7 @@
   padding: 40px 20px 32px;
 }
 .studio .ep-footer-brand img {
-  height: 68px;
+  height: 76px;
   width: auto;
   display: block;
 }
@@ -1638,9 +1657,6 @@
   }
 }
 @media (max-width: 880px) {
-  .studio .ep-hero-visual {
-    order: -1;
-  }
   .studio .ep-profile-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 20px;
@@ -1665,12 +1681,31 @@
   }
   .studio .ep-hero-grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
+    grid-template-areas:
+      "head"
+      "visual"
+      "body";
+    column-gap: 0;
+    row-gap: 0;
+  }
+  .studio .ep-hero-head {
+    margin-bottom: 18px;
+  }
+  .studio .ep-hero-head .ep-eyebrow {
+    margin-bottom: 8px;
+  }
+  .studio .ep-hero-head h1 {
+    margin-bottom: 0;
+    font-size: clamp(1.65rem, 7.2vw, 2.3rem);
+    line-height: 1.12;
+  }
+  .studio .ep-hero-body {
+    margin-top: 22px;
   }
   .studio .ep-hero-visual {
-    max-width: 440px;
+    max-width: 520px;
     width: 100%;
-    margin: 0 auto;
+    margin: 0;
   }
   .studio .ep-footer-inner {
     grid-template-columns: minmax(0, 1fr);
@@ -1735,7 +1770,7 @@
     min-height: 72px;
   }
   .studio .ep-brand-logo {
-    height: 46px;
+    height: 42px;
   }
   .studio .ep-header-cta {
     padding: 9px 14px;
@@ -1749,7 +1784,7 @@
   }
   .studio .ep-carousel-viewport,
 .studio .ep-hero-art {
-    aspect-ratio: 5 / 6;
+    aspect-ratio: 4 / 5;
     border-radius: 18px;
   }
   .studio .ep-slide-caption strong {
@@ -2168,4 +2203,165 @@
 :root.dark .ep-about a,
 :root.dark .ep-footer-age {
   color: var(--ep-accent);
+}
+
+
+/* ---------- Aplicativo (PWA) ---------- */
+.studio html {
+  -webkit-tap-highlight-color: transparent;
+}
+.studio .ep-tabbar,
+.studio .ep-install {
+  display: none;
+}
+.studio .ep-install {
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid var(--ep-line);
+  border-radius: 18px;
+  background: var(--ep-surface);
+  box-shadow: 0 12px 34px rgba(30, 10, 24, 0.22);
+}
+.studio .ep-install img {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+.studio .ep-install-text {
+  flex: 1;
+  min-width: 0;
+}
+.studio .ep-install-text strong {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ep-ink);
+}
+.studio .ep-install-text span {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--ep-muted);
+}
+.studio .ep-install-go {
+  flex: none;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ep-accent);
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.studio .ep-install-close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ep-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+@media (max-width: 880px) {
+  .studio.ep-page {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+  .studio .ep-tabbar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: var(--ep-surface);
+    border-top: 1px solid var(--ep-line);
+    box-shadow: 0 -6px 24px rgba(30, 10, 24, 0.07);
+  }
+  .studio .ep-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    min-height: 52px;
+    padding: 4px 0 2px;
+    border-radius: 12px;
+    color: var(--ep-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    user-select: none;
+  }
+  .studio .ep-tab:hover {
+    text-decoration: none;
+  }
+  .studio .ep-tab-icon {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 26px;
+  }
+  .studio .ep-tab.is-active {
+    color: var(--ep-accent-dark);
+  }
+  .studio .ep-tab.is-highlight .ep-tab-icon {
+    width: 46px;
+    height: 46px;
+    margin-top: -22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e0536f, #a82a42);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(168, 42, 66, 0.4);
+    border: 3px solid var(--ep-surface);
+  }
+  .studio .ep-tab.is-highlight {
+    color: var(--ep-ink);
+  }
+  .studio .ep-install {
+    display: flex;
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    z-index: 69;
+  }
+  .studio .ep-footer-bottom {
+    padding-bottom: 8px;
+  }
+}
+:root.dark .ep-tab.is-active {
+  color: var(--ep-accent);
+}
+:root.dark .ep-tabbar {
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* Instalado na tela inicial: sem seleção de texto nos controles e sem puxar para atualizar */
+@media (display-mode: standalone) {
+  .studio html,
+.studio body {
+    overscroll-behavior-y: none;
+  }
+  .studio .ep-header {
+    padding-top: env(safe-area-inset-top);
+  }
+  .studio .ep-header-link,
+.studio .ep-header-cta,
+.studio .ep-btn,
+.studio .ep-chip,
+.studio .ep-shortcut,
+.studio .ep-menu-button {
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
 }

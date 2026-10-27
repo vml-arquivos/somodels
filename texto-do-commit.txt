@@ -1,19 +1,20 @@
-feat: logo nova, home completa e tema claro/escuro
+feat: logo definitiva, app no celular e home completa
 
 Logo
-- logo nova, mais elaborada, em versão para fundo claro e escuro
-- logo bem maior no cabeçalho, no rodapé e na tela de idade
-- novos ícones, favicon e imagem de compartilhamento
+- logo nova a partir da arte enviada, vetorizada (horizontal, empilhada, símbolo e ícone) em versão clara e escura
+- logo maior no cabeçalho, no rodapé e na tela de idade
+
+Aplicativo no celular
+- ícones, tela de abertura, atalhos e página offline com a marca
+- barra de abas fixa embaixo (início, buscar, anunciar, conta)
+- convite para instalar o app (Android e iPhone)
 
 Home
-- destaque com busca, botões "Anunciar grátis" e "Ver anúncios" e números reais do site
-- no celular a foto vem primeiro, com etiqueta "Em destaque"
-- links populares, categorias com descrição, cidades com anúncios e buscas populares
-- bloco de segurança e privacidade, passo a passo para anunciar e perguntas frequentes
+- no celular, título antes do carrossel de fotos
+- links populares, categorias com descrição, cidades, segurança, passo a passo para anunciar e perguntas frequentes
+- números reais do site no topo
+- imagem de compartilhamento agora é o cartão da marca
 
 Tema
 - tema claro e escuro nas páginas públicas, com botão no cabeçalho
 - textos antigos salvos no banco são trocados pelos novos automaticamente
-
-Outros
-- documentação e changelog atualizados

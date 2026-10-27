@@ -75,11 +75,11 @@ export default function AdultGate({
     <div className="studio studio-adult-gate-screen">
       <main className="studio-adult-gate" aria-labelledby="adult-gate-title">
         <img
-          src="/brand/logo-light.svg"
+          src="/brand/logo-stacked-light.svg"
           alt="Ero Models"
           className="studio-adult-gate-logo"
-          width="230"
-          height="85"
+          width="190"
+          height="232"
         />
         <div className="studio-adult-gate-mark" aria-hidden="true">
           +18

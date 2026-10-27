@@ -206,6 +206,16 @@ export function DiscoveryPage({
     if (next !== current) window.history.replaceState(null, "", next);
   }, [filters, fixedCity, fixedCategory]);
 
+  useEffect(() => {
+    const target = window.location.hash.slice(1);
+    if (!target) return;
+    const timer = window.setTimeout(
+      () => document.getElementById(target)?.scrollIntoView(),
+      450
+    );
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const updateFilter = (
     key: keyof Omit<DiscoveryFilters, "page">,
     value: string
@@ -336,7 +346,7 @@ export function DiscoveryPage({
         title={title}
         description={description}
         path={canonicalPath}
-        image="/images/hero/ero-models-hero.webp"
+        image="/brand/social-card.png"
         noindex={noindex}
         jsonLd={jsonLd}
       />
@@ -344,7 +354,7 @@ export function DiscoveryPage({
       <main className="ep-main">
         <section className="ep-hero" aria-labelledby="hero-title">
           <div className="ep-wrap ep-hero-grid">
-            <div className="ep-hero-copy">
+            <div className="ep-hero-head">
               {(fixedCity || fixedCategory) && (
                 <nav
                   className="ep-breadcrumb"
@@ -357,6 +367,30 @@ export function DiscoveryPage({
               )}
               <p className="ep-eyebrow">{copy.hero.eyebrow} · 18+</p>
               <h1 id="hero-title">{heroTitle}</h1>
+            </div>
+            <div className="ep-hero-visual">
+              {isHome && featured.length > 0 && (
+                <span className="ep-hero-badge">Em destaque</span>
+              )}
+              {featured.length ? (
+                <FeaturedCarousel profiles={featured} />
+              ) : (
+                <div className="ep-hero-art">
+                  <img
+                    src="/images/hero/ero-models-hero.webp"
+                    alt={copy.hero.imageAlt}
+                    width="720"
+                    height="900"
+                  />
+                  <span className="ep-slide-shade" aria-hidden="true" />
+                  <p>
+                    <strong>{copy.hero.visualTitle}</strong>
+                    <span>{copy.hero.visualSubtitle}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="ep-hero-body">
               <p className="ep-lead">{heroLead}</p>
               <form className="ep-search" onSubmit={submitSearch} role="search">
                 <label className="ep-search-field">
@@ -418,28 +452,6 @@ export function DiscoveryPage({
                     </div>
                   ))}
                 </dl>
-              )}
-            </div>
-            <div className="ep-hero-visual">
-              {isHome && featured.length > 0 && (
-                <span className="ep-hero-badge">Em destaque</span>
-              )}
-              {featured.length ? (
-                <FeaturedCarousel profiles={featured} />
-              ) : (
-                <div className="ep-hero-art">
-                  <img
-                    src="/images/hero/ero-models-hero.webp"
-                    alt={copy.hero.imageAlt}
-                    width="720"
-                    height="900"
-                  />
-                  <span className="ep-slide-shade" aria-hidden="true" />
-                  <p>
-                    <strong>{copy.hero.visualTitle}</strong>
-                    <span>{copy.hero.visualSubtitle}</span>
-                  </p>
-                </div>
               )}
             </div>
           </div>

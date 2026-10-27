@@ -16,7 +16,9 @@ export type IconName =
   | "users"
   | "heart"
   | "spark"
-  | "camera";
+  | "camera"
+  | "home"
+  | "search";
 
 export const categoryCards: {
   name: string;

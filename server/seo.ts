@@ -54,7 +54,7 @@ function staticSeo(pathname: string) {
     return {
       title: `${ENV.siteName} — Anúncios de acompanhantes adultos`,
       description: "Anúncios de acompanhantes por cidade e bairro. Veja fotos e valores e fale direto pelo WhatsApp. Só para maiores de 18 anos.",
-      image: "/images/hero/ero-models-hero.webp",
+      image: "/brand/social-card.png",
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "WebSite",

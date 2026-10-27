@@ -1,10 +1,13 @@
 # Changelog
 
-## 2026-10-26 — logo nova, home completa e tema claro/escuro
+## 2026-10-26 — logo definitiva, aplicativo no celular e home completa
 
-- logo nova (símbolo "E" com brilho + "ERO MODELS"), em versão para fundo claro e para fundo escuro, com ícones do site, favicon, manifesto e imagem de compartilhamento; logo bem maior no cabeçalho, no rodapé e na tela de confirmação de idade;
-- home reorganizada nos moldes de portais de anúncios: destaque com busca e botões de ação, números reais do site (anúncios, disponíveis agora e cidades; só aparecem quando maiores que zero), "Links populares", lista de anúncios com filtros, categorias em cartões com descrição, cidades com anúncios, buscas populares, bloco de segurança e privacidade, passo a passo para anunciar e perguntas frequentes (com marcação para o Google);
-- no celular a foto em destaque vem antes do texto, agora com a etiqueta "Em destaque";
+- logo definitiva baseada na arte enviada pelo dono (monograma E com fita, "ERO" em serifa de alto contraste e "MODELS" espaçado), vetorizada em SVG nas versões horizontal (cabeçalho e rodapé), empilhada (tela de idade), símbolo, ícone do aplicativo e cartão de compartilhamento, cada uma para fundo claro e escuro; logo maior no cabeçalho, no rodapé e na tela de idade;
+- aplicativo no celular (PWA): ícones normais e adaptáveis, tela de abertura vinho, atalhos (Explorar, Anunciar, Conta), `viewport-fit=cover`, cor da barra de status que acompanha o tema, página offline com a marca, barra de abas fixa embaixo no celular (Início, Buscar, Anunciar, Conta) com respeito à área segura, convite para instalar (botão direto no Android e instrução no iPhone, volta só depois de 14 dias se for dispensado) e ajustes para quando está instalado (sem puxar para atualizar, sem seleção nos botões);
+- cache do aplicativo renomeado (`ero-models-shell-v2`) para os aparelhos já instalados receberem a logo nova;
+- home no celular: título antes do carrossel, depois o carrossel (agora mais baixo, com etiqueta "Em destaque"), depois texto, busca e botões; links "/#anuncios" e "/#categorias" agora rolam até a seção também vindo de outras páginas;
+- home reorganizada nos moldes de portais de anúncios: busca e botões de ação, números reais do site (anúncios, disponíveis agora e cidades; só aparecem quando maiores que zero), "Links populares", lista com filtros, categorias em cartões com descrição, cidades com anúncios, buscas populares, segurança e privacidade, passo a passo para anunciar e perguntas frequentes (com marcação para o Google);
+- imagem de compartilhamento (WhatsApp, redes sociais, Google) agora é o cartão da marca, e não a foto de capa de um anúncio;
 - tema claro e escuro em todas as páginas públicas, com botão de lua/sol no cabeçalho (começa no claro; a escolha fica salva no navegador);
 - textos salvos em versões antigas do banco são descartados automaticamente na primeira leitura (`copyRevision`); o que for editado no admin depois disso fica salvo;
 - sem números, avaliações ou matérias inventadas: tudo que aparece na home vem do banco ou é texto fixo.
