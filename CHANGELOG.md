@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-10-26 — painel do administrador refeito
+
+- menu lateral por assunto: Principal (Visão geral), Anunciantes (Anunciantes, Verificações, Anúncios, Moderação, Denúncias), Comercial (Pacotes, Pagamentos, Caixa), Análises (Relatórios, Análises), Atendimento (Mensagens), Contas (Clientes, Equipe), Site (SEO, Configurações, Prontidão) e Sistema (Auditoria, Segurança). Cada pessoa só vê o que a sua função permite; os números vermelhos mostram o que está esperando;
+- busca rápida em todo o painel (Ctrl+K ou Cmd+K): anunciantes, anúncios, pagamentos e telas;
+- visão geral: o que precisa de atenção hoje (verificações, anúncios em análise, denúncias, pagamentos atrasados, retornos marcados), novos anunciantes, anúncios no ar, recebido, a receber, receita mensal e gráficos dos últimos 30 dias;
+- anunciantes (CRM): lista separada dos clientes e da equipe, etapas (novo, em contato, negociando, ativo, precisa de atenção, inativo, perdido) sugeridas pelo sistema e ajustáveis, etiquetas, data do próximo retorno, anotações (ligação, WhatsApp, e-mail, pedido), ficha com resumo, dados, anúncios, financeiro, documentos, anotações, atividade e conta;
+- CPF só aparece completo quando o administrador pede, e cada vez que isso acontece fica registrado na auditoria;
+- verificações: fila de pendentes, aprovadas e recusadas; dados informados ao lado de documento, selfie e vídeo, idade calculada, lista de conferência (nome, CPF, nascimento, maioridade, rosto, validade) que precisa estar completa para aprovar, motivo da recusa e opção de apagar os arquivos depois de aprovar;
+- o anunciante envia documento, selfie e vídeo em `/titular/dados`; os arquivos ficam privados (só ele e quem tem a permissão de identidade com MFA abrem) e cada abertura por um administrador fica na auditoria;
+- pagamentos: pago, aguardando, atrasado, falhou, reembolsado e cancelado, com busca, filtros, registro de pagamento manual, marcar como pago e exportar CSV. Ao pedir ou ativar um pacote, a cobrança é criada sozinha com vencimento em 3 dias;
+- relatórios: quem anunciou e quando, pagamentos, verificações, anúncios, denúncias e atividade da equipe, por período, com exportação em CSV (abre no Excel em português);
+- pacotes: vitrine com valores, o que cada um inclui e quantos estão ativos; fica fora do menu e da home do site. O anunciante vê em `/titular/plano`, contrata ali ou pede um pacote personalizado, que vira anotação, etapa "negociando" e retorno para hoje na ficha. A página `/planos` continua existindo, só saiu do menu e do rodapé;
+- SEO: título, descrição e "não indexar" por página pública, imagem de compartilhamento, prévia do Google e dicas. Páginas privadas nunca são afetadas;
+- endereços antigos do painel (`/admin/usuarios`, `/admin/planos`) levam para as telas novas. Nenhuma função antiga foi removida;
+- migração `0014_admin_crm`: só cria `crm_profiles`, `crm_notes` e `verification_documents` (não altera nada existente).
+
 ## 2026-10-26 — painel completo do anunciante
 
 - `/titular` virou uma área do cliente com menu lateral (abas rolando no celular): Visão geral, Meus anúncios, Biblioteca, Plano e pagamentos, Dados pessoais, Contrato e Atividade; endereços antigos como `/titular?profileId=N` continuam funcionando;

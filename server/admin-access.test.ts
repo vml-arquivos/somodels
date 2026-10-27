@@ -56,15 +56,16 @@ describe("funções da equipe", () => {
       expect.arrayContaining(["overview", "profiles", "moderation", "reports", "identity", "security"])
     );
     expect(tabs("moderator")).not.toContain("finance");
-    expect(tabs("moderator")).not.toContain("users");
+    expect(tabs("moderator")).not.toContain("clients");
+    expect(tabs("moderator")).not.toContain("advertisers");
     expect(tabs("support")).toEqual(
-      expect.arrayContaining(["users", "profiles", "messages"])
+      expect.arrayContaining(["clients", "advertisers", "profiles", "messages"])
     );
     expect(tabs("support")).not.toContain("finance");
-    expect(tabs("finance")).toEqual(expect.arrayContaining(["plans", "finance", "users"]));
+    expect(tabs("finance")).toEqual(expect.arrayContaining(["plans", "payments", "finance", "advertisers"]));
     expect(tabs("finance")).not.toContain("moderation");
     expect(tabs("auditor")).toEqual(
-      expect.arrayContaining(["audit", "finance", "readiness", "users", "profiles"])
+      expect.arrayContaining(["audit", "finance", "readiness", "clients", "profiles"])
     );
   });
 

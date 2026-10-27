@@ -34,6 +34,7 @@ import {
   moderationCases,
   passwordResetTokens,
   financeEntries,
+  payments,
   plans,
   premiumEntitlements,
   profileMedia,
@@ -43,6 +44,7 @@ import {
   userMfa,
   users,
 } from "../drizzle/schema";
+import { dueDateFrom } from "../shared/admin-crm";
 import { ENV, isAgeVerificationConfigured } from "./_core/env";
 import {
   assertIdentityReviewAllowed,
@@ -3076,6 +3078,65 @@ export async function savePlan(input: PlanInput, actorUserId: number) {
 }
 
 // Pedido do titular: fica "pending" até a equipe confirmar o Pix e ativar.
+// Cobrança ligada a um pedido de plano. A chave `sub-<id>` impede duplicar.
+async function ensureSubscriptionPayment(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  input: {
+    subscriptionId: number;
+    userId: number;
+    planId: number;
+    planName: string;
+    amountCents: number;
+    status: "pending" | "paid";
+    paidAt?: Date | null;
+    method?: "pix" | "manual";
+  }
+) {
+  const reference = `sub-${input.subscriptionId}`;
+  const [existing] = await db
+    .select({ id: payments.id, status: payments.status })
+    .from(payments)
+    .where(
+      and(eq(payments.provider, "manual"), eq(payments.providerReference, reference))
+    )
+    .limit(1);
+  if (existing) {
+    if (existing.status === "pending" && input.status === "paid") {
+      await db
+        .update(payments)
+        .set({
+          status: "paid",
+          amountCents: input.amountCents,
+          paidAt: input.paidAt ?? new Date(),
+          method: input.method ?? "pix",
+        })
+        .where(eq(payments.id, existing.id));
+    }
+    return existing.id;
+  }
+  const inserted = await db.insert(payments).values({
+    userId: input.userId,
+    subscriptionId: input.subscriptionId,
+    planId: input.planId,
+    description: `Plano ${input.planName}`.slice(0, 200),
+    amountCents: Math.max(0, Math.floor(input.amountCents)),
+    status: input.status,
+    method: input.method ?? "pix",
+    provider: "manual",
+    providerReference: reference,
+    dueAt: input.status === "pending" ? dueDateFrom() : null,
+    paidAt: input.status === "paid" ? (input.paidAt ?? new Date()) : null,
+  });
+  const id = Number(inserted[0].insertId);
+  await db
+    .update(payments)
+    .set({
+      invoiceNumber: `EM-${new Date().getUTCFullYear()}-${String(id).padStart(6, "0")}`,
+    })
+    .where(eq(payments.id, id));
+  return id;
+}
+
 export async function requestSubscription(userId: number, planId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -3105,6 +3166,15 @@ export async function requestSubscription(userId: number, planId: number) {
     source: "owner_request",
   });
   const id = Number(inserted[0].insertId);
+  if (plan.priceCents > 0)
+    await ensureSubscriptionPayment(db, {
+      subscriptionId: id,
+      userId,
+      planId,
+      planName: plan.name,
+      amountCents: plan.priceCents,
+      status: "pending",
+    });
   await writeAuditLog({
     actorUserId: userId,
     action: "subscription.requested",
@@ -3187,6 +3257,17 @@ export async function activateSubscription(input: {
     id = Number(inserted[0].insertId);
   }
   const paid = Math.max(0, Math.floor(input.paidCents ?? 0));
+  if (paid > 0 && id) {
+    await ensureSubscriptionPayment(db, {
+      subscriptionId: id,
+      userId: sub.userId,
+      planId: sub.planId,
+      planName: plan.name,
+      amountCents: paid,
+      status: "paid",
+      paidAt: now,
+    });
+  }
   if (paid > 0) {
     await db.insert(financeEntries).values({
       requestId: `subscription-${id}`,
@@ -3234,6 +3315,16 @@ export async function cancelSubscription(
         sub.status === "active" ? new Date() : sub.currentPeriodEndsAt,
     })
     .where(eq(subscriptions.id, subscriptionId));
+  await db
+    .update(payments)
+    .set({ status: "cancelled" })
+    .where(
+      and(
+        eq(payments.provider, "manual"),
+        eq(payments.providerReference, `sub-${subscriptionId}`),
+        eq(payments.status, "pending")
+      )
+    );
   await writeAuditLog({
     actorUserId,
     action: "subscription.cancelled",
@@ -3362,6 +3453,12 @@ export async function getOperationalCounts() {
     ),
     owners: await one(
       sql`SELECT COUNT(DISTINCT ownerId) AS total FROM profiles WHERE deletedAt IS NULL`
+    ),
+    followUps: await one(
+      sql`SELECT COUNT(*) AS total FROM crm_profiles WHERE nextFollowUpAt IS NOT NULL AND nextFollowUpAt <= ${new Date()}`
+    ),
+    overduePayments: await one(
+      sql`SELECT COUNT(*) AS total FROM payments WHERE status='pending' AND dueAt IS NOT NULL AND dueAt < ${new Date()}`
     ),
   };
 }

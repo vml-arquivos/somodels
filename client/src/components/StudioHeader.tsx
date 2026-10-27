@@ -52,9 +52,6 @@ export default function StudioHeader({
       >
         {nav.categories}
       </Link>
-      <Link href="/planos" onClick={close}>
-        Planos
-      </Link>
       <Link href="/como-anunciar" onClick={close}>
         Como anunciar
       </Link>

@@ -3995,3 +3995,82 @@
 :root.dark .od-delta.is-down {
   color: #ff8a7a;
 }
+
+/* Pacotes e verificação no painel do anunciante (v11) */
+.studio .od-plans {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  margin-bottom: 20px;
+}
+.studio .od-plan {
+  border: 1px solid var(--ep-line);
+  border-radius: 16px;
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  background: var(--ep-surface);
+}
+.studio .od-plan.is-featured {
+  border-color: var(--ep-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ep-accent) 18%, transparent);
+}
+.studio .od-plan-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.studio .od-plan-top h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.studio .od-plan .od-big {
+  margin: 0;
+}
+.studio .od-plan .od-btn {
+  justify-self: start;
+}
+.studio .od-custom-plan {
+  border-top: 1px solid var(--ep-line);
+  padding-top: 16px;
+}
+.studio .od-custom-plan textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: 10px 12px;
+  border: 1px solid var(--ep-line);
+  border-radius: 10px;
+  background: var(--ep-surface);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+.studio .od-verify-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin: 14px 0;
+}
+.studio .od-verify-slot {
+  border: 1px dashed var(--ep-line);
+  border-radius: 14px;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.studio .od-verify-slot.is-done {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--ep-accent) 50%, var(--ep-line));
+}
+.studio .od-verify-slot strong {
+  display: block;
+}
+.studio .od-verify-slot p {
+  margin: 0;
+}
+.studio .od-verify-slot progress {
+  width: 100%;
+}

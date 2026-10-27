@@ -56,7 +56,6 @@ export default function PublicFooter() {
         <div className="ep-footer-bottom">
           <span>{footer.signature}</span>
           <span>
-            <Link href="/planos">Planos</Link>
             <Link href="/como-anunciar">Como anunciar</Link>
             <Link href="/calculadora-de-ganhos">Calculadora de ganhos</Link>
             <a href="tel:100">Disque 100: denúncia de exploração sexual</a>

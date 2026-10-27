@@ -2,6 +2,7 @@ import { ENV, isAgeVerificationConfigured } from "./_core/env";
 import { readSiteSettings } from "./site-config";
 import { getPublicProfile } from "./db";
 import { isPublicIndexingEnabled } from "./public-indexing";
+import { readSeoOverrides } from "./seo-overrides";
 
 export type ServerSeo = {
   title: string;
@@ -162,10 +163,17 @@ export async function getServerSeo(pathname: string): Promise<ServerSeo> {
   });
 
   if (base) {
+    // Ajustes feitos no painel (título, descrição, imagem). Rotas privadas
+    // nunca são alteradas e uma página só pode ser marcada como "não indexar".
+    const custom = privateRoute ? null : await readSeoOverrides();
+    const page = custom?.pages[cleanPath];
     return {
       ...base,
+      ...(page?.title ? { title: page.title } : {}),
+      ...(page?.description ? { description: page.description } : {}),
+      ...(custom?.image && cleanPath === "/" ? { image: custom.image } : {}),
       canonical,
-      noindex: privateRoute || hasQuery || !indexable,
+      noindex: privateRoute || hasQuery || !indexable || page?.noindex === true,
     };
   }
 

@@ -16,6 +16,7 @@ import path from "node:path";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
+import { registerPanelRoutes } from "../panel-routes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic } from "./serve-static";
@@ -307,6 +308,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "140mb", extended: false }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  registerPanelRoutes(app);
   app.get("/api/media-preview/:id", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "private, no-store");

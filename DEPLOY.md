@@ -64,3 +64,13 @@ A homologação final deve ocorrer contra um MySQL/TiDB real com backup/restaura
 - Nova variável opcional: `REQUIRE_OWNER_PERSONAL_DATA` (padrão `true`). Com `true`, o titular precisa preencher nome completo, CPF e nascimento antes de publicar um anúncio pela primeira vez. Anúncios já publicados não são afetados. Use `false` para desligar a exigência.
 - O texto do contrato é um modelo e deve ser revisado por advogado antes de uso comercial.
 - Pagamentos podem ser registrados pelo endpoint `admin.recordPayment`; ainda não há tela de admin para isso.
+
+## Incremento 26/10/2026 — painel do administrador
+
+- Rodar a migração `0014_admin_crm` (só cria `crm_profiles`, `crm_notes` e `verification_documents`). Faça backup do banco antes do deploy.
+- Nenhuma variável de ambiente nova.
+- Documentos, selfie e vídeo de verificação ficam no armazenamento com a chave `verification/<id do usuário>/...`, que não é servida pelo endereço público. Só abrem pela rota `/api/verification-doc/:id` (dono ou administrador com permissão de identidade e MFA). O administrador pode apagar os arquivos ao aprovar.
+- Limites de envio: 8 MB por imagem e 40 MB por vídeo.
+- Não há conferência automática de rosto nem consulta a órgão externo; a análise é feita por uma pessoa da equipe.
+- Os textos de SEO editados no painel ficam em `site_settings` (id 2) e valem só para páginas públicas fixas.
+

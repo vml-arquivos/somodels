@@ -7,49 +7,66 @@ import {
 
 export const adminTabLabels = {
   overview: "Visão geral",
-  users: "Usuários",
+  advertisers: "Anunciantes",
+  identity: "Verificações",
   profiles: "Anúncios",
   moderation: "Moderação",
   reports: "Denúncias",
-  identity: "Verificações",
-  plans: "Planos e assinaturas",
+  plans: "Pacotes",
+  payments: "Pagamentos",
+  finance: "Caixa",
+  analytics: "Relatórios",
   messages: "Mensagens",
-  readiness: "Prontidão",
-  security: "Segurança",
-  finance: "Financeiro",
+  clients: "Clientes",
+  team: "Equipe",
   settings: "Página inicial",
+  seo: "SEO",
+  readiness: "Prontidão",
   audit: "Auditoria",
+  security: "Segurança",
 } as const;
 
 export type AdminTabKey = keyof typeof adminTabLabels;
 
 export const adminTabPaths: Record<AdminTabKey, string> = {
   overview: "/admin",
-  users: "/admin/usuarios",
+  advertisers: "/admin/anunciantes",
+  identity: "/admin/verificacoes",
   profiles: "/admin/anuncios",
   moderation: "/admin/moderacao",
   reports: "/admin/denuncias",
-  identity: "/admin/verificacoes",
-  plans: "/admin/planos",
-  messages: "/admin/mensagens",
-  readiness: "/admin/prontidao",
-  security: "/admin/seguranca",
+  plans: "/admin/pacotes",
+  payments: "/admin/pagamentos",
   finance: "/admin/financeiro",
+  analytics: "/admin/relatorios",
+  messages: "/admin/mensagens",
+  clients: "/admin/clientes",
+  team: "/admin/equipe",
   settings: "/admin/pagina-inicial",
+  seo: "/admin/seo",
+  readiness: "/admin/prontidao",
   audit: "/admin/auditoria",
+  security: "/admin/seguranca",
+};
+
+// Endereços antigos continuam funcionando (favoritos e links já enviados).
+export const adminLegacyPaths: Record<string, AdminTabKey> = {
+  "/admin/usuarios": "clients",
+  "/admin/planos": "plans",
 };
 
 export const adminNavigationSections = [
   { key: "principal", label: "Principal", items: ["overview"] },
-  { key: "people", label: "Pessoas", items: ["users"] },
   {
-    key: "content",
-    label: "Conteúdo",
-    items: ["profiles", "moderation", "identity", "reports"],
+    key: "advertisers",
+    label: "Anunciantes",
+    items: ["advertisers", "identity", "profiles", "moderation", "reports"],
   },
+  { key: "commercial", label: "Comercial", items: ["plans", "payments", "finance"] },
+  { key: "analytics", label: "Análises", items: ["analytics"] },
   { key: "support", label: "Atendimento", items: ["messages"] },
-  { key: "commercial", label: "Comercial", items: ["plans", "finance"] },
-  { key: "site", label: "Site", items: ["settings"] },
+  { key: "people", label: "Contas", items: ["clients", "team"] },
+  { key: "site", label: "Site", items: ["settings", "seo"] },
   {
     key: "system",
     label: "Sistema",
@@ -68,6 +85,8 @@ export type AdminOperationalCounts = {
   openReports: number;
   pendingSubscriptions: number;
   newMessages: number;
+  followUps: number;
+  overduePayments: number;
 };
 
 export type AdminNavigationBadgeCounts = Partial<Record<AdminTabKey, number>>;
@@ -133,6 +152,10 @@ export function adminNavigationBadges(
     result.plans = Number(counts.pendingSubscriptions ?? 0);
   if (hasAnyScope(granted, ["messages"]))
     result.messages = Number(counts.newMessages ?? 0);
+  if (hasAnyScope(granted, ["users:read"]))
+    result.advertisers = Number(counts.followUps ?? 0);
+  if (hasAnyScope(granted, ["finance:read", "plans"]))
+    result.payments = Number(counts.overduePayments ?? 0);
   return result;
 }
 
@@ -141,7 +164,7 @@ export function adminTabFromPath(path: string): AdminTabKey | null {
   const entry = (Object.entries(adminTabPaths) as [AdminTabKey, string][]).find(
     ([, candidate]) => candidate === normalized
   );
-  return entry?.[0] ?? null;
+  return entry?.[0] ?? adminLegacyPaths[normalized] ?? null;
 }
 
 export function adminPathForTab(tab: AdminTabKey) {

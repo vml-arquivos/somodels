@@ -10,6 +10,7 @@ import {
   ownerPersonalSchema,
   ownerPersonalUpdateSchema,
 } from "@shared/owner-account";
+import VerificationCard from "./Verification";
 import {
   Badge,
   Card,
@@ -18,16 +19,7 @@ import {
   OIcon,
   PageHead,
   fmtDateTime,
-  type Tone,
 } from "./ui";
-
-const identityLabels: Record<string, { label: string; tone: Tone }> = {
-  pending: { label: "Em análise", tone: "warn" },
-  approved: { label: "Identidade verificada", tone: "ok" },
-  rejected: { label: "Verificação recusada", tone: "bad" },
-  expired: { label: "Verificação expirada", tone: "bad" },
-  error: { label: "Erro na verificação", tone: "bad" },
-};
 
 function PersonalForm() {
   const utils = trpc.useUtils();
@@ -315,63 +307,6 @@ function AccountForm({ user }: { user: any }) {
   );
 }
 
-function IdentityCard() {
-  const identity = trpc.profiles.identity.useQuery();
-  const request = trpc.profiles.requestIdentity.useMutation({
-    onSuccess: async () => {
-      toast.success(
-        "Solicitação enviada. A equipe entrará em contato por e-mail."
-      );
-      await identity.refetch();
-    },
-    onError: error => toast.error(error.message),
-  });
-  const row = identity.data;
-  const expired = Boolean(
-    row?.status === "approved" &&
-      row.expiresAt &&
-      new Date(row.expiresAt) <= new Date()
-  );
-  const status = expired ? "expired" : row?.status;
-  const canRequest =
-    !row || status === "rejected" || status === "expired" || status === "error";
-  const info = status ? identityLabels[status] : null;
-  return (
-    <Card
-      kicker="Segurança"
-      title="Verificação de identidade"
-      action={
-        info ? (
-          <Badge tone={info.tone}>{info.label}</Badge>
-        ) : (
-          <Badge>Não solicitada</Badge>
-        )
-      }
-    >
-      <p className="od-muted">
-        A verificação só é pedida quando necessário. Você pode preencher e
-        salvar seus anúncios enquanto aguarda; nenhum documento é publicado.
-      </p>
-      {row?.status === "rejected" && row.reviewReason && (
-        <p className="od-error" role="alert">
-          Motivo informado: {row.reviewReason}
-        </p>
-      )}
-      {canRequest && (
-        <button
-          type="button"
-          className="od-btn"
-          disabled={request.isPending}
-          onClick={() => request.mutate()}
-        >
-          <OIcon name="shield" size={16} />{" "}
-          {request.isPending ? "Enviando…" : "Solicitar verificação"}
-        </button>
-      )}
-    </Card>
-  );
-}
-
 export default function Personal({ user }: { user: any }) {
   return (
     <>
@@ -382,7 +317,7 @@ export default function Personal({ user }: { user: any }) {
       <div className="od-stack">
         <PersonalForm />
         <AccountForm user={user} />
-        <IdentityCard />
+        <VerificationCard />
         <Card kicker="Privacidade" title="Dados e encerramento da conta">
           <p className="od-muted">
             Veja como tratamos seus dados, peça cópia ou encerre a conta.

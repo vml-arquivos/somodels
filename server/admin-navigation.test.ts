@@ -22,9 +22,10 @@ describe("navegação administrativa", () => {
     ).toEqual([
       { section: "Principal", items: ["overview"] },
       {
-        section: "Conteúdo",
-        items: ["profiles", "moderation", "identity", "reports"],
+        section: "Anunciantes",
+        items: ["identity", "profiles", "moderation", "reports"],
       },
+      { section: "Análises", items: ["analytics"] },
       { section: "Sistema", items: ["security"] },
     ]);
   });
@@ -34,9 +35,10 @@ describe("navegação administrativa", () => {
       shape(resolveAdminScopes({ role: "admin", adminFunction: "support" }))
     ).toEqual([
       { section: "Principal", items: ["overview"] },
-      { section: "Pessoas", items: ["users"] },
-      { section: "Conteúdo", items: ["profiles"] },
+      { section: "Anunciantes", items: ["advertisers", "profiles"] },
+      { section: "Análises", items: ["analytics"] },
       { section: "Atendimento", items: ["messages"] },
+      { section: "Contas", items: ["clients", "team"] },
       { section: "Sistema", items: ["security"] },
     ]);
   });
@@ -46,9 +48,10 @@ describe("navegação administrativa", () => {
       shape(resolveAdminScopes({ role: "admin", adminFunction: "finance" }))
     ).toEqual([
       { section: "Principal", items: ["overview"] },
-      { section: "Pessoas", items: ["users"] },
-      { section: "Conteúdo", items: ["profiles"] },
-      { section: "Comercial", items: ["plans", "finance"] },
+      { section: "Anunciantes", items: ["advertisers", "profiles"] },
+      { section: "Comercial", items: ["plans", "payments", "finance"] },
+      { section: "Análises", items: ["analytics"] },
+      { section: "Contas", items: ["clients", "team"] },
       { section: "Sistema", items: ["security"] },
     ]);
   });
@@ -58,9 +61,10 @@ describe("navegação administrativa", () => {
       shape(resolveAdminScopes({ role: "admin", adminFunction: "auditor" }))
     ).toEqual([
       { section: "Principal", items: ["overview"] },
-      { section: "Pessoas", items: ["users"] },
-      { section: "Conteúdo", items: ["profiles"] },
-      { section: "Comercial", items: ["finance"] },
+      { section: "Anunciantes", items: ["advertisers", "profiles"] },
+      { section: "Comercial", items: ["payments", "finance"] },
+      { section: "Análises", items: ["analytics"] },
+      { section: "Contas", items: ["clients", "team"] },
       { section: "Sistema", items: ["readiness", "audit", "security"] },
     ]);
   });
@@ -68,14 +72,15 @@ describe("navegação administrativa", () => {
   it("mantém acesso completo e não cria seção vazia", () => {
     expect(shape(adminScopes)).toEqual([
       { section: "Principal", items: ["overview"] },
-      { section: "Pessoas", items: ["users"] },
       {
-        section: "Conteúdo",
-        items: ["profiles", "moderation", "identity", "reports"],
+        section: "Anunciantes",
+        items: ["advertisers", "identity", "profiles", "moderation", "reports"],
       },
+      { section: "Comercial", items: ["plans", "payments", "finance"] },
+      { section: "Análises", items: ["analytics"] },
       { section: "Atendimento", items: ["messages"] },
-      { section: "Comercial", items: ["plans", "finance"] },
-      { section: "Site", items: ["settings"] },
+      { section: "Contas", items: ["clients", "team"] },
+      { section: "Site", items: ["settings", "seo"] },
       { section: "Sistema", items: ["readiness", "audit", "security"] },
     ]);
   });
@@ -101,6 +106,8 @@ describe("navegação administrativa", () => {
       openReports: 5,
       pendingSubscriptions: 6,
       newMessages: 7,
+      followUps: 8,
+      overduePayments: 9,
     };
     expect(
       adminNavigationBadges(
@@ -113,13 +120,22 @@ describe("navegação administrativa", () => {
         resolveAdminScopes({ role: "admin", adminFunction: "support" }),
         counts
       )
-    ).toEqual({ profiles: 2, messages: 7 });
+    ).toEqual({ profiles: 2, messages: 7, advertisers: 8 });
+    expect(
+      adminNavigationBadges(
+        resolveAdminScopes({ role: "admin", adminFunction: "finance" }),
+        counts
+      )
+    ).toEqual({ profiles: 2, plans: 6, advertisers: 8, payments: 9 });
   });
 
   it("normaliza URLs diretas e rejeita slugs desconhecidos", () => {
     expect(adminTabFromPath("/admin")).toBe("overview");
     expect(adminTabFromPath("/admin/anuncios/?from=menu")).toBe("profiles");
     expect(adminTabFromPath("/admin/seguranca")).toBe("security");
+    expect(adminTabFromPath("/admin/usuarios")).toBe("clients");
+    expect(adminTabFromPath("/admin/planos")).toBe("plans");
+    expect(adminTabFromPath("/admin/relatorios")).toBe("analytics");
     expect(adminTabFromPath("/admin/nao-existe")).toBeNull();
     expect(adminPathForTab("reports")).toBe("/admin/denuncias");
   });

@@ -21,7 +21,8 @@ describe("migration 0013 (área do anunciante)", () => {
     for (const entry of journal.entries)
       expect(existsSync(path.join(root, "drizzle", `${entry.tag}.sql`))).toBe(true);
     const tags = journal.entries.map((entry: { tag: string }) => entry.tag);
-    expect(tags.at(-1)).toBe("0013_owner_area");
+    expect(tags).toContain("0013_owner_area");
+    expect(tags.at(-1)).toBe("0014_admin_crm");
     const whens = journal.entries.map((entry: { when: number }) => entry.when);
     expect([...whens].sort((a, b) => a - b)).toEqual(whens);
   });

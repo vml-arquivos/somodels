@@ -114,15 +114,18 @@ export default function UsersManager({
   onOpenProfile,
   canWrite = true,
   canDelete = true,
+  lockGroup,
 }: {
   actor: { id: number; role: string };
   onOpenProfile: (profileId: number) => void;
   canWrite?: boolean;
   canDelete?: boolean;
+  /** Mostra só um tipo de conta (Clientes ou Equipe), sem as abas de troca. */
+  lockGroup?: Group;
 }) {
   const utils = trpc.useUtils();
   const canManageAdmins = canWrite && ["dev", "super_admin"].includes(actor.role);
-  const [group, setGroup] = useState<Group>("owners");
+  const [group, setGroup] = useState<Group>(lockGroup ?? "owners");
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "suspended">("all");
@@ -299,10 +302,26 @@ export default function UsersManager({
     <div className="um">
       <header className="um-head">
         <div>
-          <p className="studio-kicker">Pessoas e acessos</p>
-          <h2>Contas da plataforma</h2>
+          <p className="studio-kicker">
+            {lockGroup === "admins"
+              ? "Equipe"
+              : lockGroup === "clients"
+                ? "Clientes"
+                : "Pessoas e acessos"}
+          </p>
+          <h2>
+            {lockGroup === "admins"
+              ? "Equipe administrativa"
+              : lockGroup === "clients"
+                ? "Contas de clientes"
+                : "Contas da plataforma"}
+          </h2>
           <p className="studio-muted">
-            Clientes, titulares e administradores ficam em áreas separadas.
+            {lockGroup === "admins"
+              ? "Quem administra a plataforma e o que cada função pode fazer."
+              : lockGroup === "clients"
+                ? "Pessoas que só navegam. Anunciantes ficam na área Anunciantes."
+                : "Clientes, titulares e administradores ficam em áreas separadas."}
           </p>
         </div>
         {summary.data && summary.data.suspended > 0 && (
@@ -319,7 +338,12 @@ export default function UsersManager({
         )}
       </header>
 
-      <div className="um-groups" role="tablist" aria-label="Tipo de conta">
+      {!lockGroup && (
+      <div
+        className="um-groups"
+        role="tablist"
+        aria-label="Tipo de conta"
+      >
         {groups.map(item => (
           <button
             key={item.key}
@@ -337,6 +361,7 @@ export default function UsersManager({
           </button>
         ))}
       </div>
+      )}
 
       <div className={`um-body ${showDetail ? "has-detail" : ""}`}>
         <section className="um-list" aria-label={currentGroup.label}>

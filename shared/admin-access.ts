@@ -113,18 +113,23 @@ export function hasAnyScope(
 // Áreas do painel: quais permissões liberam cada aba (vazio = qualquer admin).
 export const adminTabScopes: Record<string, readonly AdminScope[]> = {
   overview: [],
-  users: ["users:read"],
+  advertisers: ["users:read"],
+  identity: ["identity"],
   profiles: ["profiles:read"],
   moderation: ["moderation"],
   reports: ["reports"],
-  identity: ["identity"],
   plans: ["plans"],
-  messages: ["messages"],
-  readiness: ["readiness"],
-  security: [],
+  payments: ["finance:read", "plans"],
   finance: ["finance:read"],
+  analytics: ["users:read", "profiles:read", "finance:read", "plans", "identity"],
+  messages: ["messages"],
+  clients: ["users:read"],
+  team: ["users:read"],
   settings: ["settings"],
+  seo: ["settings"],
+  readiness: ["readiness"],
   audit: ["audit"],
+  security: [],
 };
 
 export type AdminTabKey = keyof typeof adminTabScopes;

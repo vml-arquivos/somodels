@@ -1,4 +1,5 @@
-import { Link } from "wouter";
+import { useState } from "react";
+import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import {
   Badge,
@@ -40,6 +41,125 @@ const subStatus: Record<string, string> = {
   past_due: "Em atraso",
 };
 
+function Packages({ currentName }: { currentName: string | null }) {
+  const utils = trpc.useUtils();
+  const plans = trpc.plans.list.useQuery();
+  const mine = trpc.plans.mine.useQuery();
+  const [custom, setCustom] = useState("");
+  const pending = new Set(
+    (mine.data ?? []).filter(s => s.status === "pending").map(s => s.planName)
+  );
+  const refresh = () =>
+    Promise.all([
+      utils.plans.mine.invalidate(),
+      utils.owner.plan.invalidate(),
+      utils.owner.payments.invalidate(),
+      utils.owner.overview.invalidate(),
+    ]);
+  const request = trpc.plans.request.useMutation({
+    onSuccess: async result => {
+      toast.success(
+        result.duplicate
+          ? "Você já tem um pedido em andamento para este pacote."
+          : "Pedido enviado. A equipe combina o Pix com você e ativa o pacote depois da confirmação."
+      );
+      await refresh();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const ask = trpc.owner.requestCustomPlan.useMutation({
+    onSuccess: async () => {
+      toast.success("Pedido enviado. A equipe retorna com uma proposta.");
+      setCustom("");
+    },
+    onError: error => toast.error(error.message),
+  });
+  return (
+    <Card kicker="Contratar" title="Pacotes para anunciar">
+      <div id="pacotes" className="od-plans">
+        {(plans.data ?? []).map(item => {
+          const isCurrent = currentName === item.name;
+          const isPending = pending.has(item.name);
+          return (
+            <article
+              key={item.id}
+              className={`od-plan ${item.isFeatured ? "is-featured" : ""}`}
+            >
+              <div className="od-plan-top">
+                <h3>{item.name}</h3>
+                {item.isFeatured && <Badge tone="info">Destaque</Badge>}
+              </div>
+              <p className="od-big">
+                {item.priceCents ? brl(item.priceCents) : "Grátis"}
+                <small>
+                  {item.durationDays ? ` · ${item.durationDays} dias` : ""}
+                </small>
+              </p>
+              {item.description && <p className="od-muted">{item.description}</p>}
+              <ul className="od-benefits">
+                {item.benefits.map(benefit => (
+                  <li key={benefit}>
+                    <OIcon name="check" size={16} /> {benefit}
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className={`od-btn ${isCurrent || isPending ? "" : "is-primary"}`}
+                disabled={isCurrent || isPending || request.isPending}
+                onClick={() => request.mutate({ planId: item.id })}
+              >
+                {isCurrent
+                  ? "Pacote atual"
+                  : isPending
+                    ? "Pedido em andamento"
+                    : "Contratar"}
+              </button>
+            </article>
+          );
+        })}
+        {plans.data && plans.data.length === 0 && (
+          <p className="od-muted">
+            Os pacotes serão liberados em breve. Se quiser, descreva abaixo o que precisa.
+          </p>
+        )}
+      </div>
+      <form
+        className="od-form od-custom-plan"
+        onSubmit={event => {
+          event.preventDefault();
+          ask.mutate({ message: custom });
+        }}
+      >
+        <label className="is-wide">
+          <strong>Precisa de algo diferente?</strong>
+          <small className="od-muted">
+            Conte quantos anúncios, quais cidades e o que você quer de destaque. A equipe monta um
+            pacote personalizado e envia a proposta.
+          </small>
+          <textarea
+            rows={3}
+            minLength={10}
+            maxLength={1500}
+            value={custom}
+            onChange={event => setCustom(event.target.value)}
+            placeholder="Ex.: quero 2 anúncios em destaque em Brasília por 3 meses."
+          />
+        </label>
+        <div className="od-form-actions is-wide">
+          <button
+            type="submit"
+            className="od-btn"
+            disabled={ask.isPending || custom.trim().length < 10}
+          >
+            {ask.isPending ? "Enviando…" : "Pedir pacote personalizado"}
+          </button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
 export default function Billing() {
   const plan = trpc.owner.plan.useQuery();
   const payments = trpc.owner.payments.useQuery();
@@ -58,9 +178,9 @@ export default function Billing() {
         title="Plano e pagamentos"
         subtitle="Seu plano atual, o histórico de assinaturas e todos os pagamentos da conta."
         actions={
-          <Link className="od-btn" href="/planos">
-            Ver planos disponíveis
-          </Link>
+          <a className="od-btn" href="#pacotes">
+            Ver pacotes
+          </a>
         }
       />
       {!plan.data.paymentsEnabled && (
@@ -113,6 +233,8 @@ export default function Billing() {
           </p>
         </Card>
       </div>
+
+      <Packages currentName={current?.planName ?? null} />
 
       <Card kicker="Financeiro" title="Histórico de pagamentos">
         {rows.length === 0 ? (

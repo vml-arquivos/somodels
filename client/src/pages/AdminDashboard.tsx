@@ -16,6 +16,15 @@ import Seo from "@/components/Seo";
 import MfaPanel from "@/components/MfaPanel";
 import UsersManager from "@/components/admin/UsersManager";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import Overview from "./admin/Overview";
+import Advertisers from "./admin/Advertisers";
+import Verifications from "./admin/Verifications";
+import Payments from "./admin/Payments";
+import Reports from "./admin/Reports";
+import SeoPanel from "./admin/SeoPanel";
+import PlanShowcase from "./admin/PlanShowcase";
+import CommandPalette from "./admin/CommandPalette";
+import { Head } from "./admin/kit";
 import {
   adminFunctions,
   allowedAdminTabs,
@@ -25,6 +34,7 @@ import {
 import {
   adminPathForTab,
   adminTabFromPath,
+  adminTabLabels,
   type AdminNavigationBadgeCounts,
   type AdminTabKey,
 } from "@shared/admin-navigation";
@@ -52,7 +62,6 @@ export default function AdminDashboard() {
     >("all"),
     [auditPage, setAuditPage] = useState(0);
   const [reportDecision, setReportDecision] = useState("");
-  const [identityReason, setIdentityReason] = useState("");
   const emptyPlan = {
     id: undefined as number | undefined,
     code: "",
@@ -100,7 +109,19 @@ export default function AdminDashboard() {
     visibleTabs.includes(tab);
   const navigationCounts = trpc.management.navigationCounts.useQuery(undefined, {
     enabled: dashboardReady,
+    refetchInterval: 60_000,
   });
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen(open => !open);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const navigateToTab = (next: AdminTabKey) => {
     setTab(next);
     setLocation(adminPathForTab(next));
@@ -134,9 +155,6 @@ export default function AdminDashboard() {
     }
     if (tab !== requested) setTab(requested);
   }, [allowed, location, mfaPending, tab, visibleTabs.join("|")]);
-  const overview = trpc.management.overview.useQuery(undefined, {
-    enabled: dashboardReady && tab === "overview",
-  });
   const profiles = trpc.admin.profiles.useQuery(
     { search: profileSearch || undefined, lifecycle: profileLifecycle },
     { enabled: dashboardReady && (tab === "profiles" || tab === "moderation") }
@@ -158,16 +176,6 @@ export default function AdminDashboard() {
   });
   const reports = trpc.safety.adminReports.useQuery(undefined, {
     enabled: dashboardReady && tab === "reports",
-  });
-  const identityQueue = trpc.admin.identityQueue.useQuery(
-    { status: "pending" },
-    { enabled: dashboardReady && tab === "identity" }
-  );
-  const reviewIdentity = trpc.admin.reviewIdentity.useMutation({
-    onSuccess: async () => {
-      setIdentityReason("");
-      await identityQueue.refetch();
-    },
   });
   const plansQuery = trpc.admin.plans.useQuery(undefined, {
     enabled: dashboardReady && tab === "plans",
@@ -330,6 +338,19 @@ export default function AdminDashboard() {
       <StudioHeader minimal>
         <button onClick={() => logout()}>Sair</button>
       </StudioHeader>
+      {paletteOpen && allowed && dashboardReady && (
+        <CommandPalette
+          tabs={visibleTabs}
+          onTab={navigateToTab}
+          onAdvertiser={id => setLocation(`/admin/anunciantes?u=${id}`)}
+          onClient={() => navigateToTab("clients")}
+          onProfile={id => {
+            chooseProfile(id);
+            navigateToTab("profiles");
+          }}
+          onClose={() => setPaletteOpen(false)}
+        />
+      )}
       <div
         className={`ad-layout ${sidebarCollapsed ? "is-collapsed" : ""} ${
           allowed ? "" : "ad-layout-plain"
@@ -349,23 +370,30 @@ export default function AdminDashboard() {
         )}
         <div className="ad-content">
           <main className="studio-main ad-main">
-        <div className="studio-title ad-page-header">
+        <div className="adm-top">
           <div>
             <p className="studio-kicker">
               Administração · {functionLabel || user?.role || "acesso restrito"}
             </p>
-            <h1>Visão completa. Controle claro.</h1>
-            <p className="studio-muted">
-              Contas, anúncios de acompanhantes e registros da plataforma.
-            </p>
+            <h1 className="adm-sr">{adminTabLabels[tab]}</h1>
           </div>
-          <div className="studio-actions">
+          <div className="adm-head-actions">
+            {allowed && (
+              <button
+                type="button"
+                className="adm-btn"
+                onClick={() => setPaletteOpen(true)}
+                aria-label="Busca rápida (Ctrl+K)"
+              >
+                Buscar <span className="adm-kbd">Ctrl K</span>
+              </button>
+            )}
             {(!user || can("profiles:write") || !allowed) && (
-              <Link className="studio-cta" href="/admin/portfolio/novo">
+              <Link className="adm-btn is-primary" href="/admin/portfolio/novo">
                 Criar anúncio para um titular
               </Link>
             )}
-            <Link href="/alterar-senha?returnTo=/admin">
+            <Link className="adm-btn is-ghost" href="/alterar-senha?returnTo=/admin">
               Alterar minha senha
             </Link>
           </div>
@@ -391,86 +419,37 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <>
-            {tab === "overview" && (
-              <>
-                <Failure error={overview.error} />
-                {overview.isLoading ? (
-                  <p>Carregando indicadores…</p>
-                ) : (
-                  overview.data && (
-                    <>
-                      <div className="studio-stats">
-                        {[
-                          ["Contas", overview.data.accounts.total],
-                          ["Ativas", overview.data.accounts.active],
-                          ["Suspensas", overview.data.accounts.suspended],
-                          ["Anúncios", overview.data.portfolio.total],
-                          [
-                            "Publicados e revisados",
-                            overview.data.portfolio.published,
-                          ],
-                          [
-                            "Aguardando revisão",
-                            overview.data.portfolio.pending,
-                          ],
-                        ].map(([label, value]) => (
-                          <article className="studio-panel" key={String(label)}>
-                            <span>{label}</span>
-                            <strong>{Number(value || 0)}</strong>
-                          </article>
-                        ))}
-                      </div>
-                      <div className="studio-split">
-                        <section className="studio-panel">
-                          <h2>Localizações</h2>
-                          {overview.data.cities.length ? (
-                            overview.data.cities.map(c => (
-                              <div className="studio-row" key={c.label}>
-                                <span>{c.label}</span>
-                                <strong>{c.total}</strong>
-                              </div>
-                            ))
-                          ) : (
-                            <p>Sem anúncios cadastrados.</p>
-                          )}
-                        </section>
-                        <section className="studio-panel">
-                          <h2>Situação dos anúncios</h2>
-                          {overview.data.states.map(s => (
-                            <div className="studio-row" key={s.label}>
-                              <span>{s.label}</span>
-                              <strong>{s.total}</strong>
-                            </div>
-                          ))}
-                          <h3>Áreas de atuação</h3>
-                          {overview.data.types.map(t => (
-                            <div className="studio-row" key={t.label}>
-                              <span>{t.label}</span>
-                              <strong>{t.total}</strong>
-                            </div>
-                          ))}
-                          <p className="studio-muted">
-                            Registros antigos permanecem auditáveis. Apenas
-                            anúncios revisados podem aparecer na vitrine.
-                          </p>
-                        </section>
-                      </div>
-                    </>
-                  )
-                )}
-              </>
+            {tab === "overview" && <Overview go={navigateToTab} />}
+            {tab === "advertisers" && (
+              <Advertisers
+                scopes={scopes}
+                onOpenProfile={profileId => {
+                  chooseProfile(profileId);
+                  navigateToTab("profiles");
+                }}
+                onOpenTab={path => setLocation(path)}
+              />
             )}
-            {tab === "users" && user && (
+            {(tab === "clients" || tab === "team") && user && (
               <UsersManager
                 actor={{ id: user.id, role: user.role }}
                 canWrite={can("users:write")}
                 canDelete={can("users:delete")}
+                lockGroup={tab === "team" ? "admins" : "clients"}
                 onOpenProfile={profileId => {
                   chooseProfile(profileId);
                   navigateToTab("profiles");
                 }}
               />
             )}
+            {tab === "payments" && (
+              <Payments
+                scopes={scopes}
+                onOpenAdvertiser={id => setLocation(`/admin/anunciantes?u=${id}`)}
+              />
+            )}
+            {tab === "analytics" && <Reports scopes={scopes} />}
+            {tab === "seo" && <SeoPanel />}
             {(tab === "profiles" || tab === "moderation") && (
               <>
                 {tab === "profiles" && (
@@ -1038,8 +1017,9 @@ export default function AdminDashboard() {
                 )}
               </section>
             )}
+            {tab === "plans" && <PlanShowcase />}
             {tab === "plans" && (
-              <section className="studio-panel">
+              <section className="studio-panel" style={{ marginTop: 20, width: "100%", maxWidth: "none", boxSizing: "border-box" }}>
                 <div className="studio-title">
                   <div>
                     <p className="studio-kicker">Receita</p>
@@ -1209,93 +1189,9 @@ export default function AdminDashboard() {
             )}
             {tab === "security" && <MfaPanel />}
             {tab === "identity" && (
-              <section className="studio-panel">
-                <div className="studio-title">
-                  <div>
-                    <p className="studio-kicker">Trust &amp; Safety</p>
-                    <h2>Verificações de identidade</h2>
-                    <p className="studio-muted">
-                      Confirme o titular em videochamada reservada, comparando
-                      documento e rosto ao vivo. Não armazene nem anexe documentos
-                      aqui. Aprovações valem por 12 meses e ficam auditadas; você
-                      não pode analisar a sua própria verificação.
-                    </p>
-                  </div>
-                </div>
-                <Failure error={identityQueue.error || reviewIdentity.error} />
-                <label>
-                  Motivo (obrigatório para recusar)
-                  <textarea
-                    rows={2}
-                    maxLength={500}
-                    value={identityReason}
-                    onChange={event => setIdentityReason(event.target.value)}
-                    placeholder="Ex.: documento ilegível; rosto não confere; faltou comparecer à chamada."
-                  />
-                </label>
-                {identityQueue.isLoading ? (
-                  <p>Carregando solicitações…</p>
-                ) : !identityQueue.data?.length ? (
-                  <p>Nenhuma verificação pendente.</p>
-                ) : (
-                  <div className="studio-table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Titular</th>
-                          <th>E-mail</th>
-                          <th>Solicitada</th>
-                          <th>Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {identityQueue.data.map(item => (
-                          <tr key={item.id}>
-                            <td>
-                              #{item.userId} {item.userName || "Sem nome"}
-                            </td>
-                            <td>{item.userEmail || "—"}</td>
-                            <td>{date(item.createdAt)}</td>
-                            <td>
-                              <div className="studio-actions">
-                                <button
-                                  className="primary"
-                                  disabled={reviewIdentity.isPending}
-                                  onClick={() =>
-                                    reviewIdentity.mutate({
-                                      id: item.id,
-                                      decision: "approved",
-                                      reason: identityReason || undefined,
-                                    })
-                                  }
-                                >
-                                  Aprovar
-                                </button>
-                                <button
-                                  className="danger"
-                                  disabled={
-                                    reviewIdentity.isPending ||
-                                    identityReason.trim().length < 5
-                                  }
-                                  onClick={() =>
-                                    reviewIdentity.mutate({
-                                      id: item.id,
-                                      decision: "rejected",
-                                      reason: identityReason,
-                                    })
-                                  }
-                                >
-                                  Recusar
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
+              <Verifications
+                onOpenAdvertiser={id => setLocation(`/admin/anunciantes?u=${id}`)}
+              />
             )}
             {tab === "settings" && (
               <div className="studio-split">

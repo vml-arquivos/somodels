@@ -796,3 +796,70 @@ export const payments = mysqlTable(
 export type OwnerAccount = typeof ownerAccounts.$inferSelect;
 export type OwnerMedia = typeof ownerMedia.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
+
+// CRM dos anunciantes: etapa do funil, etiquetas e próximo contato.
+export const crmProfiles = mysqlTable(
+  "crm_profiles",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull(),
+    stage: varchar("stage", { length: 20 }).default("novo").notNull(),
+    tags: text("tags"),
+    nextFollowUpAt: timestamp("nextFollowUpAt"),
+    updatedBy: int("updatedBy"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    userIdx: uniqueIndex("crm_profiles_user_unique").on(table.userId),
+    stageIdx: index("crm_profiles_stage_idx").on(table.stage),
+    followUpIdx: index("crm_profiles_followup_idx").on(table.nextFollowUpAt),
+  })
+);
+
+// Anotações e contatos registrados pela equipe sobre cada anunciante.
+export const crmNotes = mysqlTable(
+  "crm_notes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull(),
+    authorId: int("authorId"),
+    kind: varchar("kind", { length: 16 }).default("nota").notNull(),
+    body: varchar("body", { length: 2000 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    userIdx: index("crm_notes_user_idx").on(table.userId, table.createdAt),
+  })
+);
+
+// Arquivos enviados para a verificação de identidade (documento, selfie, vídeo).
+// Ficam privados e só a própria pessoa e a equipe autorizada conseguem abrir.
+export const verificationDocuments = mysqlTable(
+  "verification_documents",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull(),
+    verificationId: int("verificationId"),
+    kind: varchar("kind", { length: 16 }).notNull(),
+    storageKey: text("storageKey").notNull(),
+    storageHash: varchar("storageHash", { length: 128 }).notNull(),
+    mimeType: varchar("mimeType", { length: 120 }).notNull(),
+    sizeBytes: int("sizeBytes").default(0).notNull(),
+    deletedAt: timestamp("deletedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    hashIdx: uniqueIndex("verification_documents_hash_unique").on(
+      table.storageHash
+    ),
+    userIdx: index("verification_documents_user_idx").on(
+      table.userId,
+      table.deletedAt
+    ),
+  })
+);
+
+export type CrmProfile = typeof crmProfiles.$inferSelect;
+export type CrmNote = typeof crmNotes.$inferSelect;
+export type VerificationDocument = typeof verificationDocuments.$inferSelect;

@@ -1,25 +1,29 @@
-feat: painel completo do anunciante com dados pessoais e biblioteca de mídia
+feat: painel do administrador refeito com CRM, verificação de documentos, pagamentos, relatórios e SEO
 
 Painel
-- a área /titular agora tem menu: visão geral, meus anúncios, biblioteca, plano e pagamentos, dados pessoais, contrato e atividade
-- visão geral com alertas, passo a passo, visitas e contatos dos últimos 30 dias, gráfico, plano e lista dos anúncios
-- no celular o menu vira abas que rolam para o lado
+- menu lateral por assunto, com números do que está esperando e busca rápida (Ctrl+K)
+- visão geral com o que precisa de atenção hoje e os números dos últimos 30 dias
+- clientes e equipe em telas separadas; as telas antigas continuam funcionando
 
-Dados pessoais
-- nome completo, CPF, nascimento, telefone e endereço ficam na conta, separados do anúncio
-- CPF guardado criptografado, aparece mascarado e não repete em outra conta
-- nome e idade do anúncio continuam livres
-- para publicar o primeiro anúncio é preciso preencher os dados pessoais (REQUIRE_OWNER_PERSONAL_DATA); anúncios que já estão no ar continuam no ar
+Anunciantes
+- lista com etapa, etiquetas, próximo retorno e anotações
+- ficha com resumo, dados, anúncios, financeiro, documentos, anotações, atividade e conta
+- CPF completo só quando o administrador pede, com registro na auditoria
 
-Biblioteca de mídia
-- envio de várias fotos e vídeos de uma vez, com nome editável e filtros
-- escolher quais arquivos vão para cada anúncio sem enviar de novo
-- os arquivos só ficam públicos depois de usados em um anúncio
+Verificação
+- o anunciante envia documento, selfie e vídeo, em arquivos privados
+- fila de análise com dados ao lado dos arquivos, idade e lista de conferência
+- aprovar só com tudo conferido; recusar com motivo; opção de apagar os arquivos
 
-Contrato, plano e histórico
-- contrato com os dados do titular, aceite com data e versão, impressão
-- plano atual, histórico de assinaturas e de pagamentos (tudo pronto para quando houver cobrança)
-- histórico das ações da conta
+Pagamentos e relatórios
+- pago, aguardando, atrasado, falhou, reembolsado e cancelado, com filtros e exportação em CSV
+- cobrança criada sozinha ao pedir ou ativar um pacote
+- relatórios por período: quem anunciou e quando, pagamentos, verificações, anúncios e denúncias
+
+Pacotes e SEO
+- vitrine de pacotes para o anunciante em /titular/plano, com contratação e pedido personalizado
+- "Planos" saiu do menu e do rodapé do site
+- título, descrição e indexação por página pública, com prévia do Google
 
 Banco
-- migração 0013 cria as tabelas owner_accounts, owner_media e payments; não altera nada que já existe
+- migração 0014 cria crm_profiles, crm_notes e verification_documents; não altera nada que já existe

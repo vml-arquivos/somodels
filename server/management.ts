@@ -49,7 +49,8 @@ const paging = z
     kind: z.enum(["all", "clients", "owners", "admins", "system"]).default("all"),
   })
   .default({ page: 0, search: "", status: "all", kind: "all" });
-const hasProfileSql = sql`EXISTS (SELECT 1 FROM profiles pr WHERE pr.ownerId = users.id AND pr.deletedAt IS NULL)`;
+// Anunciante = quem já tem anúncio, dados pessoais, plano, verificação ou ficha no CRM.
+const hasProfileSql = sql`(EXISTS (SELECT 1 FROM profiles pr WHERE pr.ownerId = users.id AND pr.deletedAt IS NULL) OR EXISTS (SELECT 1 FROM owner_accounts oa WHERE oa.userId = users.id) OR EXISTS (SELECT 1 FROM subscriptions sb WHERE sb.userId = users.id) OR EXISTS (SELECT 1 FROM identity_verifications iv WHERE iv.userId = users.id) OR EXISTS (SELECT 1 FROM crm_profiles cp WHERE cp.userId = users.id))`;
 const accountKindWhere = (kind: string) => {
   switch (kind) {
     case "clients":

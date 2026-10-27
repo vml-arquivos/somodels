@@ -28,6 +28,13 @@ import {
 } from "../shared/account-terms";
 import { readSiteSettings } from "./site-config";
 import { managementRouter } from "./management";
+import { panelRouter } from "./admin-panel-router";
+import { registerCustomPlanRequest } from "./admin-panel";
+import {
+  deleteOwnerVerificationDoc,
+  getOwnerVerification,
+  submitOwnerVerification,
+} from "./verification";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { reportProfileInputSchema } from "../shared/safety";
@@ -924,6 +931,7 @@ export const appRouter = router({
         return requestSubscription(ctx.user.id, input.planId);
       }),
   }),
+  panel: panelRouter,
   owner: router({
     overview: protectedProcedure.query(({ ctx }) =>
       getOwnerOverview(ctx.user.id)
@@ -967,6 +975,46 @@ export const appRouter = router({
     activity: protectedProcedure.query(({ ctx }) =>
       listOwnerActivity(ctx.user.id)
     ),
+    verification: protectedProcedure.query(({ ctx }) =>
+      getOwnerVerification(ctx.user.id)
+    ),
+    submitVerification: protectedProcedure.mutation(async ({ ctx }) => {
+      try {
+        return await submitOwnerVerification(ctx.user.id);
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Não foi possível enviar",
+        });
+      }
+    }),
+    deleteVerificationDoc: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await deleteOwnerVerificationDoc(ctx.user.id, input.id);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Não foi possível apagar",
+          });
+        }
+      }),
+    requestCustomPlan: protectedProcedure
+      .input(z.object({ message: z.string().trim().min(10).max(1500) }))
+      .mutation(async ({ ctx, input }) => {
+        const decision = planRequestLimiter.consume(`user:${ctx.user.id}`);
+        if (!decision.allowed)
+          throw new Error(rateLimitMessage(decision.retryAfterSeconds));
+        try {
+          return await registerCustomPlanRequest(ctx.user.id, input.message);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Não foi possível enviar",
+          });
+        }
+      }),
     library: protectedProcedure.query(({ ctx }) => listLibrary(ctx.user.id)),
     renameLibraryItem: protectedProcedure
       .input(
@@ -1165,6 +1213,7 @@ export const appRouter = router({
           method: z
             .enum(["pix", "card", "boleto", "manual", "courtesy"])
             .default("manual"),
+          dueAt: z.coerce.date().optional(),
         })
       )
       .mutation(({ ctx, input }) =>

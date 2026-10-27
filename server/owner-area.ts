@@ -563,6 +563,12 @@ const activityLabels: Record<string, string> = {
   "library.removed": "Arquivo removido da biblioteca",
   "payment.recorded": "Pagamento registrado",
   "auth.password_changed": "Senha alterada",
+  "verification.document_uploaded": "Documento de verificação enviado",
+  "verification.document_deleted": "Documento de verificação removido",
+  "verification.submitted": "Documentos enviados para análise",
+  "identity.approved": "Identidade aprovada",
+  "identity.rejected": "Verificação de identidade recusada",
+  "plan.custom_requested": "Pacote personalizado solicitado",
 };
 
 export async function listOwnerActivity(userId: number, limit = 60) {
