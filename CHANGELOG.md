@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-27 — fotos padronizadas, página do anúncio completa e avaliações
+
+- fotos e vídeos do anúncio refeitos: uma área para arrastar e soltar, quadro único para todas as fotos (mesmo tamanho, foto inteira, sem cortar, com o fundo desfocado da própria foto), selo de capa, número da ordem, e só cinco botões pequenos por foto (capa, mover para antes, mover para depois, título e descrição, remover). Também dá para mudar a ordem arrastando. O mesmo quadro vale na vitrine, na página do anúncio e na biblioteca;
+- foto grande entra: o limite passou de 12 MB para 40 MB e o servidor reduz tudo para WebP leve (maior lado 2400 px, qualidade 82), mantendo a foto inteira, girando pela orientação do celular e tirando os dados de localização (GPS). Se a biblioteca de imagens falhar, a original é guardada como veio;
+- SEO: nova opção "Fotos leves (WebP)" que reduz, em lotes de 10, as fotos que já estavam guardadas (troca o arquivo, atualiza as referências e só depois apaga a antiga);
+- página pública do anúncio no estilo da referência: caminho de navegação (Início › cidade › nome), galeria com setas, contador e ampliação em tela cheia (teclado e deslizar no celular), nota média ao lado do nome, selo "Documentos verificados", cartões de preço e localização, "Sobre" em cartões (descrição, características, serviços, atendimento, horário e pagamento), bloco de verificação, data de criação, botão Compartilhar e dados estruturados do caminho de navegação;
+- avaliações em cada anúncio: nota de 1 a 5, tipo (elogio, comentário ou reclamação), título e texto; resumo com média e barras por nota, ordenar por recentes, melhores ou piores, "ver mais", resposta do anunciante. Só com login, uma por anúncio, até 5 por dia, não vale no próprio anúncio, e textos com telefone, e-mail, link ou rede social são barrados. O nome aparece como "Maria S.";
+- novas avaliações esperam a aprovação da equipe (dá para ligar a publicação direta no admin);
+- admin: nova aba "Avaliações" (publicar, recusar, ocultar, remover resposta, ver as contestadas), com contador no menu e na visão geral;
+- painel do anunciante: nova seção "Avaliações" para ler, responder e pedir revisão;
+- migração `0015_profile_reviews`: só cria a tabela `profile_reviews`;
+- nova dependência `sharp` (redução de imagens).
+
 ## 2026-10-26 — painel do administrador refeito
 
 - menu lateral por assunto: Principal (Visão geral), Anunciantes (Anunciantes, Verificações, Anúncios, Moderação, Denúncias), Comercial (Pacotes, Pagamentos, Caixa), Análises (Relatórios, Análises), Atendimento (Mensagens), Contas (Clientes, Equipe), Site (SEO, Configurações, Prontidão) e Sistema (Auditoria, Segurança). Cada pessoa só vê o que a sua função permite; os números vermelhos mostram o que está esperando;

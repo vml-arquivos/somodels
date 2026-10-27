@@ -50,6 +50,55 @@ const defaults: Record<string, { title: string; description: string }> = {
   },
 };
 
+const fmtMb = (bytes: number) =>
+  `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB`;
+
+// Fotos leves ajudam no Google: novas fotos já entram reduzidas; aqui dá para
+// reduzir as que foram enviadas antes, em pequenos lotes.
+function PhotoWeight() {
+  const stats = trpc.panel.mediaStats.useQuery();
+  const utils = trpc.useUtils();
+  const run = trpc.panel.mediaOptimize.useMutation({
+    onSuccess: async result => {
+      toast.success(
+        result.converted
+          ? `${result.converted} foto(s) reduzida(s), ${fmtMb(result.savedBytes)} a menos`
+          : "Nenhuma foto foi reduzida neste lote"
+      );
+      await utils.panel.mediaStats.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const pending = stats.data?.pending ?? 0;
+  return (
+    <Panel title="Fotos leves (WebP)">
+      <p className="adm-muted">
+        Fotos novas já entram reduzidas, inteiras e sem os dados de localização
+        do celular. {stats.data ? `${stats.data.done} já estão leves.` : ""}
+      </p>
+      <div className="adm-review-actions">
+        <button
+          type="button"
+          className="adm-btn is-primary"
+          disabled={run.isPending || pending === 0}
+          onClick={() => run.mutate()}
+        >
+          {run.isPending
+            ? "Reduzindo…"
+            : pending === 0
+              ? "Tudo em dia"
+              : `Reduzir fotos antigas (${pending} faltam)`}
+        </button>
+        {pending > 0 && (
+          <span className="adm-muted">
+            Cada clique reduz até 10 fotos. Pode repetir até acabar.
+          </span>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 export default function SeoPanel() {
   const utils = trpc.useUtils();
   const q = trpc.panel.seoGet.useQuery();
@@ -95,6 +144,8 @@ export default function SeoPanel() {
         }
       />
       <ErrorNote error={q.error} />
+
+      <PhotoWeight />
 
       <Panel title="Imagem ao compartilhar a página inicial">
         <label className="adm-field">

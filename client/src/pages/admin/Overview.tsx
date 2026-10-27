@@ -67,6 +67,12 @@ export default function Overview({
         total: d.queues.pendingProfiles + d.queues.pendingMedia,
       },
       {
+        tab: "reviews",
+        label: "Avaliações para conferir",
+        hint: "Novas ou contestadas pelo anunciante",
+        total: d.queues.pendingReviews,
+      },
+      {
         tab: "reports",
         label: "Denúncias abertas",
         hint: "Precisam de decisão",

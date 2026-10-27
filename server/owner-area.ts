@@ -569,6 +569,8 @@ const activityLabels: Record<string, string> = {
   "identity.approved": "Identidade aprovada",
   "identity.rejected": "Verificação de identidade recusada",
   "plan.custom_requested": "Pacote personalizado solicitado",
+  "review.replied": "Resposta a uma avaliação publicada",
+  "review.flagged": "Revisão de uma avaliação solicitada",
 };
 
 export async function listOwnerActivity(userId: number, limit = 60) {

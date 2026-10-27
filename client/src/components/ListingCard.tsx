@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { formatBRL } from "@shared/discovery-options";
+import { frameStyle } from "@/lib/frame";
 
 // Cartão da vitrine: foto, nome, idade, local e preço. O cartão inteiro é o link.
 export default function ListingCard({ profile }: { profile: any }) {
@@ -18,7 +19,7 @@ export default function ListingCard({ profile }: { profile: any }) {
         className="ep-card-link"
         aria-label={`Ver anúncio de ${profile.stageName}`}
       >
-        <div className="ep-card-photo">
+        <div className="ep-card-photo" style={frameStyle(profile.avatarUrl)}>
           {profile.avatarUrl ? (
             <img
               src={profile.avatarUrl}

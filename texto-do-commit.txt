@@ -1,29 +1,22 @@
-feat: painel do administrador refeito com CRM, verificação de documentos, pagamentos, relatórios e SEO
+feat: fotos padronizadas e reduzidas, página do anúncio completa e avaliações
 
-Painel
-- menu lateral por assunto, com números do que está esperando e busca rápida (Ctrl+K)
-- visão geral com o que precisa de atenção hoje e os números dos últimos 30 dias
-- clientes e equipe em telas separadas; as telas antigas continuam funcionando
+Fotos e vídeos do anúncio
+- área de arrastar e soltar e botões simples por foto: capa, mover, título e remover
+- todas as fotos no mesmo quadro, inteiras, sem cortar (vitrine, página do anúncio e biblioteca)
+- foto grande agora é aceita (até 40 MB) e o servidor reduz para WebP leve, sem os dados de localização
+- em SEO, botão para reduzir as fotos antigas em lotes
 
-Anunciantes
-- lista com etapa, etiquetas, próximo retorno e anotações
-- ficha com resumo, dados, anúncios, financeiro, documentos, anotações, atividade e conta
-- CPF completo só quando o administrador pede, com registro na auditoria
+Página do anúncio
+- galeria com setas e ampliação, nota média, selo de documentos verificados
+- cartões de preço e local, seção Sobre organizada, bloco de verificação
+- caminho de navegação, botão compartilhar
 
-Verificação
-- o anunciante envia documento, selfie e vídeo, em arquivos privados
-- fila de análise com dados ao lado dos arquivos, idade e lista de conferência
-- aprovar só com tudo conferido; recusar com motivo; opção de apagar os arquivos
-
-Pagamentos e relatórios
-- pago, aguardando, atrasado, falhou, reembolsado e cancelado, com filtros e exportação em CSV
-- cobrança criada sozinha ao pedir ou ativar um pacote
-- relatórios por período: quem anunciou e quando, pagamentos, verificações, anúncios e denúncias
-
-Pacotes e SEO
-- vitrine de pacotes para o anunciante em /titular/plano, com contratação e pedido personalizado
-- "Planos" saiu do menu e do rodapé do site
-- título, descrição e indexação por página pública, com prévia do Google
+Avaliações
+- elogio, comentário ou reclamação com nota de 1 a 5, só para quem tem conta, uma por anúncio
+- texto sem telefone, e-mail ou link
+- o anunciante responde e pode pedir revisão
+- no admin, aba Avaliações para publicar, recusar ou ocultar
 
 Banco
-- migração 0014 cria crm_profiles, crm_notes e verification_documents; não altera nada que já existe
+- migração 0015 cria a tabela profile_reviews; não altera nada que já existe
+- nova dependência: sharp

@@ -22,6 +22,7 @@ import Verifications from "./admin/Verifications";
 import Payments from "./admin/Payments";
 import Reports from "./admin/Reports";
 import SeoPanel from "./admin/SeoPanel";
+import ReviewsAdmin from "./admin/ReviewsAdmin";
 import PlanShowcase from "./admin/PlanShowcase";
 import CommandPalette from "./admin/CommandPalette";
 import { Head } from "./admin/kit";
@@ -450,6 +451,7 @@ export default function AdminDashboard() {
             )}
             {tab === "analytics" && <Reports scopes={scopes} />}
             {tab === "seo" && <SeoPanel />}
+            {tab === "reviews" && <ReviewsAdmin />}
             {(tab === "profiles" || tab === "moderation") && (
               <>
                 {tab === "profiles" && (

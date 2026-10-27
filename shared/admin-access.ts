@@ -117,6 +117,7 @@ export const adminTabScopes: Record<string, readonly AdminScope[]> = {
   identity: ["identity"],
   profiles: ["profiles:read"],
   moderation: ["moderation"],
+  reviews: ["moderation"],
   reports: ["reports"],
   plans: ["plans"],
   payments: ["finance:read", "plans"],

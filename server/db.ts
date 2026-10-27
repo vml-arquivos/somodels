@@ -834,6 +834,7 @@ export function hydratePublicProfile(row: any) {
     availableUntil: row.availableUntil ?? null,
     avatarUrl: row.avatarUrl ?? null,
     isFeatured: Boolean(row.isFeatured),
+    createdAt: row.createdAt ?? null,
     updatedAt: row.updatedAt,
     phone: contactAllowed ? (row.phone ?? null) : null,
     whatsapp: contactAllowed ? (row.whatsapp ?? null) : null,
@@ -3460,6 +3461,9 @@ export async function getOperationalCounts() {
     overduePayments: await one(
       sql`SELECT COUNT(*) AS total FROM payments WHERE status='pending' AND dueAt IS NOT NULL AND dueAt < ${new Date()}`
     ),
+    pendingReviews: await one(
+      sql`SELECT COUNT(*) AS total FROM profile_reviews WHERE status='pending' OR (status='approved' AND ownerFlaggedAt IS NOT NULL)`
+    ).catch(() => 0),
   };
 }
 

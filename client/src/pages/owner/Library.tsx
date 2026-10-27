@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { preparePhotoFile } from "@/components/PortfolioEditor";
+import { frameStyle } from "@/lib/frame";
 import {
   Badge,
   Card,
@@ -263,7 +264,14 @@ export function LibraryGrid({
               item.usedIn.some(u => u.profileId === filterProfileId);
             return (
               <li key={item.id} className={checked ? "is-selected" : ""}>
-                <div className="od-media-thumb">
+                <div
+                  className="od-media-thumb"
+                  style={
+                    item.kind === "photo"
+                      ? frameStyle(`/api/library-preview/${item.id}`)
+                      : undefined
+                  }
+                >
                   <LibraryThumb
                     id={item.id}
                     kind={item.kind as "photo" | "video"}
@@ -426,7 +434,7 @@ export default function Library() {
           throw new Error(
             "Formato não permitido (use JPG, PNG, WebP, AVIF, MP4, WebM ou MOV)"
           );
-        const limit = kind === "video" ? 100 : 12;
+        const limit = kind === "video" ? 100 : 40;
         if (file.size > limit * 1024 * 1024)
           throw new Error(`Arquivo acima de ${limit} MB`);
         const prepared = kind === "photo" ? await preparePhotoFile(file) : file;
@@ -507,8 +515,8 @@ export default function Library() {
           </button>
         </p>
         <small>
-          Fotos até 12 MB (JPG, PNG, WebP, AVIF) e vídeos até 100 MB (MP4, WebM,
-          MOV). {total} de {LIMIT} usados.
+          Fotos até 40 MB, que reduzimos sozinhos (JPG, PNG, WebP, AVIF), e vídeos
+          até 100 MB (MP4, WebM, MOV). {total} de {LIMIT} usados.
         </small>
       </div>
 

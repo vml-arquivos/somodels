@@ -29,6 +29,25 @@ import {
 import { readSiteSettings } from "./site-config";
 import { managementRouter } from "./management";
 import { panelRouter } from "./admin-panel-router";
+import {
+  clearReviewReply,
+  createReview,
+  deleteOwnReview,
+  flagReview,
+  getReviewCounts,
+  getReviewsForProfile,
+  listAdminReviews,
+  listOwnerReviews,
+  moderateReview,
+  readReviewSettings,
+  replyToReview,
+  saveReviewSettings,
+} from "./reviews";
+import {
+  reviewKinds,
+  reviewSorts,
+  reviewStatuses,
+} from "../shared/reviews";
 import { registerCustomPlanRequest } from "./admin-panel";
 import {
   deleteOwnerVerificationDoc,
@@ -932,6 +951,122 @@ export const appRouter = router({
       }),
   }),
   panel: panelRouter,
+  // Avaliações (elogios, comentários e reclamações) de cada anúncio.
+  reviews: router({
+    forProfile: publicProcedure
+      .input(
+        z.object({
+          profileId: z.number().int().positive(),
+          sort: z.enum(reviewSorts).default("recent"),
+          page: z.number().int().min(1).max(200).default(1),
+        })
+      )
+      .query(async ({ ctx, input }) => {
+        if (!(await hasValidAgeSession(ctx.req))) return null;
+        return getReviewsForProfile({ ...input, userId: ctx.user?.id ?? null });
+      }),
+    create: protectedProcedure
+      .input(
+        z.object({
+          profileId: z.number().int().positive(),
+          rating: z.number().int().min(1).max(5),
+          kind: z.enum(reviewKinds),
+          title: z.string().max(200).optional(),
+          body: z.string().max(4000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await createReview({
+            ...input,
+            userId: ctx.user.id,
+            userName: ctx.user.name,
+          });
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Não foi possível enviar a avaliação",
+          });
+        }
+      }),
+    deleteMine: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => deleteOwnReview(ctx.user.id, input.id)),
+    // Anunciante
+    mine: protectedProcedure.query(({ ctx }) => listOwnerReviews(ctx.user.id)),
+    reply: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          text: z.string().max(2000),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await replyToReview(ctx.user.id, input.id, input.text);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              error instanceof Error ? error.message : "Não foi possível responder",
+          });
+        }
+      }),
+    flag: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await flagReview(ctx.user.id, input.id);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              error instanceof Error ? error.message : "Não foi possível enviar",
+          });
+        }
+      }),
+    // Equipe
+    adminList: scopedProcedure("moderation")
+      .input(
+        z.object({
+          status: z.enum([...reviewStatuses, "flagged", "all"]).default("pending"),
+          q: z.string().max(80).optional(),
+          page: z.number().int().min(1).max(500).default(1),
+        })
+      )
+      .query(({ input }) => listAdminReviews(input)),
+    adminCounts: scopedProcedure("moderation").query(() => getReviewCounts()),
+    moderate: scopedProcedure("moderation")
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          status: z.enum(reviewStatuses),
+          note: z.string().max(300).optional(),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        moderateReview({ ...input, adminId: ctx.user.id })
+      ),
+    clearReply: scopedProcedure("moderation")
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => clearReviewReply(input.id, ctx.user.id)),
+    settings: scopedProcedure("moderation").query(() => readReviewSettings()),
+    saveSettings: scopedProcedure("moderation")
+      .input(z.object({ autoApprove: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const saved = await saveReviewSettings(input);
+        await writeAuditLog({
+          actorUserId: ctx.user.id,
+          action: "review.settings_changed",
+          entityType: "site_settings",
+          metadata: saved,
+        });
+        return saved;
+      }),
+  }),
   owner: router({
     overview: protectedProcedure.query(({ ctx }) =>
       getOwnerOverview(ctx.user.id)

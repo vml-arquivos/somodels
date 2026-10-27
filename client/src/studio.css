@@ -5922,3 +5922,86 @@
 .adm-cmd ul {
   list-style: none;
 }
+
+/* Avaliações no admin */
+.adm-review-list {
+  display: grid;
+  gap: 12px;
+}
+.adm-review {
+  display: grid;
+  gap: 10px;
+}
+.adm-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.adm-review-head > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.adm-review-head small {
+  color: var(--s-muted);
+}
+.adm-review-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.adm-stars {
+  color: #d99100;
+  letter-spacing: 1px;
+}
+.adm-review-body {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+.adm-review-reply {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  padding: 10px 14px;
+  border-left: 3px solid var(--s-accent);
+  border-radius: 8px;
+  background: var(--s-soft);
+}
+.adm-review-reply p {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.adm-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.adm-review-actions .adm-input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.adm .adm-switch-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+.adm-switch-row input {
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+}
+.adm-switch-row span {
+  display: grid;
+  gap: 4px;
+}
+.adm-switch-row small {
+  color: var(--s-muted);
+  line-height: 1.5;
+}

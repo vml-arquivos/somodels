@@ -9,6 +9,11 @@ import Seo from "@/components/Seo";
 import AdultGate, { useAdultAccess } from "@/components/AdultGate";
 import { usePublicLight } from "@/contexts/ThemeContext";
 import ListingCard from "@/components/ListingCard";
+import ProfileReviews, { Stars } from "@/components/ProfileReviews";
+import PhotoLightbox from "@/components/PhotoLightbox";
+import { frameStyle } from "@/lib/frame";
+import { cityPath } from "@/lib/discovery";
+import { ratingLabel } from "@shared/reviews";
 import { formatBRL } from "@shared/discovery-options";
 import {
   reportCategories,
@@ -37,18 +42,49 @@ function isContactMethod(value: unknown): value is ContactMethod {
   );
 }
 
-function DetailList({ title, items }: { title: string; items: unknown }) {
-  const values = Array.isArray(items)
-    ? items.filter(value => typeof value === "string" && value.trim())
+function listOf(items: unknown) {
+  return Array.isArray(items)
+    ? items.filter(
+        (value): value is string => typeof value === "string" && Boolean(value.trim())
+      )
     : [];
+}
+
+function AboutCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="ep-about-card">
+      <h3>{title}</h3>
+      <dl className="ep-facts">{children}</dl>
+    </div>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: string }) {
+  if (!value) return null;
+  return (
+    <div className="ep-fact">
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
+function Chips({ label, items }: { label: string; items: unknown }) {
+  const values = listOf(items);
   if (!values.length) return null;
   return (
-    <div className="ep-detail">
-      <dt>{title}</dt>
+    <div className="ep-fact">
+      <dt>{label}</dt>
       <dd>
         {values.map(value => (
-          <span className="ep-chip-static" key={String(value)}>
-            {String(value)}
+          <span className="ep-chip-static" key={value}>
+            {value}
           </span>
         ))}
       </dd>
@@ -69,10 +105,15 @@ export default function ProfilePage() {
   const config = trpc.system.config.useQuery();
   const settings = trpc.management.settings.useQuery();
   const data = result.data;
+  const ratingSummary = trpc.reviews.forProfile.useQuery(
+    { profileId: data?.profile.id ?? 0, sort: "recent", page: 1 },
+    { enabled: Boolean(data?.profile.id) }
+  );
   const profileId = data?.profile.id ?? 0;
   const flags = config.data?.featureFlags;
   const [reportOpen, setReportOpen] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
   const [reportCategory, setReportCategory] = useState<ReportCategory>("other");
   const [reportDescription, setReportDescription] = useState("");
 
@@ -155,6 +196,21 @@ export default function ProfilePage() {
     await utils.safety.invalidate();
   };
 
+  async function shareProfile() {
+    const url = window.location.href;
+    const name = data?.profile.stageName || "Anúncio";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${name} — Ero Models`, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copiado");
+    } catch {
+      // Quem cancela o compartilhamento não precisa de aviso.
+    }
+  }
+
   if (!adultAccess.ready)
     return <AdultGate access={adultAccess}>{null}</AdultGate>;
 
@@ -187,8 +243,16 @@ export default function ProfilePage() {
       <StudioHeader />
       <main className="ep-main ep-profile-page">
         <div className="ep-wrap">
-          <nav className="ep-breadcrumb" aria-label="Navegação">
-            <Link href="/">← Todos os anúncios</Link>
+          <nav className="ep-breadcrumb" aria-label="Você está em">
+            <Link href="/">Início</Link>
+            {profile?.city && (
+              <>
+                <span aria-hidden="true">›</span>
+                <Link href={cityPath(profile.city)}>{profile.city}</Link>
+              </>
+            )}
+            <span aria-hidden="true">›</span>
+            <span aria-current="page">{profile?.stageName || "Anúncio"}</span>
           </nav>
           {result.isLoading ? (
             <p className="ep-note">Carregando anúncio…</p>
@@ -215,21 +279,53 @@ export default function ProfilePage() {
                 image={profile.avatarUrl || undefined}
                 jsonLd={{
                   "@context": "https://schema.org",
-                  "@type": "ProfilePage",
-                  name: profile.stageName,
-                  url: new URL(
-                    `/perfil/${slug}`,
-                    window.location.origin
-                  ).toString(),
-                  dateModified: new Date(profile.updatedAt).toISOString(),
-                  mainEntity: {
-                    "@type": "Person",
-                    name: profile.stageName,
-                    jobTitle: "Acompanhante",
-                    description: profile.description || undefined,
-                    image: profile.avatarUrl || undefined,
-                    worksFor: { "@type": "Organization", name: "Ero Models" },
-                  },
+                  "@graph": [
+                    {
+                      "@type": "ProfilePage",
+                      name: profile.stageName,
+                      url: new URL(
+                        `/perfil/${slug}`,
+                        window.location.origin
+                      ).toString(),
+                      dateModified: new Date(profile.updatedAt).toISOString(),
+                      mainEntity: {
+                        "@type": "Person",
+                        name: profile.stageName,
+                        jobTitle: "Acompanhante",
+                        description: profile.description || undefined,
+                        image: profile.avatarUrl || undefined,
+                        worksFor: {
+                          "@type": "Organization",
+                          name: "Ero Models",
+                        },
+                      },
+                    },
+                    {
+                      "@type": "BreadcrumbList",
+                      itemListElement: [
+                        {
+                          "@type": "ListItem",
+                          position: 1,
+                          name: "Início",
+                          item: new URL("/", window.location.origin).toString(),
+                        },
+                        {
+                          "@type": "ListItem",
+                          position: 2,
+                          name: profile.city,
+                          item: new URL(
+                            cityPath(profile.city),
+                            window.location.origin
+                          ).toString(),
+                        },
+                        {
+                          "@type": "ListItem",
+                          position: 3,
+                          name: profile.stageName,
+                        },
+                      ],
+                    },
+                  ],
                 }}
                 noindex={Boolean(
                   config.data?.robotsNoIndex ||
@@ -240,12 +336,23 @@ export default function ProfilePage() {
 
               <div className="ep-profile-grid">
                 <section className="ep-gallery" aria-label="Fotos do anúncio">
-                  <div className="ep-gallery-main">
+                  <div
+                    className="ep-gallery-main"
+                    style={frameStyle(currentPhoto)}
+                  >
                     {currentPhoto ? (
-                      <img
-                        src={currentPhoto}
-                        alt={`Foto de ${profile.stageName}`}
-                      />
+                      <>
+                        <img
+                          src={currentPhoto}
+                          alt={`Foto de ${profile.stageName}`}
+                        />
+                        <button
+                          type="button"
+                          className="ep-gallery-zoom"
+                          aria-label="Ampliar foto"
+                          onClick={() => setLightbox(true)}
+                        />
+                      </>
                     ) : (
                       <span className="ep-gallery-empty">
                         {profile.stageName.slice(0, 1)}
@@ -253,6 +360,37 @@ export default function ProfilePage() {
                     )}
                     {profile.isAvailableNow && (
                       <span className="ep-card-now">Disponível agora</span>
+                    )}
+                    {photoUrls.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          className="ep-gallery-arrow is-prev"
+                          aria-label="Foto anterior"
+                          onClick={() =>
+                            setActivePhoto(
+                              (activePhoto - 1 + photoUrls.length) %
+                                photoUrls.length
+                            )
+                          }
+                        >
+                          ‹
+                        </button>
+                        <button
+                          type="button"
+                          className="ep-gallery-arrow is-next"
+                          aria-label="Próxima foto"
+                          onClick={() =>
+                            setActivePhoto((activePhoto + 1) % photoUrls.length)
+                          }
+                        >
+                          ›
+                        </button>
+                        <span className="ep-gallery-count">
+                          {Math.min(activePhoto, photoUrls.length - 1) + 1} /{" "}
+                          {photoUrls.length}
+                        </span>
+                      </>
                     )}
                   </div>
                   {photoUrls.length > 1 && (
@@ -262,6 +400,7 @@ export default function ProfilePage() {
                           <button
                             type="button"
                             className={index === activePhoto ? "is-on" : ""}
+                            style={frameStyle(url)}
                             aria-label={`Ver foto ${index + 1}`}
                             onClick={() => setActivePhoto(index)}
                           >
@@ -284,9 +423,27 @@ export default function ProfilePage() {
                     {profile.city}
                     {profile.region ? ` / ${profile.region}` : ""}
                   </p>
+                  {ratingSummary.data && ratingSummary.data.summary.count > 0 && (
+                    <a className="ep-rating-line" href="#avaliacoes">
+                      <Stars value={ratingSummary.data.summary.average} />
+                      <strong>
+                        {String(ratingSummary.data.summary.average).replace(
+                          ".",
+                          ","
+                        )}
+                      </strong>
+                      <span>
+                        {ratingLabel(ratingSummary.data.summary.average)} ·{" "}
+                        {ratingSummary.data.summary.count} avaliaç
+                        {ratingSummary.data.summary.count === 1 ? "ão" : "ões"}
+                      </span>
+                    </a>
+                  )}
                   <div className="ep-slide-tags">
                     {profile.identityVerified && (
-                      <span className="ep-tag ep-tag-light">Verificada</span>
+                      <span className="ep-tag ep-tag-light">
+                        Documentos verificados
+                      </span>
                     )}
                     {profile.availabilityLabel && (
                       <span className="ep-tag ep-tag-dark">
@@ -294,13 +451,26 @@ export default function ProfilePage() {
                       </span>
                     )}
                   </div>
-                  {typeof profile.priceFromCents === "number" && (
-                    <p className="ep-profile-price">
-                      <small>A partir de</small>
-                      <strong>{formatBRL(profile.priceFromCents)}</strong>
-                      <small>por hora</small>
-                    </p>
-                  )}
+                  <div className="ep-info-cards">
+                    {typeof profile.priceFromCents === "number" && (
+                      <div className="ep-info-card">
+                        <small>A partir de</small>
+                        <strong>{formatBRL(profile.priceFromCents)}</strong>
+                        <span>por hora</span>
+                      </div>
+                    )}
+                    <div className="ep-info-card">
+                      <small>Localização</small>
+                      <strong>
+                        {profile.neighborhood || profile.locationNote || profile.city}
+                      </strong>
+                      <span>
+                        {profile.neighborhood || profile.locationNote
+                          ? `${profile.city}${profile.region ? ` / ${profile.region}` : ""}`
+                          : profile.region || "Local aproximado"}
+                      </span>
+                    </div>
+                  </div>
 
                   {canContact && (
                     <div className="ep-contact" aria-label="Contato do anúncio">
@@ -334,6 +504,9 @@ export default function ProfilePage() {
                   )}
 
                   <div className="ep-profile-links">
+                    <button type="button" onClick={() => void shareProfile()}>
+                      Compartilhar
+                    </button>
                     {user && flags?.favoritesEnabled && (
                       <button
                         type="button"
@@ -445,69 +618,79 @@ export default function ProfilePage() {
                 </aside>
               </div>
 
-              <section className="ep-profile-block">
-                <h2>Sobre</h2>
-                <p className="ep-profile-about">
-                  {profile.description ||
-                    "Esta pessoa ainda não escreveu uma apresentação."}
-                </p>
+              <section className="ep-profile-block" aria-labelledby="about-title">
+                <h2 id="about-title">Sobre {profile.stageName}</h2>
+                <div className="ep-about-grid">
+                  <div className="ep-about-card is-wide">
+                    <h3>Descrição</h3>
+                    <p className="ep-profile-about">
+                      {profile.description ||
+                        "Esta pessoa ainda não escreveu uma apresentação."}
+                    </p>
+                  </div>
+                  <AboutCard title="Características">
+                    {profile.age ? (
+                      <Fact label="Idade" value={`${profile.age} anos`} />
+                    ) : null}
+                    <Chips label="Perfil" items={profile.attributes} />
+                    <Chips label="Idiomas" items={profile.languages} />
+                    <Chips label="Preferências" items={profile.preferences} />
+                  </AboutCard>
+                  <AboutCard title="Serviços oferecidos">
+                    <Chips label="Categorias" items={profile.categories} />
+                    <Chips label="Serviços" items={profile.services} />
+                  </AboutCard>
+                  <AboutCard title="Atendimento">
+                    <Fact
+                      label="Cidade"
+                      value={`${profile.city}${profile.region ? ` / ${profile.region}` : ""}`}
+                    />
+                    {(profile.neighborhood || profile.locationNote) && (
+                      <Fact
+                        label="Bairro"
+                        value={profile.neighborhood || profile.locationNote || ""}
+                      />
+                    )}
+                    <Chips label="Onde atende" items={profile.attendancePlaces} />
+                    <Chips label="Como atende" items={profile.contactOptions} />
+                  </AboutCard>
+                  <AboutCard title="Horário e pagamento">
+                    <Fact
+                      label="Disponibilidade"
+                      value={
+                        profile.isAvailableNow
+                          ? "Disponível agora"
+                          : profile.availabilityLabel || "Combine pelo contato"
+                      }
+                    />
+                    <Chips label="Pagamento" items={profile.paymentMethods} />
+                  </AboutCard>
+                </div>
+                {profile.createdAt && (
+                  <p className="ep-created">
+                    Anúncio criado em{" "}
+                    {new Date(profile.createdAt).toLocaleDateString("pt-BR", {
+                      month: "long",
+                      year: "numeric",
+                      timeZone: "America/Sao_Paulo",
+                    })}
+                  </p>
+                )}
               </section>
 
-              <section className="ep-profile-block" aria-labelledby="details-title">
-                <h2 id="details-title">Informações</h2>
-                <dl className="ep-details">
-                  <div className="ep-detail">
-                    <dt>Cidade</dt>
-                    <dd>
-                      {profile.city}
-                      {profile.region ? ` / ${profile.region}` : ""}
-                    </dd>
-                  </div>
-                  {(profile.neighborhood || profile.locationNote) && (
-                    <div className="ep-detail">
-                      <dt>Bairro</dt>
-                      <dd>{profile.neighborhood || profile.locationNote}</dd>
-                    </div>
-                  )}
-                  {profile.age && (
-                    <div className="ep-detail">
-                      <dt>Idade</dt>
-                      <dd>{profile.age} anos</dd>
-                    </div>
-                  )}
-                  <div className="ep-detail">
-                    <dt>Disponibilidade</dt>
-                    <dd>
-                      {profile.isAvailableNow
-                        ? "Disponível agora"
-                        : profile.availabilityLabel || "Combine pelo contato"}
-                    </dd>
-                  </div>
-                  <DetailList title="Categorias" items={profile.categories} />
-                  <DetailList
-                    title="Onde atende"
-                    items={profile.attendancePlaces}
-                  />
-                  <DetailList title="Serviços" items={profile.services} />
-                  <DetailList
-                    title="Características"
-                    items={profile.attributes}
-                  />
-                  <DetailList title="Idiomas" items={profile.languages} />
-                  <DetailList
-                    title="Preferências"
-                    items={profile.preferences}
-                  />
-                  <DetailList
-                    title="Como atende"
-                    items={profile.contactOptions}
-                  />
-                  <DetailList
-                    title="Pagamento"
-                    items={profile.paymentMethods}
-                  />
-                </dl>
-              </section>
+              {profile.identityVerified && (
+                <section className="ep-verify-block" aria-labelledby="verify-title">
+                  <h2 id="verify-title">Verificação</h2>
+                  <p>
+                    A equipe da Ero Models conferiu os documentos desta pessoa.
+                  </p>
+                  <ul>
+                    <li>Perfil verificado</li>
+                    <li>Idade confirmada (18 anos ou mais)</li>
+                    <li>Documento conferido pela equipe</li>
+                  </ul>
+                </section>
+              )}
 
               {videos.length > 0 && (
                 <section className="ep-profile-block">
@@ -528,6 +711,12 @@ export default function ProfilePage() {
                 </section>
               )}
 
+              <ProfileReviews
+                profileId={profile.id}
+                stageName={profile.stageName}
+                slug={slug}
+              />
+
               <section className="ep-safety-note">
                 <h2>Cuidados ao marcar</h2>
                 <p>
@@ -547,6 +736,15 @@ export default function ProfilePage() {
                     ))}
                   </div>
                 </section>
+              )}
+              {lightbox && photoUrls.length > 0 && (
+                <PhotoLightbox
+                  urls={photoUrls}
+                  index={Math.min(activePhoto, photoUrls.length - 1)}
+                  name={profile.stageName}
+                  onIndex={setActivePhoto}
+                  onClose={() => setLightbox(false)}
+                />
               )}
             </>
           )}

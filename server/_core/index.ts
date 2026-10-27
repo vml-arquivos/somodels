@@ -1,3 +1,4 @@
+import { optimizePhoto, photoLimits } from "../image-optimize";
 import { createMedia, getAccountTermsStatus, getMediaById } from "../db";
 import {
   countLibraryItems,
@@ -405,7 +406,8 @@ async function startServer() {
       if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64) || base64.length % 4 === 1)
         return res.status(400).json({ error: "Conteúdo base64 inválido" });
       const buffer = Buffer.from(base64, "base64");
-      const maxBytes = kind === "video" ? 100 * 1024 * 1024 : 12 * 1024 * 1024;
+      const maxBytes =
+        kind === "video" ? 100 * 1024 * 1024 : photoLimits.uploadBytes;
       if (buffer.byteLength === 0 || buffer.byteLength > maxBytes)
         return res
           .status(413)
@@ -414,13 +416,22 @@ async function startServer() {
         return res.status(415).json({
           error: "Assinatura do arquivo não corresponde ao tipo declarado",
         });
-      const extension =
-        path
-          .extname(String(filename))
-          .toLowerCase()
-          .replace(/[^a-z0-9.]/g, "") || (kind === "photo" ? ".jpg" : ".mp4");
+      // Foto grande entra como veio e é reduzida aqui: WebP leve, sem cortar.
+      const prepared =
+        kind === "photo"
+          ? await optimizePhoto(buffer, contentType)
+          : null;
+      const finalBuffer = prepared?.buffer ?? buffer;
+      const finalType = prepared?.contentType ?? contentType;
+      const extension = prepared?.optimized
+        ? prepared.extension
+        : path
+            .extname(String(filename))
+            .toLowerCase()
+            .replace(/[^a-z0-9.]/g, "") ||
+          (kind === "photo" ? ".jpg" : ".mp4");
       const safeKey = `library/${ctx.user.id}/${kind}/${randomUUID()}${extension}`;
-      const uploaded = await storagePut(safeKey, buffer, contentType);
+      const uploaded = await storagePut(safeKey, finalBuffer, finalType);
       try {
         const id = await createLibraryItem({
           ownerId: ctx.user.id,
@@ -431,8 +442,8 @@ async function startServer() {
               : String(filename).replace(/\.[^.]+$/, ""),
           storageKey: uploaded.key,
           url: uploaded.url,
-          mimeType: contentType,
-          sizeBytes: buffer.byteLength,
+          mimeType: finalType,
+          sizeBytes: finalBuffer.byteLength,
         });
         return res.json({ id });
       } catch (error) {
@@ -540,7 +551,8 @@ async function startServer() {
       if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64) || base64.length % 4 === 1)
         return res.status(400).json({ error: "Conteúdo base64 inválido" });
       const buffer = Buffer.from(base64, "base64");
-      const maxBytes = kind === "video" ? 100 * 1024 * 1024 : 12 * 1024 * 1024;
+      const maxBytes =
+        kind === "video" ? 100 * 1024 * 1024 : photoLimits.uploadBytes;
       if (buffer.byteLength === 0 || buffer.byteLength > maxBytes)
         return res
           .status(413)
@@ -551,13 +563,21 @@ async function startServer() {
           .json({
             error: "Assinatura do arquivo não corresponde ao tipo declarado",
           });
-      const extension =
-        path
-          .extname(String(filename))
-          .toLowerCase()
-          .replace(/[^a-z0-9.]/g, "") || (kind === "photo" ? ".jpg" : ".mp4");
+      const prepared =
+        kind === "photo"
+          ? await optimizePhoto(buffer, contentType)
+          : null;
+      const finalBuffer = prepared?.buffer ?? buffer;
+      const finalType = prepared?.contentType ?? contentType;
+      const extension = prepared?.optimized
+        ? prepared.extension
+        : path
+            .extname(String(filename))
+            .toLowerCase()
+            .replace(/[^a-z0-9.]/g, "") ||
+          (kind === "photo" ? ".jpg" : ".mp4");
       const safeKey = `profiles/${ownerId}/${profileId}/${kind}/${randomUUID()}${extension}`;
-      const uploaded = await storagePut(safeKey, buffer, contentType);
+      const uploaded = await storagePut(safeKey, finalBuffer, finalType);
       try {
         const mediaId = await createMedia(
           ownerId,
@@ -566,7 +586,7 @@ async function startServer() {
             kind,
             storageKey: uploaded.key,
             url: uploaded.url,
-            mimeType: contentType,
+            mimeType: finalType,
             isPremium: false,
             sortOrder: managedProfile.media.length,
           },

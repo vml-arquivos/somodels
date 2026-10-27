@@ -27,6 +27,8 @@ import {
 } from "@shared/locations";
 import { toast } from "sonner";
 import MultiSelectField from "@/components/MultiSelectField";
+import MediaManager, { type UploadQueueItem } from "@/components/MediaManager";
+import { preparePhotoFile } from "@/lib/photo";
 
 type Props = {
   initial?: any;
@@ -40,46 +42,7 @@ function withLegacyValues(options: readonly string[], current: string[]) {
   return Array.from(new Set([...options, ...current]));
 }
 
-type UploadQueueItem = {
-  id: string;
-  file: File;
-  status: "queued" | "uploading" | "uploaded" | "error" | "cancelled";
-  progress: number;
-  error?: string;
-};
-
-export async function preparePhotoFile(file: File) {
-  if (!file.type.startsWith("image/")) return file;
-  try {
-    const bitmap = await createImageBitmap(file);
-    const largestSide = Math.max(bitmap.width, bitmap.height);
-    if (largestSide <= 2000) {
-      bitmap.close();
-      return file;
-    }
-    const ratio = 2000 / largestSide;
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * ratio));
-    canvas.height = Math.max(1, Math.round(bitmap.height * ratio));
-    const context = canvas.getContext("2d");
-    if (!context) {
-      bitmap.close();
-      return file;
-    }
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    const blob = await new Promise<Blob | null>(resolve =>
-      canvas.toBlob(resolve, "image/jpeg", 0.85)
-    );
-    if (!blob) return file;
-    return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
-      type: "image/jpeg",
-      lastModified: file.lastModified,
-    });
-  } catch {
-    return file;
-  }
-}
+export { preparePhotoFile };
 
 export default function PortfolioEditor({
   initial,
@@ -139,16 +102,9 @@ export default function PortfolioEditor({
     initial?.id
   );
   const uploadControllers = useRef<Record<string, XMLHttpRequest>>({});
-  const [mediaEdits, setMediaEdits] = useState<
-    Record<number, { title: string; description: string }>
-  >({});
   const save = trpc.profiles.save.useMutation();
   const publishMine = trpc.profiles.publishMine.useMutation();
   const adminSave = trpc.management.saveProfile.useMutation();
-  const cover = trpc.profiles.cover.useMutation();
-  const hide = trpc.profiles.hideMedia.useMutation();
-  const updateMediaMetadata = trpc.profiles.updateMediaMetadata.useMutation();
-  const reorderMedia = trpc.profiles.reorderMedia.useMutation();
   const update = (key: string, value: any) =>
     setForm(f => ({ ...f, [key]: value }));
   const links = contactLinks(form.phone, form.whatsapp);
@@ -172,53 +128,6 @@ export default function PortfolioEditor({
       cancelled = true;
     };
   }, [stateCode]);
-  useEffect(() => {
-    setMediaEdits(
-      Object.fromEntries(
-        media.map(item => [
-          item.id,
-          { title: item.title || "", description: item.description || "" },
-        ])
-      )
-    );
-  }, [media]);
-  async function saveMediaMetadata(item: any) {
-    const draft = mediaEdits[item.id] || { title: "", description: "" };
-    setBusy(true);
-    try {
-      await updateMediaMetadata.mutateAsync({ id: item.id, ...draft });
-      toast.success(
-        item.status === "approved"
-          ? "Metadados salvos; publique novamente para atualizar a vitrine"
-          : "Metadados salvos"
-      );
-      onSaved(initial.id);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function moveMedia(index: number, direction: -1 | 1) {
-    if (!initial?.id) return;
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= media.length) return;
-    const ordered = media.map(item => item.id);
-    [ordered[index], ordered[nextIndex]] = [ordered[nextIndex], ordered[index]];
-    setBusy(true);
-    try {
-      await reorderMedia.mutateAsync({
-        profileId: initial.id,
-        mediaIds: ordered,
-      });
-      toast.success("Ordem da galeria salva");
-      onSaved(initial.id);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
   function buildPayload(id = activeProfileId) {
     const { priceFrom, ...formFields } = form;
     const priceFromCents = reaisToCents(priceFrom);
@@ -312,12 +221,12 @@ export default function PortfolioEditor({
     const kind: "photo" | "video" = item.file.type.startsWith("video/")
       ? "video"
       : "photo";
-    const maxBytes = (kind === "video" ? 100 : 12) * 1024 * 1024;
+    const maxBytes = (kind === "video" ? 100 : 40) * 1024 * 1024;
     if (item.file.size > maxBytes) {
       updateUploadItem(item.id, {
         status: "error",
         progress: 0,
-        error: `${item.file.name}: fotos até 12 MB e vídeos até 100 MB`,
+        error: `${item.file.name}: fotos até 40 MB e vídeos até 100 MB`,
       });
       return false;
     }
@@ -424,7 +333,7 @@ export default function PortfolioEditor({
     }
   }
 
-  async function uploadFiles(fileList: FileList | null) {
+  async function uploadFiles(fileList: FileList | File[] | null) {
     const files = Array.from(fileList || []);
     if (!files.length) return;
     if (admin && !consent) {
@@ -736,6 +645,21 @@ export default function PortfolioEditor({
           </p>
         </>
       ) : null}
+      <MediaManager
+        profileId={activeProfileId}
+        media={media}
+        coverUrl={initial?.avatarUrl}
+        admin={admin}
+        busy={busy}
+        uploadLocked={admin && !consent}
+        queue={uploadQueue}
+        onFiles={files => void uploadFiles(files)}
+        onRetry={item => void retryUpload(item)}
+        onCancel={cancelUpload}
+        onChanged={() => {
+          if (activeProfileId) onSaved(activeProfileId);
+        }}
+      />
       <div className="studio-actions ep-publish-bar">
         <button disabled={busy} onClick={() => void saveDraft()}>
           Salvar rascunho
@@ -750,191 +674,6 @@ export default function PortfolioEditor({
           </button>
         )}
       </div>
-      <section className="studio-panel ep-photos">
-        <h3>Fotos e vídeos</h3>
-        <>
-          <label className="ep-file">
-            {admin
-              ? "Adicionar arquivos em nome do titular"
-              : "Escolha as fotos e vídeos (pode marcar vários de uma vez)"}
-            <input
-              disabled={busy || (admin && !consent)}
-              type="file"
-              multiple
-              accept="image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm,video/quicktime"
-              onChange={e => {
-                void uploadFiles(e.target.files);
-                e.target.value = "";
-              }}
-            />
-          </label>
-          <p className="studio-muted">
-            {admin && !consent
-              ? "Marque a autorização operacional acima para liberar o envio."
-              : "Fotos até 12 MB e vídeos até 100 MB. Use só imagens que você pode publicar."}
-          </p>
-          {uploadQueue.length > 0 && (
-            <div className="studio-upload-queue" aria-live="polite">
-              <strong>Fila de envio</strong>
-              {uploadQueue.map(item => (
-                <div className="studio-upload-row" key={item.id}>
-                  <span className="studio-upload-name">{item.file.name}</span>
-                  <progress max="100" value={item.progress} />
-                  <span className={`studio-upload-status is-${item.status}`}>
-                    {item.status === "queued" && "aguardando"}
-                    {item.status === "uploading" && `${item.progress}%`}
-                    {item.status === "uploaded" && "enviado"}
-                    {item.status === "cancelled" && "cancelado"}
-                    {item.status === "error" && (item.error || "erro")}
-                  </span>
-                  {item.status === "error" && (
-                    <button
-                      type="button"
-                      onClick={() => void retryUpload(item)}
-                      disabled={busy}
-                    >
-                      tentar de novo
-                    </button>
-                  )}
-                  {(item.status === "queued" ||
-                    item.status === "uploading") && (
-                    <button
-                      type="button"
-                      onClick={() => cancelUpload(item.id)}
-                      disabled={item.status === "queued"}
-                    >
-                      cancelar
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="studio-media">
-            {media.map((m, index) => {
-              const draft = mediaEdits[m.id] || {
-                title: m.title || "",
-                description: m.description || "",
-              };
-              return (
-                <article key={m.id}>
-                  {m.kind === "photo" ? (
-                    <img
-                      src={`/api/media-preview/${m.id}`}
-                      alt={draft.title || "Foto do anúncio"}
-                    />
-                  ) : (
-                    <video
-                      src={`/api/media-preview/${m.id}`}
-                      controls
-                      preload="metadata"
-                    />
-                  )}
-                  <p>
-                    {{ approved: "No ar", pending: "Processando", rejected: "Recusada" }[
-                      m.status as string
-                    ] ?? m.status}{" "}
-                    · {m.kind === "photo" ? "Foto" : "Vídeo"}
-                  </p>
-                  {!admin && (
-                    <div className="studio-fields">
-                      <label>
-                        Título da mídia
-                        <input
-                          maxLength={160}
-                          value={draft.title}
-                          onChange={e =>
-                            setMediaEdits(current => ({
-                              ...current,
-                              [m.id]: { ...draft, title: e.target.value },
-                            }))
-                          }
-                        />
-                      </label>
-                      <label>
-                        Descrição da mídia
-                        <textarea
-                          rows={3}
-                          maxLength={2000}
-                          value={draft.description}
-                          onChange={e =>
-                            setMediaEdits(current => ({
-                              ...current,
-                              [m.id]: {
-                                ...draft,
-                                description: e.target.value,
-                              },
-                            }))
-                          }
-                        />
-                      </label>
-                      <div className="studio-actions">
-                        <button
-                          disabled={busy || updateMediaMetadata.isPending}
-                          onClick={() => void saveMediaMetadata(m)}
-                        >
-                          Salvar metadados
-                        </button>
-                        <button
-                          disabled={
-                            busy || reorderMedia.isPending || index === 0
-                          }
-                          onClick={() => void moveMedia(index, -1)}
-                        >
-                          Subir
-                        </button>
-                        <button
-                          disabled={
-                            busy ||
-                            reorderMedia.isPending ||
-                            index === media.length - 1
-                          }
-                          onClick={() => void moveMedia(index, 1)}
-                        >
-                          Descer
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {!admin && (
-                    <div className="studio-actions">
-                      {m.kind === "photo" && (
-                        <button
-                          disabled={busy || cover.isPending}
-                          onClick={async () => {
-                            try {
-                              await cover.mutateAsync({ id: m.id });
-                              toast.success("Capa atualizada");
-                              onSaved(initial.id);
-                            } catch (e) {
-                              toast.error((e as Error).message);
-                            }
-                          }}
-                        >
-                          Usar como capa
-                        </button>
-                      )}
-                      <button
-                        disabled={busy || hide.isPending}
-                        onClick={async () => {
-                          try {
-                            await hide.mutateAsync({ id: m.id });
-                            onSaved(initial.id);
-                          } catch (e) {
-                            toast.error((e as Error).message);
-                          }
-                        }}
-                      >
-                        Ocultar arquivo
-                      </button>
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        </>
-      </section>
     </div>
   );
 }

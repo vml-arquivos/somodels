@@ -23,7 +23,7 @@ describe("navegação administrativa", () => {
       { section: "Principal", items: ["overview"] },
       {
         section: "Anunciantes",
-        items: ["identity", "profiles", "moderation", "reports"],
+        items: ["identity", "profiles", "moderation", "reviews", "reports"],
       },
       { section: "Análises", items: ["analytics"] },
       { section: "Sistema", items: ["security"] },
@@ -74,7 +74,14 @@ describe("navegação administrativa", () => {
       { section: "Principal", items: ["overview"] },
       {
         section: "Anunciantes",
-        items: ["advertisers", "identity", "profiles", "moderation", "reports"],
+        items: [
+          "advertisers",
+          "identity",
+          "profiles",
+          "moderation",
+          "reviews",
+          "reports",
+        ],
       },
       { section: "Comercial", items: ["plans", "payments", "finance"] },
       { section: "Análises", items: ["analytics"] },
@@ -108,13 +115,14 @@ describe("navegação administrativa", () => {
       newMessages: 7,
       followUps: 8,
       overduePayments: 9,
+      pendingReviews: 11,
     };
     expect(
       adminNavigationBadges(
         resolveAdminScopes({ role: "admin", adminFunction: "moderator" }),
         counts
       )
-    ).toEqual({ profiles: 2, moderation: 5, identity: 4, reports: 5 });
+    ).toEqual({ profiles: 2, moderation: 5, reviews: 11, identity: 4, reports: 5 });
     expect(
       adminNavigationBadges(
         resolveAdminScopes({ role: "admin", adminFunction: "support" }),

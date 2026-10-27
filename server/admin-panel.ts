@@ -608,6 +608,14 @@ export async function getPanelOverview(options: {
     pendingSubscriptions: num(
       (await rows(db, sql`SELECT COUNT(*) AS total FROM subscriptions WHERE status = 'pending'`))[0]?.total
     ),
+    pendingReviews: num(
+      (
+        await rows(
+          db,
+          sql`SELECT COUNT(*) AS total FROM profile_reviews WHERE status = 'pending' OR (status = 'approved' AND ownerFlaggedAt IS NOT NULL)`
+        ).catch(() => [])
+      )[0]?.total
+    ),
     followUps: options.canSeePeople
       ? num(
           (await rows(db, sql`SELECT COUNT(*) AS total FROM crm_profiles WHERE nextFollowUpAt IS NOT NULL AND nextFollowUpAt <= ${now}`))[0]?.total

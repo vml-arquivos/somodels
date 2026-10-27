@@ -27,6 +27,7 @@ import {
   updatePaymentStatus,
 } from "./admin-panel";
 import { readSeoOverrides, saveSeoOverrides } from "./seo-overrides";
+import { getMediaOptimizeStats, runMediaOptimize } from "./media-optimize";
 import {
   getVerificationDetail,
   listVerificationQueue,
@@ -272,6 +273,10 @@ export const panelRouter = router({
     ),
 
   // --- SEO ---
+  mediaStats: scopedProcedure("settings").query(() => getMediaOptimizeStats()),
+  mediaOptimize: scopedProcedure("settings").mutation(({ ctx }) =>
+    asBadRequest(() => runMediaOptimize(ctx.user.id, 10))
+  ),
   seoGet: scopedProcedure("settings").query(async () => ({
     overrides: await readSeoOverrides(),
     pages: seoEditablePages.map(page => ({ ...page })),

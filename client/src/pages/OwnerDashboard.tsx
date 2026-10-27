@@ -12,6 +12,7 @@ import Billing from "./owner/Billing";
 import Personal from "./owner/Personal";
 import Contract from "./owner/Contract";
 import Activity from "./owner/Activity";
+import Reviews from "./owner/Reviews";
 import { Badge, OIcon, type OIconName } from "./owner/ui";
 
 type SectionKey =
@@ -19,6 +20,7 @@ type SectionKey =
   | "anuncios"
   | "midia"
   | "plano"
+  | "avaliacoes"
   | "dados"
   | "contrato"
   | "atividade";
@@ -27,6 +29,7 @@ const sections: { key: SectionKey; label: string; icon: OIconName }[] = [
   { key: "visao-geral", label: "Visão geral", icon: "home" },
   { key: "anuncios", label: "Meus anúncios", icon: "list" },
   { key: "midia", label: "Biblioteca", icon: "image" },
+  { key: "avaliacoes", label: "Avaliações", icon: "star" },
   { key: "plano", label: "Plano e pagamentos", icon: "card" },
   { key: "dados", label: "Dados pessoais", icon: "user" },
   { key: "contrato", label: "Contrato", icon: "file" },
@@ -180,6 +183,7 @@ export default function OwnerDashboard() {
               <Listings profileId={profileId} isNew={isNew} />
             )}
             {current === "midia" && <Library />}
+            {current === "avaliacoes" && <Reviews />}
             {current === "plano" && <Billing />}
             {current === "dados" && <Personal user={user} />}
             {current === "contrato" && <Contract />}

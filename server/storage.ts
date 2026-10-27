@@ -173,6 +173,26 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
   return { key, url: `/manus-storage/${key}` };
 }
 
+// Lê o arquivo guardado (usado para reduzir fotos antigas).
+export async function storageRead(relKey: string): Promise<Buffer> {
+  const key = normalizeKey(relKey);
+  const driver = resolveStorageDriver();
+  if (driver === "local") return fs.readFile(resolveLocalPath(key));
+  if (driver === "s3") {
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+    const client = await getS3();
+    const result = await client.send(
+      new GetObjectCommand({ Bucket: ENV.s3Bucket, Key: key })
+    );
+    const bytes = await result.Body?.transformToByteArray();
+    if (!bytes) throw new Error("Arquivo vazio");
+    return Buffer.from(bytes);
+  }
+  const response = await fetch(await forgeSignedUrl(key));
+  if (!response.ok) throw new Error(`Leitura falhou (${response.status})`);
+  return Buffer.from(await response.arrayBuffer());
+}
+
 // Link temporário (s3/forge). No modo local não existe link externo: use serveStoredObject.
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
   const key = normalizeKey(relKey);

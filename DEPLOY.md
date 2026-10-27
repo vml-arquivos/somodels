@@ -74,3 +74,12 @@ A homologação final deve ocorrer contra um MySQL/TiDB real com backup/restaura
 - Não há conferência automática de rosto nem consulta a órgão externo; a análise é feita por uma pessoa da equipe.
 - Os textos de SEO editados no painel ficam em `site_settings` (id 2) e valem só para páginas públicas fixas.
 
+## Incremento 27/10/2026 — fotos, página do anúncio e avaliações
+
+- Rodar a migração `0015_profile_reviews` (só cria a tabela `profile_reviews`). Faça backup do banco antes do deploy.
+- Nenhuma variável de ambiente nova.
+- Nova dependência `sharp` para reduzir fotos. O Dockerfile continua igual: o `pnpm install --ignore-scripts` funciona porque o `sharp` traz o binário pronto (inclusive para Alpine). Ele fica fora do pacote do servidor (`--external:sharp`) e entra em `runtime/package.json`.
+- Fotos novas entram em WebP, maior lado 2400 px. Limite de envio: 40 MB por foto e 100 MB por vídeo.
+- Para reduzir as fotos antigas: Admin > SEO > "Fotos leves (WebP)". Cada clique reduz até 10 fotos; repetir até zerar. Faça depois do deploy, com a pasta de mídias persistente montada.
+- Avaliações novas ficam aguardando aprovação em Admin > Avaliações. A chave "Publicar sem aprovação" fica nessa mesma tela (guardada em `site_settings`, id 3).
+

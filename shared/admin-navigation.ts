@@ -11,6 +11,7 @@ export const adminTabLabels = {
   identity: "Verificações",
   profiles: "Anúncios",
   moderation: "Moderação",
+  reviews: "Avaliações",
   reports: "Denúncias",
   plans: "Pacotes",
   payments: "Pagamentos",
@@ -34,6 +35,7 @@ export const adminTabPaths: Record<AdminTabKey, string> = {
   identity: "/admin/verificacoes",
   profiles: "/admin/anuncios",
   moderation: "/admin/moderacao",
+  reviews: "/admin/avaliacoes",
   reports: "/admin/denuncias",
   plans: "/admin/pacotes",
   payments: "/admin/pagamentos",
@@ -60,7 +62,7 @@ export const adminNavigationSections = [
   {
     key: "advertisers",
     label: "Anunciantes",
-    items: ["advertisers", "identity", "profiles", "moderation", "reports"],
+    items: ["advertisers", "identity", "profiles", "moderation", "reviews", "reports"],
   },
   { key: "commercial", label: "Comercial", items: ["plans", "payments", "finance"] },
   { key: "analytics", label: "Análises", items: ["analytics"] },
@@ -87,6 +89,7 @@ export type AdminOperationalCounts = {
   newMessages: number;
   followUps: number;
   overduePayments: number;
+  pendingReviews: number;
 };
 
 export type AdminNavigationBadgeCounts = Partial<Record<AdminTabKey, number>>;
@@ -144,6 +147,8 @@ export function adminNavigationBadges(
   if (hasAnyScope(granted, ["moderation"]))
     result.moderation =
       Number(counts.pendingProfiles ?? 0) + Number(counts.pendingMedia ?? 0);
+  if (hasAnyScope(granted, ["moderation"]))
+    result.reviews = Number(counts.pendingReviews ?? 0);
   if (hasAnyScope(granted, ["identity"]))
     result.identity = Number(counts.pendingIdentity ?? 0);
   if (hasAnyScope(granted, ["reports"]))

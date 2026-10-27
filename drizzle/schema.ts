@@ -860,6 +860,50 @@ export const verificationDocuments = mysqlTable(
   })
 );
 
+// Avaliações públicas dos anúncios (elogio, comentário ou reclamação), moderadas pela equipe.
+export const profileReviews = mysqlTable(
+  "profile_reviews",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    profileId: int("profileId").notNull(),
+    authorId: int("authorId").notNull(),
+    authorName: varchar("authorName", { length: 60 }).notNull(),
+    rating: int("rating").notNull(),
+    kind: varchar("kind", { length: 16 }).default("comentario").notNull(),
+    title: varchar("title", { length: 80 }),
+    body: varchar("body", { length: 1000 }).notNull(),
+    status: varchar("status", { length: 12 }).default("pending").notNull(),
+    ownerReply: varchar("ownerReply", { length: 600 }),
+    ownerReplyAt: timestamp("ownerReplyAt"),
+    ownerFlaggedAt: timestamp("ownerFlaggedAt"),
+    moderationNote: varchar("moderationNote", { length: 300 }),
+    moderatedBy: int("moderatedBy"),
+    moderatedAt: timestamp("moderatedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    authorUnique: uniqueIndex("profile_reviews_author_unique").on(
+      table.profileId,
+      table.authorId
+    ),
+    publicIdx: index("profile_reviews_public_idx").on(
+      table.profileId,
+      table.status,
+      table.createdAt
+    ),
+    statusIdx: index("profile_reviews_status_idx").on(
+      table.status,
+      table.createdAt
+    ),
+    authorIdx: index("profile_reviews_author_idx").on(
+      table.authorId,
+      table.createdAt
+    ),
+  })
+);
+
 export type CrmProfile = typeof crmProfiles.$inferSelect;
+export type ProfileReview = typeof profileReviews.$inferSelect;
 export type CrmNote = typeof crmNotes.$inferSelect;
 export type VerificationDocument = typeof verificationDocuments.$inferSelect;
