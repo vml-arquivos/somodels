@@ -1,568 +1,192 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation } from "wouter";
-import { toast } from "sonner";
+import { useEffect } from "react";
+import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import PortfolioEditor from "@/components/PortfolioEditor";
-import AccountTermsPanel from "@/components/AccountTermsPanel";
 import StudioHeader from "@/components/StudioHeader";
 import { usePublicLight } from "@/contexts/ThemeContext";
 import Seo from "@/components/Seo";
-import { portfolioPublicationLabel } from "@shared/portfolio";
-import { evaluateListingQuality } from "@shared/listing-quality";
-const identityLabels: Record<string, string> = {
-  pending: "Em análise",
-  approved: "Identidade verificada",
-  rejected: "Verificação recusada",
-  expired: "Verificação expirada",
-  error: "Erro na verificação",
-};
+import Overview from "./owner/Overview";
+import Listings from "./owner/Listings";
+import Library from "./owner/Library";
+import Billing from "./owner/Billing";
+import Personal from "./owner/Personal";
+import Contract from "./owner/Contract";
+import Activity from "./owner/Activity";
+import { Badge, OIcon, type OIconName } from "./owner/ui";
 
-function AccountPanel({ user }: { user: any }) {
-  const utils = trpc.useUtils();
-  const [name, setName] = useState(user?.name || "");
-  const updateAccount = trpc.auth.updateAccount.useMutation({
-    onSuccess: async () => {
-      toast.success("Dados da conta atualizados");
-      await utils.auth.me.invalidate();
-    },
-    onError: error => toast.error(error.message),
-  });
+type SectionKey =
+  | "visao-geral"
+  | "anuncios"
+  | "midia"
+  | "plano"
+  | "dados"
+  | "contrato"
+  | "atividade";
 
-  useEffect(() => {
-    setName(user?.name || "");
-  }, [user?.name]);
+const sections: { key: SectionKey; label: string; icon: OIconName }[] = [
+  { key: "visao-geral", label: "Visão geral", icon: "home" },
+  { key: "anuncios", label: "Meus anúncios", icon: "list" },
+  { key: "midia", label: "Biblioteca", icon: "image" },
+  { key: "plano", label: "Plano e pagamentos", icon: "card" },
+  { key: "dados", label: "Dados pessoais", icon: "user" },
+  { key: "contrato", label: "Contrato", icon: "file" },
+  { key: "atividade", label: "Atividade", icon: "clock" },
+];
 
-  return (
-    <section className="studio-panel" aria-labelledby="owner-account-title">
-      <p className="studio-kicker">Dados da conta</p>
-      <h2 id="owner-account-title">Seus dados de acesso</h2>
-      <p className="studio-muted">
-        Atualize o nome da conta aqui. O e-mail de acesso é exibido somente para
-        conferência e não é alterado nesta tela.
-      </p>
-      <form
-        className="studio-account-form"
-        onSubmit={event => {
-          event.preventDefault();
-          updateAccount.mutate({ name });
-        }}
-      >
-        <label>
-          Nome da conta
-          <input
-            autoComplete="name"
-            value={name}
-            onChange={event => setName(event.target.value)}
-          />
-        </label>
-        <label>
-          E-mail de acesso — somente leitura
-          <input value={user?.email || "—"} readOnly aria-readonly="true" />
-        </label>
-        <div className="studio-actions">
-          <button
-            className="primary"
-            disabled={updateAccount.isPending || name.trim().length < 2}
-          >
-            {updateAccount.isPending ? "Salvando…" : "Salvar dados"}
-          </button>
-          <Link href="/conta">Mais opções da conta</Link>
-        </div>
-      </form>
-    </section>
-  );
-}
+const pathFor = (key: SectionKey) =>
+  key === "visao-geral" ? "/titular" : `/titular/${key}`;
 
-function IdentityPanel() {
-  const identity = trpc.profiles.identity.useQuery();
-  const request = trpc.profiles.requestIdentity.useMutation({
-    onSuccess: async () => {
-      toast.success(
-        "Solicitação enviada. A equipe entrará em contato por e-mail."
-      );
-      await identity.refetch();
-    },
-    onError: error => toast.error(error.message),
-  });
-  const row = identity.data;
-  const expired = Boolean(
-    row?.status === "approved" &&
-      row.expiresAt &&
-      new Date(row.expiresAt) <= new Date()
-  );
-  const status = expired ? "expired" : row?.status;
-  const canRequest =
-    !row || status === "rejected" || status === "expired" || status === "error";
-  return (
-    <section className="studio-panel" aria-label="Verificação de identidade">
-      <p className="studio-kicker">Verificação de identidade</p>
-      <h2>
-        {status ? identityLabels[status] : "Verificação ainda não solicitada"}
-      </h2>
-      <p className="studio-muted">
-        A verificação só será solicitada quando a configuração de segurança ou
-        um caso específico exigir. Você pode preencher, salvar e editar o
-        anúncio enquanto aguarda; nenhum documento é publicado.
-      </p>
-      {row?.status === "rejected" && row.reviewReason && (
-        <p role="alert">Motivo informado: {row.reviewReason}</p>
-      )}
-      {canRequest && (
-        <button
-          className="studio-cta"
-          disabled={request.isPending}
-          onClick={() => request.mutate()}
-        >
-          {request.isPending ? "Enviando…" : "Solicitar verificação"}
-        </button>
-      )}
-    </section>
-  );
-}
-
-const deltaLabel = (current: number, previous: number) => {
-  if (previous === 0)
-    return current > 0 ? "novo período com atividade" : "sem atividade";
-  const pct = Math.round(((current - previous) / previous) * 100);
-  return `${pct >= 0 ? "+" : ""}${pct}% vs. período anterior`;
-};
-
-function AvailabilityPanel({
-  profile,
-  onChanged,
-}: {
-  profile: any;
-  onChanged: () => void;
-}) {
-  const set = trpc.profiles.setAvailability.useMutation({
-    onSuccess: result => {
-      toast.success(
-        result.isAvailableNow
-          ? "Você aparece como disponível agora"
-          : "Disponibilidade desligada"
-      );
-      onChanged();
-    },
-    onError: error => toast.error(error.message),
-  });
-  const active =
-    Boolean(profile.isAvailableNow) &&
-    (!profile.availableUntil || new Date(profile.availableUntil) > new Date());
-  return (
-    <section className="studio-panel" aria-label="Disponível agora">
-      <p className="studio-kicker">Disponível agora</p>
-      <h2>
-        {active
-          ? "Você está aparecendo como disponível"
-          : "Você não está marcada como disponível"}
-      </h2>
-      {active && profile.availableUntil && (
-        <p className="studio-muted">
-          Até {new Date(profile.availableUntil).toLocaleString("pt-BR")}.
-        </p>
-      )}
-      <div className="studio-actions">
-        {[2, 4, 8, 12].map(hours => (
-          <button
-            key={hours}
-            disabled={set.isPending}
-            onClick={() =>
-              set.mutate({ id: profile.id, available: true, hours })
-            }
-          >
-            Por {hours}h
-          </button>
-        ))}
-        {active && (
-          <button
-            className="danger"
-            disabled={set.isPending}
-            onClick={() => set.mutate({ id: profile.id, available: false })}
-          >
-            Desligar
-          </button>
-        )}
-      </div>
-      <small className="studio-muted">
-        Esta troca é imediata e não exige nova revisão.
-      </small>
-    </section>
-  );
-}
-
-function QualityPanel({
-  profile,
-  media,
-  identityVerified,
-}: {
-  profile: any;
-  media: any[];
-  identityVerified: boolean;
-}) {
-  const approved = media.filter(item => item.status === "approved");
-  const result = evaluateListingQuality({
-    description: profile.description,
-    avatarUrl: profile.avatarUrl,
-    priceFromCents: profile.priceFromCents,
-    services: profile.services,
-    attendancePlaces: profile.attendancePlaces,
-    languages: profile.languages,
-    availabilityLabel: profile.availabilityLabel,
-    locationNote: profile.locationNote,
-    photoCount: approved.filter(item => item.kind === "photo").length,
-    videoCount: approved.filter(item => item.kind === "video").length,
-    identityVerified,
-  });
-  return (
-    <section className="studio-panel" aria-label="Qualidade do anúncio">
-      <p className="studio-kicker">Qualidade do anúncio</p>
-      <h2>{result.score}/100</h2>
-      {result.tips.length === 0 ? (
-        <p>Seu anúncio está completo.</p>
-      ) : (
-        <ul>
-          {result.tips.map(tip => (
-            <li key={tip}>{tip}</li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-function StatsPanel({ profileId }: { profileId: number }) {
-  const [days, setDays] = useState<7 | 30>(30);
-  const stats = trpc.profiles.stats.useQuery({ id: profileId, days });
-  const max = Math.max(1, ...(stats.data?.daily.map(d => d.views) ?? [1]));
-  return (
-    <section className="studio-panel" aria-label="Desempenho do anúncio">
-      <p className="studio-kicker">Desempenho</p>
-      <h2>Visitas e contatos</h2>
-      <div className="studio-actions">
-        {([7, 30] as const).map(option => (
-          <button
-            key={option}
-            className={days === option ? "primary" : ""}
-            aria-pressed={days === option}
-            onClick={() => setDays(option)}
-          >
-            Últimos {option} dias
-          </button>
-        ))}
-      </div>
-      {stats.isLoading ? (
-        <p>Carregando métricas…</p>
-      ) : stats.error ? (
-        <p role="alert">{stats.error.message}</p>
-      ) : stats.data ? (
-        <>
-          <p>
-            <strong>{stats.data.totals.views}</strong> visualizações ·{" "}
-            <strong>{stats.data.totals.contactClicks}</strong> cliques para
-            contato
-          </p>
-          <small className="studio-muted">
-            Visualizações:{" "}
-            {deltaLabel(
-              stats.data.totals.views,
-              stats.data.previousTotals.views
-            )}{" "}
-            · Contatos:{" "}
-            {deltaLabel(
-              stats.data.totals.contactClicks,
-              stats.data.previousTotals.contactClicks
-            )}
-          </small>
-          <div
-            role="img"
-            aria-label={`Visualizações por dia nos últimos ${stats.data.days} dias`}
-            style={{
-              display: "flex",
-              alignItems: "flex-end",
-              gap: 2,
-              height: 64,
-            }}
-          >
-            {stats.data.daily.map(d => (
-              <span
-                key={d.date}
-                title={`${d.date}: ${d.views} visualizações`}
-                style={{
-                  flex: 1,
-                  minWidth: 2,
-                  height: `${Math.max(4, (d.views / max) * 100)}%`,
-                  background: "var(--s-accent, #c0508c)",
-                  borderRadius: 2,
-                  opacity: d.views ? 1 : 0.25,
-                }}
-              />
-            ))}
-          </div>
-          <small className="studio-muted">
-            Contagem agregada por dia, sem identificar visitantes.
-          </small>
-        </>
-      ) : null}
-    </section>
-  );
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] || "?") + (parts[1]?.[0] || "")).toUpperCase();
 }
 
 export default function OwnerDashboard() {
   usePublicLight();
   const { user, loading, logout } = useAuth();
-  const [location, navigate] = useLocation();
-  const [id, setId] = useState<number | null>(null);
-  const [version, setVersion] = useState(0);
+  const [, params] = useRoute("/titular/:section?");
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const query = new URLSearchParams(search);
+  const rawProfile = Number(query.get("profileId"));
+  const profileId =
+    Number.isInteger(rawProfile) && rawProfile > 0 ? rawProfile : null;
+  const isNew = query.get("novo") === "1";
+  const requested = params?.section as SectionKey | undefined;
+  const current: SectionKey =
+    requested && sections.some(s => s.key === requested)
+      ? requested
+      : profileId || isNew
+        ? "anuncios"
+        : "visao-geral";
+  const ready = Boolean(user && !user.mustChangePassword);
+  const overview = trpc.owner.overview.useQuery(undefined, { enabled: ready });
+
   useEffect(() => {
-    const profileId = Number(
-      new URLSearchParams(location.split("?")[1] || "").get("profileId")
-    );
-    if (Number.isInteger(profileId) && profileId > 0 && profileId !== id) {
-      setId(profileId);
+    window.scrollTo({ top: 0 });
+  }, [current, profileId, isNew]);
+
+  // Compatibilidade com o endereço antigo /titular?profileId=N
+  useEffect(() => {
+    if (!requested && (profileId || isNew)) {
+      navigate(
+        `/titular/anuncios?${profileId ? `profileId=${profileId}` : "novo=1"}`,
+        { replace: true }
+      );
     }
-  }, [location, id]);
-  const mine = trpc.profiles.mine.useQuery(undefined, {
-    enabled: !!user && !user.mustChangePassword,
-  });
-  const detail = trpc.profiles.mineById.useQuery(
-    { id: id || 0 },
-    { enabled: !!id && !user?.mustChangePassword }
-  );
-  const readiness = trpc.profiles.publicationReadiness.useQuery(
-    { id: id || 0 },
-    {
-      enabled: Boolean(id && detail.data?.profile) && !user?.mustChangePassword,
-    }
-  );
-  const identity = trpc.profiles.identity.useQuery(undefined, {
-    enabled: !!user && !user.mustChangePassword,
-  });
-  const archive = trpc.profiles.archiveMine.useMutation({
-    onSuccess: async () => {
-      toast.success("Anúncio arquivado");
-      setId(null);
-      navigate("/titular");
-      await mine.refetch();
-    },
-    onError: error => toast.error(error.message),
-  });
-  async function saved(next: number) {
-    setId(next);
-    navigate(`/titular?profileId=${next}`);
-    await mine.refetch();
-    if (id === next) await detail.refetch();
-    setVersion(v => v + 1);
+  }, [requested, profileId, isNew, navigate]);
+
+  const title = sections.find(s => s.key === current)?.label || "Meu painel";
+  const data = overview.data;
+  const firstName = (user?.name || "").trim().split(/\s+/)[0] || "por aqui";
+  const todo = data ? data.steps.filter(step => !step.done).length : 0;
+  const badges: Partial<Record<SectionKey, string | number>> = {};
+  if (data) {
+    if (data.summary.total) badges.anuncios = data.summary.total;
+    if (data.media.library) badges.midia = data.media.library;
+    if (!data.personal.complete) badges.dados = "!";
+    if (!data.terms.current) badges.contrato = "!";
   }
+
   return (
-    <div className="studio studio-public ep-page">
+    <div className="studio studio-public ep-page od-page">
       <Seo
-        title="Meus anúncios — Ero Models"
-        description="Área privada do titular dos anúncios."
+        title={`${title} — Ero Models`}
+        description="Área privada do anunciante."
         noindex
       />
-      <StudioHeader minimal>
-        <nav
-          aria-label="Navegação do titular"
-          className="studio-header-account-nav"
-        >
-          <Link href="/">Ver o site</Link>
-          {user && <button onClick={() => void logout()}>Sair</button>}
-        </nav>
-      </StudioHeader>
-      <main className="studio-main ep-dash">
-        <p className="ep-eyebrow">Meu painel</p>
-        <h1>Seus anúncios</h1>
-        <p className="ep-auth-intro">
-          Preencha o perfil, envie as fotos que quiser e publique. O anúncio
-          entra no ar na hora, sem fila de aprovação.
-        </p>
-        {loading ? (
-          <p>Carregando…</p>
-        ) : !user ? (
-          <Link href="/login?returnTo=/titular">Entre para continuar</Link>
-        ) : user.mustChangePassword ? (
-          <Link href="/alterar-senha?returnTo=/titular">
+      <StudioHeader minimal />
+      {loading ? (
+        <main className="od-center">Carregando…</main>
+      ) : !user ? (
+        <main className="od-center">
+          <Link className="od-btn is-primary" href="/login?returnTo=/titular">
+            Entre para continuar
+          </Link>
+        </main>
+      ) : user.mustChangePassword ? (
+        <main className="od-center">
+          <Link
+            className="od-btn is-primary"
+            href="/alterar-senha?returnTo=/titular"
+          >
             Altere sua senha antes de continuar
           </Link>
-        ) : (
-          <>
-            <AccountTermsPanel />
-            <div className="ep-dash-actions">
+        </main>
+      ) : (
+        <div className="od-shell">
+          <aside className="od-side" aria-label="Menu do anunciante">
+            <div className="od-me">
+              <span className="od-avatar" aria-hidden="true">
+                {initials(user.name || user.email || "?")}
+              </span>
+              <div>
+                <strong>{user.name || "Minha conta"}</strong>
+                <small>{user.email}</small>
+              </div>
+            </div>
+            <nav className="od-nav">
+              {sections.map(section => (
+                <Link
+                  key={section.key}
+                  href={pathFor(section.key)}
+                  className={current === section.key ? "is-active" : ""}
+                  aria-current={current === section.key ? "page" : undefined}
+                >
+                  <OIcon name={section.icon} />
+                  <span>{section.label}</span>
+                  {badges[section.key] !== undefined && (
+                    <em
+                      className={
+                        typeof badges[section.key] === "string"
+                          ? "is-alert"
+                          : ""
+                      }
+                    >
+                      {badges[section.key]}
+                    </em>
+                  )}
+                </Link>
+              ))}
+            </nav>
+            <div className="od-side-foot">
+              {data && (
+                <div className="od-plan-chip">
+                  <small>Plano</small>
+                  <strong>{data.plan ? data.plan.planName : "Gratuito"}</strong>
+                  {todo > 0 && (
+                    <Badge tone="warn">
+                      {todo} etapa{todo === 1 ? "" : "s"} pendente
+                      {todo === 1 ? "" : "s"}
+                    </Badge>
+                  )}
+                </div>
+              )}
+              <Link href="/" className="od-side-link">
+                <OIcon name="site" size={18} /> Ver o site
+              </Link>
               <button
-                className="ep-btn ep-btn-primary"
-                onClick={() => {
-                  setId(null);
-                  navigate("/titular");
-                  setVersion(v => v + 1);
-                }}
+                type="button"
+                className="od-side-link"
+                onClick={() => void logout()}
               >
-                Novo anúncio
+                <OIcon name="logout" size={18} /> Sair
               </button>
             </div>
-            <div className="studio-split">
-              <aside className="studio-panel">
-                <h2>Meus anúncios</h2>
-                {mine.error ? (
-                  <p role="alert">{mine.error.message}</p>
-                ) : mine.isLoading ? (
-                  <p>Carregando…</p>
-                ) : mine.data?.length ? (
-                  mine.data.map((p: any) => (
-                    <button
-                      className={`studio-list-item ${id === p.id ? "selected" : ""}`}
-                      key={p.id}
-                      onClick={() => {
-                        setId(p.id);
-                        navigate(`/titular?profileId=${p.id}`);
-                      }}
-                    >
-                      <strong>{p.stageName}</strong>
-                      <small>
-                        {p.city} · {portfolioPublicationLabel(p)}
-                      </small>
-                      <small>
-                        {p.rejectionReason || "Salvo"}
-                      </small>
-                    </button>
-                  ))
-                ) : (
-                  <p>Nenhum anúncio cadastrado.</p>
-                )}
-              </aside>
-              <section className="studio-panel">
-                {id && detail.isLoading ? (
-                  <p>Carregando ficha…</p>
-                ) : detail.error || (id && !detail.data?.profile) ? (
-                  <section className="studio-panel" role="alert">
-                    <h2>Anúncio não encontrado</h2>
-                    <p>
-                      Este anúncio não pertence à conta atual, foi arquivado ou
-                      não está disponível. Nenhum cadastro novo foi criado.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setId(null);
-                        navigate("/titular");
-                      }}
-                    >
-                      Voltar para meus anúncios
-                    </button>
-                  </section>
-                ) : (
-                  <>
-                    {id && detail.data?.profile && (
-                      <section
-                        className="studio-panel"
-                        aria-label="Status de publicação"
-                      >
-                        <p className="studio-kicker">Situação do anúncio</p>
-                        <h2>
-                          {portfolioPublicationLabel(detail.data.profile)}
-                        </h2>
-                        <p>
-                          {detail.data.profile.isPublished
-                            ? "Seu anúncio está no ar."
-                            : detail.data.profile.rejectionReason ||
-                              "Ainda não está no ar."}
-                        </p>
-                        {detail.data.profile.isPublished && (
-                          <Link
-                            className="studio-cta"
-                            href={`/perfil/${detail.data.profile.slug}`}
-                          >
-                            Abrir página pública
-                          </Link>
-                        )}
-                        {!detail.data.profile.deletedAt && (
-                          <button
-                            className="danger"
-                            disabled={archive.isPending}
-                            onClick={() => {
-                              if (
-                                !window.confirm(
-                                  "Arquivar este anúncio e tirá-lo da vitrine?"
-                                )
-                              )
-                                return;
-                              archive.mutate({ id, confirmation: "EXCLUIR" });
-                            }}
-                          >
-                            {archive.isPending
-                              ? "Arquivando…"
-                              : "Arquivar anúncio"}
-                          </button>
-                        )}
-                        {detail.data.profile.isPublished && (
-                          <AvailabilityPanel
-                            profile={detail.data.profile}
-                            onChanged={() => void detail.refetch()}
-                          />
-                        )}
-                        {detail.data.profile.isPublished && (
-                          <StatsPanel profileId={id} />
-                        )}
-                        <QualityPanel
-                          profile={detail.data.profile}
-                          media={detail.data.media ?? []}
-                          identityVerified={
-                            identity.data?.status === "approved"
-                          }
-                        />
-                        {readiness.isLoading ? (
-                          <p>Calculando checklist…</p>
-                        ) : readiness.data ? (
-                          <div>
-                            <h3>Falta algo para publicar?</h3>
-                            <ul>
-                              <li>
-                                {readiness.data.terms.current
-                                  ? "✓ Termos da conta aceitos"
-                                  : "○ Confirme os termos da conta"}
-                              </li>
-                              <li>
-                                {readiness.data.approvedMediaCount > 0
-                                  ? "✓ Tem foto no anúncio"
-                                  : "○ Envie pelo menos uma foto"}
-                              </li>
-                              <li>
-                                {readiness.data.pendingMediaCount === 0
-                                  ? "✓ Fotos prontas"
-                                  : `○ ${readiness.data.pendingMediaCount} foto(s) ainda sendo processada(s)`}
-                              </li>
-                              {readiness.data.publicationBlockers.map(
-                                blocker => (
-                                  <li key={blocker}>○ {blocker}</li>
-                                )
-                              )}
-                            </ul>
-                          </div>
-                        ) : null}
-                      </section>
-                    )}
-                    <PortfolioEditor
-                      key={`${id}-${version}`}
-                      initial={id ? detail.data?.profile : undefined}
-                      media={id ? detail.data?.media : []}
-                      onSaved={saved}
-                    />
-                  </>
-                )}
-              </section>
-            </div>
-            <details className="ep-more ep-dash-more">
-              <summary>Minha conta, verificação e senha</summary>
-              <AccountPanel user={user} />
-              <IdentityPanel />
-              <p>
-                <Link href="/alterar-senha?returnTo=/titular">Alterar senha</Link>
-                {" · "}
-                <Link href="/conta">Minha conta de visitante</Link>
-              </p>
-            </details>
-          </>
-        )}
-      </main>
+          </aside>
+          <main className="od-main" id="conteudo">
+            {current === "visao-geral" && <Overview firstName={firstName} />}
+            {current === "anuncios" && (
+              <Listings profileId={profileId} isNew={isNew} />
+            )}
+            {current === "midia" && <Library />}
+            {current === "plano" && <Billing />}
+            {current === "dados" && <Personal user={user} />}
+            {current === "contrato" && <Contract />}
+            {current === "atividade" && <Activity />}
+          </main>
+        </div>
+      )}
     </div>
   );
 }

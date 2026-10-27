@@ -1,5 +1,20 @@
 import { updateOwnedMedia } from "./db";
 import {
+  attachLibraryItems,
+  deleteLibraryItem,
+  getOwnerContract,
+  getOwnerOverview,
+  getOwnerPersonal,
+  getOwnerPlanSummary,
+  hasOwnerPersonalData,
+  listLibrary,
+  listOwnerActivity,
+  listOwnerPayments,
+  recordPayment,
+  renameLibraryItem,
+  saveOwnerPersonal,
+} from "./owner-area";
+import {
   profileDraftInputSchema,
   profileInputSchema,
 } from "../shared/profile-schema";
@@ -744,7 +759,14 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         const owned = await getOwnerProfile(ctx.user.id, input.id);
         if (!owned) throw new Error("Perfil não pertence à conta");
-        return getProfilePublicationReadiness(input.id);
+        const readiness = await getProfilePublicationReadiness(input.id);
+        return {
+          ...readiness,
+          ownerData: {
+            required: ENV.requireOwnerPersonalData,
+            complete: await hasOwnerPersonalData(ctx.user.id),
+          },
+        };
       }),
     save: protectedProcedure
       .input(
@@ -901,6 +923,74 @@ export const appRouter = router({
           throw new Error(rateLimitMessage(decision.retryAfterSeconds));
         return requestSubscription(ctx.user.id, input.planId);
       }),
+  }),
+  owner: router({
+    overview: protectedProcedure.query(({ ctx }) =>
+      getOwnerOverview(ctx.user.id)
+    ),
+    personal: protectedProcedure.query(({ ctx }) =>
+      getOwnerPersonal(ctx.user.id)
+    ),
+    savePersonal: protectedProcedure
+      .input(
+        z.object({
+          fullName: z.string().max(200),
+          cpf: z.string().max(20).optional(),
+          birthDate: z.string().max(10),
+          phone: z.string().max(40).optional(),
+          zipCode: z.string().max(9).optional(),
+          city: z.string().max(120).optional(),
+          state: z.string().max(2).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await saveOwnerPersonal(ctx.user.id, input);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              error instanceof Error ? error.message : "Dados inválidos",
+          });
+        }
+      }),
+    contract: protectedProcedure.query(({ ctx }) =>
+      getOwnerContract(ctx.user.id)
+    ),
+    plan: protectedProcedure.query(async ({ ctx }) => ({
+      ...(await getOwnerPlanSummary(ctx.user.id)),
+      paymentsEnabled: ENV.paymentsEnabled,
+    })),
+    payments: protectedProcedure.query(({ ctx }) =>
+      listOwnerPayments(ctx.user.id)
+    ),
+    activity: protectedProcedure.query(({ ctx }) =>
+      listOwnerActivity(ctx.user.id)
+    ),
+    library: protectedProcedure.query(({ ctx }) => listLibrary(ctx.user.id)),
+    renameLibraryItem: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          title: z.string().trim().max(160),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        renameLibraryItem(ctx.user.id, input.id, input.title)
+      ),
+    deleteLibraryItem: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => deleteLibraryItem(ctx.user.id, input.id)),
+    attachLibrary: protectedProcedure
+      .input(
+        z.object({
+          profileId: z.number().int().positive(),
+          libraryIds: z.array(z.number().int().positive()).min(1).max(50),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        attachLibraryItems(ctx.user.id, input.profileId, input.libraryIds)
+      ),
   }),
   contact: router({
     send: publicProcedure
@@ -1061,6 +1151,25 @@ export const appRouter = router({
     cancelSubscription: scopedProcedure("plans")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ ctx, input }) => cancelSubscription(input.id, ctx.user.id)),
+    recordPayment: scopedProcedure("plans", "finance:write")
+      .input(
+        z.object({
+          userId: z.number().int().positive(),
+          subscriptionId: z.number().int().positive().optional(),
+          planId: z.number().int().positive().optional(),
+          description: z.string().trim().min(3).max(200),
+          amountCents: z.number().int().min(0).max(100_000_00),
+          status: z
+            .enum(["pending", "paid", "failed", "refunded", "cancelled"])
+            .default("paid"),
+          method: z
+            .enum(["pix", "card", "boleto", "manual", "courtesy"])
+            .default("manual"),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        recordPayment({ ...input, actorUserId: ctx.user.id })
+      ),
     pendingProfiles: scopedProcedure("moderation").query(() =>
       listPendingProfiles()
     ),

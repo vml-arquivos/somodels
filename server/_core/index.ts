@@ -1,4 +1,10 @@
 import { createMedia, getAccountTermsStatus, getMediaById } from "../db";
+import {
+  countLibraryItems,
+  createLibraryItem,
+  getLibraryItem,
+  LIBRARY_LIMIT,
+} from "../owner-area";
 import { serveStoredObject, storageDelete } from "../storage";
 import { readSiteSettings } from "../site-config";
 import "dotenv/config";
@@ -326,6 +332,119 @@ async function startServer() {
       await serveStoredObject(res, media.storageKey);
     } catch {
       res.status(503).send("Não foi possível visualizar o arquivo");
+    }
+  });
+  // Biblioteca da conta: arquivos privados, só o dono vê. Vão para um anúncio
+  // quando o anunciante escolhe (profiles/owner.attachLibrary).
+  app.get("/api/library-preview/:id", async (req, res) => {
+    try {
+      res.setHeader("Cache-Control", "private, no-store");
+      const ctx = await createContext({ req, res } as any);
+      if (
+        !ctx.user ||
+        ctx.user.accountStatus !== "active" ||
+        ctx.user.mustChangePassword
+      )
+        return res.status(403).send("Acesso negado");
+      const id = Number(req.params.id);
+      if (!Number.isSafeInteger(id) || id <= 0)
+        return res.status(400).send("Arquivo inválido");
+      const item = await getLibraryItem(ctx.user.id, id);
+      if (!item) return res.status(404).send("Arquivo indisponível");
+      await serveStoredObject(res, item.storageKey);
+    } catch {
+      res.status(503).send("Não foi possível visualizar o arquivo");
+    }
+  });
+  app.post("/api/upload/library", async (req, res) => {
+    try {
+      const ctx = await createContext({ req, res } as any);
+      if (!ctx.user || ctx.user.accountStatus !== "active")
+        return res.status(401).json({ error: "Não autenticado" });
+      if (ctx.user.mustChangePassword)
+        return res
+          .status(403)
+          .json({ error: "Altere sua senha antes de continuar" });
+      const rate = uploadRateLimiter.consume(`user:${ctx.user.id}`);
+      if (!rate.allowed) {
+        res.setHeader("Retry-After", String(rate.retryAfterSeconds));
+        return res
+          .status(429)
+          .json({ error: rateLimitMessage(rate.retryAfterSeconds) });
+      }
+      const { kind, filename, contentType, data, title } = req.body ?? {};
+      if (!kind || !filename || !contentType || typeof data !== "string")
+        return res.status(400).json({ error: "Dados de upload incompletos" });
+      if (!["photo", "video"].includes(kind))
+        return res.status(400).json({ error: "Tipo de mídia inválido" });
+      const allowedPhoto = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/avif",
+      ].includes(contentType);
+      const allowedVideo = [
+        "video/mp4",
+        "video/webm",
+        "video/quicktime",
+      ].includes(contentType);
+      if (
+        (kind === "photo" && !allowedPhoto) ||
+        (kind === "video" && !allowedVideo)
+      )
+        return res
+          .status(415)
+          .json({ error: "Formato de mídia não permitido" });
+      if ((await countLibraryItems(ctx.user.id)) >= LIBRARY_LIMIT)
+        return res.status(409).json({
+          error: `A biblioteca chegou ao limite de ${LIBRARY_LIMIT} arquivos. Remova alguns para enviar mais.`,
+        });
+      const base64 = data.replace(/^data:[^;]+;base64,/, "").replace(/\s/g, "");
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64) || base64.length % 4 === 1)
+        return res.status(400).json({ error: "Conteúdo base64 inválido" });
+      const buffer = Buffer.from(base64, "base64");
+      const maxBytes = kind === "video" ? 100 * 1024 * 1024 : 12 * 1024 * 1024;
+      if (buffer.byteLength === 0 || buffer.byteLength > maxBytes)
+        return res
+          .status(413)
+          .json({ error: "Arquivo excede o limite permitido" });
+      if (!hasMagicBytes(buffer, kind, contentType))
+        return res.status(415).json({
+          error: "Assinatura do arquivo não corresponde ao tipo declarado",
+        });
+      const extension =
+        path
+          .extname(String(filename))
+          .toLowerCase()
+          .replace(/[^a-z0-9.]/g, "") || (kind === "photo" ? ".jpg" : ".mp4");
+      const safeKey = `library/${ctx.user.id}/${kind}/${randomUUID()}${extension}`;
+      const uploaded = await storagePut(safeKey, buffer, contentType);
+      try {
+        const id = await createLibraryItem({
+          ownerId: ctx.user.id,
+          kind,
+          title:
+            typeof title === "string" && title.trim()
+              ? title
+              : String(filename).replace(/\.[^.]+$/, ""),
+          storageKey: uploaded.key,
+          url: uploaded.url,
+          mimeType: contentType,
+          sizeBytes: buffer.byteLength,
+        });
+        return res.json({ id });
+      } catch (error) {
+        await storageDelete(uploaded.key).catch(() => undefined);
+        throw error;
+      }
+    } catch (error) {
+      console.error(
+        "[Upload] library failed",
+        error instanceof Error ? error.message : "unknown error"
+      );
+      return res.status(500).json({
+        error: "Não foi possível guardar o arquivo; tente novamente",
+      });
     }
   });
   app.post("/api/upload/media", async (req, res) => {

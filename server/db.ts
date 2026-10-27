@@ -28,6 +28,8 @@ import {
   favorites,
   identityVerifications,
   InsertProfile,
+  ownerAccounts,
+  ownerMedia,
   InsertProfileMedia,
   moderationCases,
   passwordResetTokens,
@@ -326,6 +328,12 @@ export async function anonymizeOwnAccount(userId: number) {
       .where(eq(profiles.ownerId, userId));
     await tx.delete(favorites).where(eq(favorites.userId, userId));
     await tx.delete(blocks).where(eq(blocks.userId, userId));
+    // Dados pessoais (nome, CPF, nascimento) saem junto com o encerramento.
+    await tx.delete(ownerAccounts).where(eq(ownerAccounts.userId, userId));
+    await tx
+      .update(ownerMedia)
+      .set({ deletedAt: new Date() })
+      .where(eq(ownerMedia.ownerId, userId));
     await tx
       .update(authSessions)
       .set({ revokedAt: new Date() })
@@ -1405,6 +1413,17 @@ export async function publishOwnerProfile(ownerId: number, profileId: number) {
     if (!profile)
       throw new Error("Perfil não pertence à conta ou está arquivado");
     if (!profile.isActive) throw new Error("Ative o anúncio antes de publicar");
+    if (ENV.requireOwnerPersonalData) {
+      const [ownerData] = await tx
+        .select({ id: ownerAccounts.id })
+        .from(ownerAccounts)
+        .where(eq(ownerAccounts.userId, ownerId))
+        .limit(1);
+      if (!ownerData)
+        throw new Error(
+          "Preencha seus dados pessoais (nome completo, CPF e nascimento) antes de publicar"
+        );
+    }
     if (profile.status === "suspended")
       throw new Error(
         "Este anúncio está suspenso e precisa de uma decisão administrativa"
@@ -2002,7 +2021,14 @@ export async function getMediaByStorageKey(storageKey: string) {
     .select()
     .from(profileMedia)
     .where(eq(profileMedia.storageKey, storageKey))
-    .limit(1);
+    .orderBy(asc(profileMedia.id))
+    .limit(20);
+  // O mesmo arquivo da biblioteca pode estar em mais de um anúncio: vale o
+  // primeiro vínculo aprovado cujo anúncio está público.
+  for (const row of rows) {
+    if (row.status === "approved" && (await isMediaProfilePublic(row.profileId)))
+      return row;
+  }
   return rows[0];
 }
 

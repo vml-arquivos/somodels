@@ -36,7 +36,7 @@ export default function MobileTabBar() {
       href: user ? "/titular" : "/cadastro",
       label: "Anunciar",
       icon: "plus",
-      active: location === "/titular" || location === "/cadastro",
+      active: location.startsWith("/titular") || location === "/cadastro",
       highlight: true,
     },
     {

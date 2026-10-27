@@ -57,3 +57,10 @@ pnpm build
 Em seguida valide `/healthz`, `/api/release`, login/logout, age gate, storage, perfil público e admin. Use `docs/DEPLOY-ROLLBACK-PLAN.md` como runbook. Faça backup do banco antes de rodar `db:migrate`. Além da `0011_talented_ares.sql` (formas de pagamento), esta etapa inclui `0012_profile_neighborhood.sql`, que adiciona somente `profiles.neighborhood`; ambas são aditivas. As migrations anteriores permanecem necessárias e devem estar integralmente aplicadas antes do tráfego público.
 
 A homologação final deve ocorrer contra um MySQL/TiDB real com backup/restauração testados. Providers de age/KYC/payment não devem ser considerados operacionais apenas por existirem variáveis de ambiente.
+
+## Incremento 26/10/2026 — painel do anunciante
+
+- Rodar a migração `0013_owner_area` (só cria `owner_accounts`, `owner_media` e `payments`). Faça backup do banco antes do deploy.
+- Nova variável opcional: `REQUIRE_OWNER_PERSONAL_DATA` (padrão `true`). Com `true`, o titular precisa preencher nome completo, CPF e nascimento antes de publicar um anúncio pela primeira vez. Anúncios já publicados não são afetados. Use `false` para desligar a exigência.
+- O texto do contrato é um modelo e deve ser revisado por advogado antes de uso comercial.
+- Pagamentos podem ser registrados pelo endpoint `admin.recordPayment`; ainda não há tela de admin para isso.

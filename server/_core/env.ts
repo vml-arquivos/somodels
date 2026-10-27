@@ -152,6 +152,11 @@ export const ENV = {
     process.env.REQUIRE_IDENTITY_VERIFICATION,
     readBoolean(process.env.KYC_REQUIRED, false)
   ),
+  // Nome completo, CPF e nascimento do anunciante antes de publicar um anúncio novo.
+  requireOwnerPersonalData: readBoolean(
+    process.env.REQUIRE_OWNER_PERSONAL_DATA,
+    true
+  ),
   kycProvider: process.env.KYC_PROVIDER ?? "",
   kycApiKey: process.env.KYC_API_KEY ?? "",
   kycWebhookSecret: process.env.KYC_WEBHOOK_SECRET ?? "",

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-26 — painel completo do anunciante
+
+- `/titular` virou uma área do cliente com menu lateral (abas rolando no celular): Visão geral, Meus anúncios, Biblioteca, Plano e pagamentos, Dados pessoais, Contrato e Atividade; endereços antigos como `/titular?profileId=N` continuam funcionando;
+- visão geral com alertas (dados pendentes, termos, anúncio suspenso, arquivos em análise), passo a passo de início, números dos últimos 30 dias com comparação com o período anterior, gráfico diário de visitas e contatos, plano, último pagamento e tabela dos anúncios (fotos, vídeos, visitas, contatos);
+- meus anúncios: cartões com situação, fotos, vídeos, visitas e contatos; edição com checklist de publicação (inclui dados pessoais), disponível agora, desempenho, qualidade e arquivar;
+- biblioteca de mídia privada (até 300 arquivos): envio em várias fotos e vídeos de uma vez (arrastar e soltar), nome editável, filtros, aviso de onde cada arquivo está em uso, e botão para usar os arquivos escolhidos em qualquer anúncio sem enviar de novo; nada fica público até ser usado em um anúncio;
+- dados pessoais separados do anúncio: nome completo, CPF, nascimento, telefone, CEP, cidade e estado; CPF guardado criptografado, aparece mascarado e não pode repetir em outra conta; nome e idade do anúncio continuam livres; nome, CPF e nascimento travam quando a identidade é verificada;
+- novo requisito para publicar pela primeira vez: dados pessoais preenchidos (`REQUIRE_OWNER_PERSONAL_DATA`, ligado por padrão). Anúncios que já estão no ar não saem do ar;
+- contrato (termo de adesão) gerado com os dados do titular, aceite com data e versão, impressão/PDF. O texto jurídico é um modelo e deve ser revisado por advogado;
+- plano e pagamentos: plano atual e benefícios, histórico de assinaturas e de pagamentos com fatura `EM-AAAA-NNNNNN`, estados vazios prontos enquanto não há cobrança; `admin.recordPayment` registra pagamentos (tela de admin ainda não existe);
+- atividade: histórico legível das ações da conta;
+- migração `0013_owner_area`: só cria as tabelas `owner_accounts`, `owner_media` e `payments` (não altera nada existente);
+- encerrar a conta também apaga os dados pessoais e tira a biblioteca.
+
 ## 2026-10-26 — logo definitiva, aplicativo no celular e home completa
 
 - logo definitiva baseada na arte enviada pelo dono (monograma E com fita, "ERO" em serifa de alto contraste e "MODELS" espaçado), vetorizada em SVG nas versões horizontal (cabeçalho e rodapé), empilhada (tela de idade), símbolo, ícone do aplicativo e cartão de compartilhamento, cada uma para fundo claro e escuro; logo maior no cabeçalho, no rodapé e na tela de idade;

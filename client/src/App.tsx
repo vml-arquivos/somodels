@@ -46,7 +46,7 @@ function Router() {
       <Route path="/calculadora-de-ganhos" component={AdvertiserPage} />
       <Route path="/conta" component={ClientDashboard} />
       <Route path="/cliente" component={ClientDashboard} />
-      <Route path="/titular" component={OwnerDashboard} />
+      <Route path="/titular/:section?" component={OwnerDashboard} />
       <Route path="/admin/portfolio/novo" component={AdminNewPortfolioPage} />
       <Route path="/admin/usuarios" component={AdminDashboard} />
       <Route path="/admin/anuncios" component={AdminDashboard} />

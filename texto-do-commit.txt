@@ -1,20 +1,25 @@
-feat: logo definitiva, app no celular e home completa
+feat: painel completo do anunciante com dados pessoais e biblioteca de mídia
 
-Logo
-- logo nova a partir da arte enviada, vetorizada (horizontal, empilhada, símbolo e ícone) em versão clara e escura
-- logo maior no cabeçalho, no rodapé e na tela de idade
+Painel
+- a área /titular agora tem menu: visão geral, meus anúncios, biblioteca, plano e pagamentos, dados pessoais, contrato e atividade
+- visão geral com alertas, passo a passo, visitas e contatos dos últimos 30 dias, gráfico, plano e lista dos anúncios
+- no celular o menu vira abas que rolam para o lado
 
-Aplicativo no celular
-- ícones, tela de abertura, atalhos e página offline com a marca
-- barra de abas fixa embaixo (início, buscar, anunciar, conta)
-- convite para instalar o app (Android e iPhone)
+Dados pessoais
+- nome completo, CPF, nascimento, telefone e endereço ficam na conta, separados do anúncio
+- CPF guardado criptografado, aparece mascarado e não repete em outra conta
+- nome e idade do anúncio continuam livres
+- para publicar o primeiro anúncio é preciso preencher os dados pessoais (REQUIRE_OWNER_PERSONAL_DATA); anúncios que já estão no ar continuam no ar
 
-Home
-- no celular, título antes do carrossel de fotos
-- links populares, categorias com descrição, cidades, segurança, passo a passo para anunciar e perguntas frequentes
-- números reais do site no topo
-- imagem de compartilhamento agora é o cartão da marca
+Biblioteca de mídia
+- envio de várias fotos e vídeos de uma vez, com nome editável e filtros
+- escolher quais arquivos vão para cada anúncio sem enviar de novo
+- os arquivos só ficam públicos depois de usados em um anúncio
 
-Tema
-- tema claro e escuro nas páginas públicas, com botão no cabeçalho
-- textos antigos salvos no banco são trocados pelos novos automaticamente
+Contrato, plano e histórico
+- contrato com os dados do titular, aceite com data e versão, impressão
+- plano atual, histórico de assinaturas e de pagamentos (tudo pronto para quando houver cobrança)
+- histórico das ações da conta
+
+Banco
+- migração 0013 cria as tabelas owner_accounts, owner_media e payments; não altera nada que já existe

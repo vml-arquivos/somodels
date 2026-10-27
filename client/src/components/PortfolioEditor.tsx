@@ -48,7 +48,7 @@ type UploadQueueItem = {
   error?: string;
 };
 
-async function preparePhotoFile(file: File) {
+export async function preparePhotoFile(file: File) {
   if (!file.type.startsWith("image/")) return file;
   try {
     const bitmap = await createImageBitmap(file);

@@ -703,3 +703,96 @@ export const financeEntries = mysqlTable("finance_entries", {
   voidedAt: timestamp("voidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+// Dados pessoais reais do anunciante (nome, CPF, nascimento). Ficam separados do
+// nome artístico dos anúncios e nunca aparecem em páginas públicas.
+export const ownerAccounts = mysqlTable(
+  "owner_accounts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull(),
+    fullName: varchar("fullName", { length: 160 }).notNull(),
+    cpfEnc: text("cpfEnc").notNull(),
+    cpfHash: varchar("cpfHash", { length: 64 }).notNull(),
+    cpfLast2: varchar("cpfLast2", { length: 2 }).notNull(),
+    birthDate: varchar("birthDate", { length: 10 }).notNull(),
+    phone: varchar("phone", { length: 40 }),
+    zipCode: varchar("zipCode", { length: 9 }),
+    city: varchar("city", { length: 120 }),
+    state: varchar("state", { length: 2 }),
+    completedAt: timestamp("completedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    userIdx: uniqueIndex("owner_accounts_user_unique").on(table.userId),
+    cpfIdx: uniqueIndex("owner_accounts_cpf_unique").on(table.cpfHash),
+  })
+);
+
+// Biblioteca de fotos e vídeos da conta. O anunciante envia uma vez e escolhe
+// depois quais arquivos entram em cada anúncio.
+export const ownerMedia = mysqlTable(
+  "owner_media",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerId: int("ownerId").notNull(),
+    kind: mysqlEnum("kind", ["photo", "video"]).notNull(),
+    title: varchar("title", { length: 160 }),
+    storageKey: text("storageKey").notNull(),
+    storageHash: varchar("storageHash", { length: 128 }).notNull(),
+    url: text("url").notNull(),
+    mimeType: varchar("mimeType", { length: 120 }).notNull(),
+    sizeBytes: int("sizeBytes").default(0).notNull(),
+    deletedAt: timestamp("deletedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    ownerIdx: index("owner_media_owner_idx").on(table.ownerId, table.deletedAt),
+    storageIdx: uniqueIndex("owner_media_storage_unique").on(
+      table.storageHash
+    ),
+  })
+);
+
+// Histórico de pagamentos do anunciante. Já fica pronto mesmo antes das cobranças.
+export const payments = mysqlTable(
+  "payments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull(),
+    subscriptionId: int("subscriptionId"),
+    planId: int("planId"),
+    description: varchar("description", { length: 200 }).notNull(),
+    amountCents: int("amountCents").notNull().default(0),
+    status: mysqlEnum("status", [
+      "pending",
+      "paid",
+      "failed",
+      "refunded",
+      "cancelled",
+    ])
+      .default("pending")
+      .notNull(),
+    method: mysqlEnum("method", ["pix", "card", "boleto", "manual", "courtesy"])
+      .default("manual")
+      .notNull(),
+    provider: varchar("provider", { length: 80 }),
+    providerReference: varchar("providerReference", { length: 160 }),
+    invoiceNumber: varchar("invoiceNumber", { length: 40 }),
+    dueAt: timestamp("dueAt"),
+    paidAt: timestamp("paidAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    userIdx: index("payments_user_idx").on(table.userId, table.createdAt),
+    providerIdx: uniqueIndex("payments_provider_unique").on(
+      table.provider,
+      table.providerReference
+    ),
+  })
+);
+
+export type OwnerAccount = typeof ownerAccounts.$inferSelect;
+export type OwnerMedia = typeof ownerMedia.$inferSelect;
+export type Payment = typeof payments.$inferSelect;
